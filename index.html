@@ -820,7 +820,17 @@ function render(){
     if(!S.user)return;
     var page=document.getElementById("pg");if(!page)return;
     page.innerHTML="";
-    var content=rPage(S.view);
+    var content;
+    try{
+      content=rPage(S.view);
+    }catch(err){
+      console.error("Render error on view:",S.view,err);
+      content=el("div",{style:{padding:"20px"}},
+        el("div",{cls:"al-r"},"Something went wrong showing this page."),
+        el("div",{style:{fontSize:"11px",color:"var(--ink4)",marginTop:"10px",fontFamily:"monospace",wordBreak:"break-word"}},String(err&&err.message||err)),
+        btn("Go to Dashboard",function(){set({view:"dash"});},"btn-o btn-sm")
+      );
+    }
     if(content)page.appendChild(content);
     renderShell();
   }finally{
@@ -850,7 +860,7 @@ function LedgerTable(rows,showPerson,canEdit){
   var actRow=dv({display:"flex",gap:"8px",marginBottom:"12px",flexWrap:"wrap"});
   actRow.appendChild(expBtn(rows,"ledger.csv"));
   actRow.appendChild(btn("Print",function(){
-    var tbl=rows.map(function(r){return "<tr><td>"+(r.date||"")+"</td><td>"+(r.account||"")+(r.subAccount?" / "+r.subAccount:"")+"</td><td>"+(r.particulars||"").slice(0,60)+"</td><td class='neg' style='text-align:right'>"+(r.debit?Rs(r.debit):"")+"</td><td class='pos' style='text-align:right'>"+(r.credit?Rs(r.credit):"")+"</td></tr>";}).join("");
+    var tbl=rows.map(function(r){return "<tr><td>"+(r.date||"")+"</td><td>"+(r.account||"")+(r.subAccount?" / "+r.subAccount:"")+"</td><td>"+String(r.particulars||"").slice(0,60)+"</td><td class='neg' style='text-align:right'>"+(r.debit?Rs(r.debit):"")+"</td><td class='pos' style='text-align:right'>"+(r.credit?Rs(r.credit):"")+"</td></tr>";}).join("");
     printStatement("General Ledger","<table><thead><tr><th>Date</th><th>Account</th><th>Particulars</th><th style='text-align:right'>Debit</th><th style='text-align:right'>Credit</th></tr></thead><tbody>"+tbl+"</tbody><tfoot><tr><td colspan='3'>TOTAL</td><td style='text-align:right'>"+Rs(totDr)+"</td><td style='text-align:right'>"+Rs(totCr)+"</td></tr></tfoot></table>");
   },"btn-o btn-sm"));
   w.appendChild(actRow);
@@ -1231,7 +1241,7 @@ function rMyEntries(){
       var isCr=parseFloat(r.credit||0)>0&&!parseFloat(r.debit||0);
       var item=el("div",{cls:"ei"});
       item.appendChild(dv({display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:"7px",gap:"8px"},dv({flex:"1",minWidth:"0"},el("div",{style:{fontWeight:"600",fontSize:"13px",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},(r.account||"")+(r.subAccount?" / "+r.subAccount:"")),dv({display:"flex",gap:"7px",marginTop:"3px",alignItems:"center",flexWrap:"wrap"},r.cbNo?el("span",{style:{fontSize:"10px",fontWeight:"700",color:"var(--g)",background:"var(--g4)",borderRadius:"3px",padding:"1px 6px"}},r.cbNo):null,el("span",{style:{fontSize:"11px",color:"var(--ink4)"}},r.date||""))),Badge(r.status)));
-      if(r.particulars)item.appendChild(el("div",{style:{fontSize:"12px",color:"var(--ink2)",marginBottom:"4px"}},r.particulars.slice(0,80)));
+      if(r.particulars)item.appendChild(el("div",{style:{fontSize:"12px",color:"var(--ink2)",marginBottom:"4px"}},String(r.particulars).slice(0,80)));
       if(r.particularsUr)item.appendChild(el("div",{cls:"ur",style:{fontSize:"12px",color:"var(--ink4)",marginBottom:"7px"}},r.particularsUr));
       var bot=dv({display:"flex",justifyContent:"space-between",alignItems:"center",gap:"8px"});
       bot.appendChild(el("div",{style:{fontFamily:"'Cormorant Garamond',serif",fontSize:"18px",fontWeight:"600",color:isCr?"var(--pos)":"var(--neg)"}},(isCr?"+":"-")+Rs(isCr?r.credit:r.debit)));
@@ -1400,11 +1410,12 @@ function rDirApp(){
 function rLedger(){
   var cf=S.cbf;var isDir=ROLE_MAP[S.user]==="director";
   var sortDir=cf.sort||"oldest";
+  var lv=cf.lv||"journal";
   var posted=S.cb.filter(function(e){
     if(e.status!=="posted")return false;
     if(cf.person&&e.person!==cf.person)return false;
-    if(cf.site&&e.account!==cf.site&&e.subAccount!==cf.site)return false;
-    if(cf.search){var q=cf.search.toLowerCase();if(![e.particulars,e.account,e.cbNo,e.billNo,e.subAccount,e.particularsUr].some(function(x){return(x||"").toLowerCase().includes(q);}))return false;}
+    if(lv==="journal"&&cf.site&&e.account!==cf.site&&e.subAccount!==cf.site)return false;
+    if(cf.search){var q=cf.search.toLowerCase();if(![e.particulars,e.account,e.cbNo,e.billNo,e.subAccount,e.particularsUr].some(function(x){return String(x||"").toLowerCase().includes(q);}))return false;}
     if(cf.d1&&(e.date||"")<cf.d1)return false;
     if(cf.d2&&(e.date||"")>cf.d2)return false;
     return true;
@@ -1415,10 +1426,9 @@ function rLedger(){
   var w=el("div",{});
   w.appendChild(Tabs([{id:"journal",l:"General Journal"},{id:"byP",l:"By Person"},{id:"byS",l:"By Site"}],cf.lv||"journal",function(id){set({cbf:Object.assign({},cf,{lv:id})});}));
   var fb=dv({display:"flex",gap:"8px",flexWrap:"wrap",marginBottom:"14px",alignItems:"center"});
-  var lv=cf.lv||"journal";
   fb.appendChild(btn(sortDir==="oldest"?"\u2191 Oldest First":"\u2193 Newest First",function(){set({cbf:Object.assign({},cf,{sort:sortDir==="oldest"?"newest":"oldest"})});},"btn-o btn-sm"));
   if(lv!=="byS")fb.appendChild(Sel(cf.person||"",function(v){set({cbf:Object.assign({},cf,{person:v})});},[{v:"",l:"All Members"},...U.map(function(u){return{v:u.id,l:u.name};})]));
-  if(lv!=="byP")fb.appendChild(Sel(cf.site||"",function(v){set({cbf:Object.assign({},cf,{site:v})});},[{v:"",l:"All Accounts"},...ACCS.map(function(a){return{v:a,l:a};})]));
+  if(lv==="journal")fb.appendChild(Sel(cf.site||"",function(v){set({cbf:Object.assign({},cf,{site:v})});},[{v:"",l:"All Accounts"},...ACCS.map(function(a){return{v:a,l:a};})]));
   var si=Inp(cf.search||"",function(v){set({cbf:Object.assign({},cf,{search:v})});},"text","Search...");si.style.maxWidth="130px";fb.appendChild(si);
   var d1i=Inp(cf.d1||"",function(v){set({cbf:Object.assign({},cf,{d1:v})});},"date");d1i.style.maxWidth="140px";fb.appendChild(d1i);
   var d2i=Inp(cf.d2||"",function(v){set({cbf:Object.assign({},cf,{d2:v})});},"date");d2i.style.maxWidth="140px";fb.appendChild(d2i);
