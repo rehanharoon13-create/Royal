@@ -216,7 +216,18 @@ function sbUp(tbl,rows){
     method:"POST",
     headers:Object.assign({},SBH,{"Prefer":"resolution=merge-duplicates,return=minimal"}),
     body:JSON.stringify(rows)
-  }).catch(function(e){console.warn("sbUp",tbl,e);});
+  }).then(function(r){
+    if(!r.ok){
+      /* Saved locally but never reached Supabase — this device will show it, but it will
+         never appear on anyone else's device, and a future full sync on THIS device could
+         even overwrite it. Silent failure here is worse than for deletes, since nothing
+         ever re-corrects it automatically. */
+      toast("Saved on this device only — check your connection, then tap Sync Now",true,4500);
+    }
+  }).catch(function(e){
+    console.warn("sbUp",tbl,e);
+    toast("Saved on this device only — check your connection, then tap Sync Now",true,4500);
+  });
 }
 /* Deletes the row from Supabase itself — sbUp alone can never remove a row, only add/update */
 function sbDel(tbl,id){
@@ -224,15 +235,51 @@ function sbDel(tbl,id){
   return fetch(SB_URL+"/rest/v1/"+tbl+"?id=eq."+encodeURIComponent(id),{
     method:"DELETE",
     headers:SBH
-  }).catch(function(e){console.warn("sbDel",tbl,e);});
+  }).then(function(r){
+    if(!r.ok){
+      /* A failed remote delete will be silently undone by the next auto-sync (every 25s),
+         which re-pulls the row from Supabase since it was never actually removed there.
+         Surface this so it doesn't look like random data reappearing. */
+      toast("Delete may not have saved — check your connection and try again",true,4000);
+    }
+  }).catch(function(e){
+    console.warn("sbDel",tbl,e);
+    toast("Delete may not have saved — check your connection and try again",true,4000);
+  });
 }
 /* Removes one row from a state array by id, updates localStorage, AND deletes it from Supabase.
-   Use this everywhere instead of S.x = S.x.filter(...) + sv() — that combo never deletes remotely. */
+   Use this everywhere instead of S.x = S.x.filter(...) + sv() — that combo never deletes remotely.
+   If the row carries a linkId (set on any row created as one half of a paired transaction —
+   Give Cash, Cheque-to-Staff, Bank-Transfer-to-Staff, Salary Mark-Paid), every other row across
+   cb/bank/salrec sharing that same linkId is deleted too, so a double-entry pair can never go
+   half-deleted and leave one side of the books unbalanced. */
 function removeRow(stateKey,localKey,id){
+  var row=(S[stateKey]||[]).find(function(e){return e.id===id;});
+  var linkId=row&&row.linkId;
   S[stateKey]=S[stateKey].filter(function(e){return e.id!==id;});
   LS(localKey,S[stateKey]);
   var m=SB_TBLS[localKey];
   if(m)sbDel(m.t,id);
+  if(linkId){
+    [["cb","r7_cb"],["bank","r7_bk"],["salrec","r7_sal"]].forEach(function(pair){
+      var sk=pair[0],lk=pair[1];
+      if(sk===stateKey)return; // already handled above; avoid re-filtering the same array mid-loop
+      var linked=(S[sk]||[]).filter(function(e){return e.linkId===linkId;});
+      if(!linked.length)return;
+      S[sk]=S[sk].filter(function(e){return e.linkId!==linkId;});
+      LS(lk,S[sk]);
+      var m2=SB_TBLS[lk];
+      linked.forEach(function(e){if(m2)sbDel(m2.t,e.id);});
+    });
+    /* the state array we started from may ALSO contain a second row with the same linkId
+       (this happens for Give Cash, where both legs live in S.cb) — sweep it too */
+    var remaining=(S[stateKey]||[]).filter(function(e){return e.linkId===linkId;});
+    if(remaining.length){
+      S[stateKey]=S[stateKey].filter(function(e){return e.linkId!==linkId;});
+      LS(localKey,S[stateKey]);
+      remaining.forEach(function(e){if(m)sbDel(m.t,e.id);});
+    }
+  }
 }
 
 var U=[
@@ -250,8 +297,10 @@ var CSITES=["B-552","G-396","G-139","J-1","W-93"];
 var SITES=["B-552","G-396","G-139","J-1","Doors","W-93","Office"];
 var BANKS=[{id:"hs",name:"HS Meezan",modes:"Cheque+Online"},{id:"am",name:"Ahmad Meezan",modes:"Online"},{id:"ra",name:"Rehan Alfalah",modes:"Cheque+Online"}];
 var CARDS=[{id:"bop",name:"BOP Credit Card",due:22},{id:"js",name:"JS Bank",due:8}];
-var EMP_CASH_ACCS=["Muzammil Cash","Junaid Cash","Umair Cash","Usman Ghani Cash","Danish Cash","Haroon Cash","Ahmad Cash","Rehan Cash"];
-var ACCS=["B-552","G-396","G-139","J-1","Doors","W-93","Office","TDC","Suspense","Cash Office","Payables","Other Exp","Personal","HS Meezan","Ahmad Meezan","Rehan Alfalah"].concat(EMP_CASH_ACCS);
+/* NOTE: per-employee "X Cash" text accounts were removed from here — Give Cash mode
+   (see rAddCB) is the only correct way to move cash to a team member, since typing a name
+   into a free-text account field here would NOT actually credit that person's balance. */
+var ACCS=["B-552","G-396","G-139","J-1","Doors","W-93","Office","TDC","Suspense","Cash Office","Payables","Other Exp","Personal","HS Meezan","Ahmad Meezan","Rehan Alfalah","Cash Given","Cash Received"];
 var SUBS=["Cement","Bricks","Steel","Steel Wire","Crush","Bajjar","Filling","Waterstopper","Plastic","Bore","Water Motor","Electric","Hardware","Carriage","Freight","Guard","Guard-Salary","Paint","Glass","Grass","Carpenter","Gardner","Marble Polish","Entertainment","Printing","Stationery","Marketing","Groceries","Bank Charges","Salary","Fuel","Advance","Labour","Travel","Other"];
 var UNITS=["Bags","Nos","Kg","Ton","Sqft","Rft","Cubic ft","Litre","Set","Sheets","Truck","Other"];
 var DOOR_STAGES=["Quotation","Approved","Production","Polishing","Packing","Dispatch","Installed","Completed"];
@@ -316,9 +365,9 @@ function toggleLang(){if(!canUrdu())return;S.urLang[S.user]=!isUrdu();LS("r7_urL
 /* ═══ BLOCK 2: SUPABASE TABLE MAP + SYNC ═══ */
 
 var SB_TBLS={
-  "r7_cb":{t:"cb",up:function(r){return{id:r.id,person:r.person,date:r.date||null,account:r.account||null,sub_account:r.subAccount||null,area:r.area||null,qty:r.qty||null,bill_no:r.billNo||null,particulars:r.particulars||null,particulars_ur:r.particularsUr||null,debit:r.debit||0,credit:r.credit||0,status:r.status||"pending",filed:r.filed||false,rejection:r.rejection||null,cb_no:r.cbNo||null,site_no:r.siteNo||null,approved_by:r.approvedBy||null,approved_at:r.approvedAt||null,reviewed_by:r.reviewedBy||null,reviewed_at:r.reviewedAt||null,edited_by:r.editedBy||null,edited_at:r.editedAt||null,bill_photo:r.bill_photo||null,created_at:r.created||null};}},
+  "r7_cb":{t:"cb",up:function(r){return{id:r.id,person:r.person,date:r.date||null,account:r.account||null,sub_account:r.subAccount||null,area:r.area||null,qty:r.qty||null,bill_no:r.billNo||null,particulars:r.particulars||null,particulars_ur:r.particularsUr||null,debit:r.debit||0,credit:r.credit||0,status:r.status||"pending",filed:r.filed||false,rejection:r.rejection||null,cb_no:r.cbNo||null,site_no:r.siteNo||null,approved_by:r.approvedBy||null,approved_at:r.approvedAt||null,reviewed_by:r.reviewedBy||null,reviewed_at:r.reviewedAt||null,edited_by:r.editedBy||null,edited_at:r.editedAt||null,bill_photo:r.bill_photo||null,link_id:r.linkId||null,created_at:r.created||null};}},
   "r7_er":{t:"exp_req",up:function(r){return{id:r.id,requested_by:r.requestedBy||"",date:r.date||null,account:r.account||null,sub_account:r.subAccount||null,particulars:r.particulars||null,particulars_ur:r.particularsUr||null,amount:r.amount||0,bill_photo:r.bill_photo||null,status:r.status||"pending",approved_by:r.approvedBy||null,approved_at:r.approvedAt||null,rejection_note:r.rejectionNote||null,created_at:r.created||null};}},
-  "r7_bk":{t:"bank_txn",up:function(r){return{id:r.id,bid:r.bid,typ:r.typ,amount:r.amount||0,particulars:r.particulars||null,chq_no:r.chqNo||null,date:r.date||null,created_at:r.created||null};}},
+  "r7_bk":{t:"bank_txn",up:function(r){return{id:r.id,bid:r.bid,typ:r.typ,amount:r.amount||0,particulars:r.particulars||null,chq_no:r.chqNo||null,date:r.date||null,link_id:r.linkId||null,created_at:r.created||null};}},
   "r7_bkr":{t:"bank_recon",up:function(r){return{id:r.id,bid:r.bid,date:r.date||null,amount:r.amount||0,ref:r.ref||null,particulars:r.particulars||null,matched:r.matched||false,matched_with:r.matchedWith||null,created_at:r.created||null};}},
   "r7_cc":{t:"cc_txn",up:function(r){return{id:r.id,cid:r.cid,typ:r.typ,account:r.account||null,sub_account:r.subAccount||null,amount:r.amount||0,merchant:r.merchant||null,particulars:r.particulars||null,date:r.date||null,bill_photo:r.bill_photo||null,reconciled:r.reconciled||false,ref:r.ref||null,by_user:r.by||null,created_at:r.created||null};}},
   "r7_vn":{t:"vendors",up:function(r){return{id:r.id,name:r.name,type:r.type||"Supplier",contact:r.contact||null,ntn:r.ntn||null,created_at:r.created||null};}},
@@ -334,16 +383,16 @@ var SB_TBLS={
   "r7_att":{t:"attendance",up:function(r){return{id:r.id,emp_id:r.empId,emp_name:r.empName||null,date:r.date,status:r.status,by_user:r.by||null,created_at:r.created||null};}},
   "r7_lv":{t:"leave_reqs",up:function(r){return{id:r.id,name:r.name,reason:r.reason||null,date:r.date||null,status:r.status||"pending",created_at:r.created||null};}},
   "r7_adv":{t:"adv_reqs",up:function(r){return{id:r.id,name:r.name,amount:r.amount||0,reason:r.reason||null,date:r.date||null,status:r.status||"pending",created_at:r.created||null};}},
-  "r7_sal":{t:"salrec",up:function(r){return{id:r.id,person:r.person,role:r.role||null,amount:r.amount||0,month:r.month,paid_by:r.paidBy||null,paid_at:r.paidAt||null};}},
+  "r7_sal":{t:"salrec",up:function(r){return{id:r.id,person:r.person,role:r.role||null,amount:r.amount||0,month:r.month,paid_by:r.paidBy||null,paid_at:r.paidAt||null,link_id:r.linkId||null};}},
   "r7_vo":{t:"vouchers",up:function(r){return{id:r.id,v_no:r.vNo||null,type:r.type||null,date:r.date||null,account:r.account||null,sub_account:r.subAccount||null,amount:r.amount||0,particulars:r.particulars||null,ref:r.ref||null,by_user:r.by||null,created_at:r.created||null};}},
   "r7_pt":{t:"petty",up:function(r){return{id:r.id,typ:r.typ,amount:r.amount||0,date:r.date||null,particulars:r.particulars||null,account:r.account||null,by_user:r.by||null,created_at:r.created||null};}},
   "r7_esc":{t:"escalations",up:function(r){return{id:r.id,type:r.type||null,entry_id:r.entryId||null,note:r.note||null,by_user:r.by||null,resolved:r.resolved||false,created_at:r.at||null};}},
   "r7_au":{t:"audit_log",up:function(r){return{id:r.id,by_user:r.user||null,action:r.action||null,detail:r.detail||null,created_at:r.at||null};}}
 };
 
-function dnCB(r){return{id:r.id,person:r.person,date:r.date||"",account:r.account||"",subAccount:r.sub_account||"",area:r.area||"",qty:r.qty||"",billNo:r.bill_no||"",particulars:r.particulars||"",particularsUr:r.particulars_ur||"",debit:parseFloat(r.debit||0),credit:parseFloat(r.credit||0),status:r.status||"pending",filed:r.filed||false,rejection:r.rejection||"",cbNo:r.cb_no||"",siteNo:r.site_no||"",approvedBy:r.approved_by||"",approvedAt:r.approved_at||"",reviewedBy:r.reviewed_by||"",reviewedAt:r.reviewed_at||"",editedBy:r.edited_by||"",editedAt:r.edited_at||"",bill_photo:r.bill_photo||"",created:r.created_at||""};}
+function dnCB(r){return{id:r.id,person:r.person,date:r.date||"",account:r.account||"",subAccount:r.sub_account||"",area:r.area||"",qty:r.qty||"",billNo:r.bill_no||"",particulars:r.particulars||"",particularsUr:r.particulars_ur||"",debit:parseFloat(r.debit||0),credit:parseFloat(r.credit||0),status:r.status||"pending",filed:r.filed||false,rejection:r.rejection||"",cbNo:r.cb_no||"",siteNo:r.site_no||"",approvedBy:r.approved_by||"",approvedAt:r.approved_at||"",reviewedBy:r.reviewed_by||"",reviewedAt:r.reviewed_at||"",editedBy:r.edited_by||"",editedAt:r.edited_at||"",bill_photo:r.bill_photo||"",linkId:r.link_id||"",created:r.created_at||""};}
 function dnER(r){return{id:r.id,requestedBy:r.requested_by||"",date:r.date||"",account:r.account||"",subAccount:r.sub_account||"",particulars:r.particulars||"",particularsUr:r.particulars_ur||"",amount:parseFloat(r.amount||0),bill_photo:r.bill_photo||"",status:r.status||"pending",approvedBy:r.approved_by||"",approvedAt:r.approved_at||"",rejectionNote:r.rejection_note||"",created:r.created_at||""};}
-function dnBK(r){return{id:r.id,bid:r.bid,typ:r.typ,amount:parseFloat(r.amount||0),particulars:r.particulars||"",chqNo:r.chq_no||"",date:r.date||"",created:r.created_at||""};}
+function dnBK(r){return{id:r.id,bid:r.bid,typ:r.typ,amount:parseFloat(r.amount||0),particulars:r.particulars||"",chqNo:r.chq_no||"",date:r.date||"",linkId:r.link_id||"",created:r.created_at||""};}
 function dnBKR(r){return{id:r.id,bid:r.bid,date:r.date||"",amount:parseFloat(r.amount||0),ref:r.ref||"",particulars:r.particulars||"",matched:r.matched||false,matchedWith:r.matched_with||"",created:r.created_at||""};}
 function dnCC(r){return{id:r.id,cid:r.cid,typ:r.typ,account:r.account||"",subAccount:r.sub_account||"",amount:parseFloat(r.amount||0),merchant:r.merchant||"",particulars:r.particulars||"",date:r.date||"",bill_photo:r.bill_photo||"",reconciled:r.reconciled||false,ref:r.ref||"",by:r.by_user||"",created:r.created_at||""};}
 function dnVN(r){return{id:r.id,name:r.name,type:r.type||"Supplier",contact:r.contact||"",ntn:r.ntn||"",created:r.created_at||""};}
@@ -359,7 +408,7 @@ function dnEMP(r){return{id:r.id,name:r.name,role:r.role||"",salary:parseFloat(r
 function dnATT(r){return{id:r.id,empId:r.emp_id,empName:r.emp_name||"",date:r.date||"",status:r.status,by:r.by_user||"",created:r.created_at||""};}
 function dnLV(r){return{id:r.id,name:r.name,reason:r.reason||"",date:r.date||"",status:r.status||"pending",created:r.created_at||""};}
 function dnAD(r){return{id:r.id,name:r.name,amount:parseFloat(r.amount||0),reason:r.reason||"",date:r.date||"",status:r.status||"pending",created:r.created_at||""};}
-function dnSAL(r){return{id:r.id,person:r.person,role:r.role||"",amount:parseFloat(r.amount||0),month:r.month,paidBy:r.paid_by||"",paidAt:r.paid_at||""};}
+function dnSAL(r){return{id:r.id,person:r.person,role:r.role||"",amount:parseFloat(r.amount||0),month:r.month,paidBy:r.paid_by||"",paidAt:r.paid_at||"",linkId:r.link_id||""};}
 function dnVO(r){return{id:r.id,vNo:r.v_no||"",type:r.type||"",date:r.date||"",account:r.account||"",subAccount:r.sub_account||"",amount:parseFloat(r.amount||0),particulars:r.particulars||"",ref:r.ref||"",by:r.by_user||"",created:r.created_at||""};}
 function dnPT(r){return{id:r.id,typ:r.typ,amount:parseFloat(r.amount||0),date:r.date||"",particulars:r.particulars||"",account:r.account||"",by:r.by_user||"",created:r.created_at||""};}
 function dnESC(r){return{id:r.id,type:r.type||"",entryId:r.entry_id||"",note:r.note||"",by:r.by_user||"",resolved:r.resolved||false,at:r.created_at||""};}
@@ -1100,22 +1149,42 @@ function rExpApprove(){
 /* ═══ BLOCK 8: CASH BOOK ENTRIES + APPROVAL QUEUES ═══ */
 
 function rMyEntries(){
-  var mine=S.cb.filter(function(e){return e.person===S.user;}).sort(function(a,b){return b.created>a.created?1:-1;});
-  var hdr=el("span",{style:{fontSize:"12px",color:"var(--ink4)"}},mine.length+" total");
-  if(!mine.length)return Card("My Entries",hdr,el("div",{style:{textAlign:"center",padding:"28px",color:"var(--ink4)",fontSize:"12px"}},"No entries yet"));
+  var allMine=S.cb.filter(function(e){return e.person===S.user;});
+  var posted=allMine.filter(function(e){return e.status==="posted";}).sort(function(a,b){var av=a.created||a.date||"";var bv=b.created||b.date||"";return av>bv?1:-1;});
+  var pendingOrRejected=allMine.filter(function(e){return e.status!=="posted";}).sort(function(a,b){return b.created>a.created?1:-1;});
   var w=el("div",{});
-  mine.forEach(function(r){
-    var isCr=parseFloat(r.credit||0)>0&&!parseFloat(r.debit||0);
-    var item=el("div",{cls:"ei"});
-    item.appendChild(dv({display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:"7px",gap:"8px"},dv({flex:"1",minWidth:"0"},el("div",{style:{fontWeight:"600",fontSize:"13px",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},(r.account||"")+(r.subAccount?" / "+r.subAccount:"")),dv({display:"flex",gap:"7px",marginTop:"3px",alignItems:"center",flexWrap:"wrap"},r.cbNo?el("span",{style:{fontSize:"10px",fontWeight:"700",color:"var(--g)",background:"var(--g4)",borderRadius:"3px",padding:"1px 6px"}},r.cbNo):null,el("span",{style:{fontSize:"11px",color:"var(--ink4)"}},r.date||""))),Badge(r.status)));
-    if(r.particulars)item.appendChild(el("div",{style:{fontSize:"12px",color:"var(--ink2)",marginBottom:"4px"}},r.particulars.slice(0,80)));
-    if(r.particularsUr)item.appendChild(el("div",{cls:"ur",style:{fontSize:"12px",color:"var(--ink4)",marginBottom:"7px"}},r.particularsUr));
-    var bot=dv({display:"flex",justifyContent:"space-between",alignItems:"center",gap:"8px"});
-    bot.appendChild(el("div",{style:{fontFamily:"'Cormorant Garamond',serif",fontSize:"18px",fontWeight:"600",color:isCr?"var(--pos)":"var(--neg)"}},(isCr?"+":"-")+Rs(isCr?r.credit:r.debit)));
-    item.appendChild(bot);
-    if(r.status==="rejected"&&r.rejection)item.appendChild(el("div",{style:{marginTop:"8px",padding:"8px 10px",background:"var(--neg2)",border:"1px solid rgba(184,92,74,.2)",borderRadius:"6px",fontSize:"12px",color:"var(--neg)"}},"Rejected: "+r.rejection));
-    w.appendChild(item);
-  });
+
+  /* Posted entries render in the exact same statement format directors see — running
+     balance, Total Debit/Credit, Export CSV, Print — via the shared LedgerTable. */
+  if(posted.length){
+    w.appendChild(el("div",{style:{fontFamily:"'Cormorant Garamond',serif",fontSize:"17px",fontWeight:"500",color:"var(--ink)",letterSpacing:".03em",marginBottom:"10px"}},"My Statement"));
+    w.appendChild(LedgerTable(posted,false,false));
+  }else{
+    w.appendChild(Card("My Statement",null,el("div",{style:{textAlign:"center",padding:"20px",color:"var(--ink4)",fontSize:"12px"}},"No posted entries yet")));
+  }
+
+  /* Pending/rejected entries are not yet part of the official ledger, so they're kept
+     separate below rather than mixed into the running balance above. */
+  if(pendingOrRejected.length){
+    var pCard=Card("Pending & Returned",el("span",{cls:"badge bgold"},pendingOrRejected.length));
+    pendingOrRejected.forEach(function(r){
+      var isCr=parseFloat(r.credit||0)>0&&!parseFloat(r.debit||0);
+      var item=el("div",{cls:"ei"});
+      item.appendChild(dv({display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:"7px",gap:"8px"},dv({flex:"1",minWidth:"0"},el("div",{style:{fontWeight:"600",fontSize:"13px",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},(r.account||"")+(r.subAccount?" / "+r.subAccount:"")),dv({display:"flex",gap:"7px",marginTop:"3px",alignItems:"center",flexWrap:"wrap"},r.cbNo?el("span",{style:{fontSize:"10px",fontWeight:"700",color:"var(--g)",background:"var(--g4)",borderRadius:"3px",padding:"1px 6px"}},r.cbNo):null,el("span",{style:{fontSize:"11px",color:"var(--ink4)"}},r.date||""))),Badge(r.status)));
+      if(r.particulars)item.appendChild(el("div",{style:{fontSize:"12px",color:"var(--ink2)",marginBottom:"4px"}},r.particulars.slice(0,80)));
+      if(r.particularsUr)item.appendChild(el("div",{cls:"ur",style:{fontSize:"12px",color:"var(--ink4)",marginBottom:"7px"}},r.particularsUr));
+      var bot=dv({display:"flex",justifyContent:"space-between",alignItems:"center",gap:"8px"});
+      bot.appendChild(el("div",{style:{fontFamily:"'Cormorant Garamond',serif",fontSize:"18px",fontWeight:"600",color:isCr?"var(--pos)":"var(--neg)"}},(isCr?"+":"-")+Rs(isCr?r.credit:r.debit)));
+      item.appendChild(bot);
+      if(r.status==="rejected"&&r.rejection)item.appendChild(el("div",{style:{marginTop:"8px",padding:"8px 10px",background:"var(--neg2)",border:"1px solid rgba(184,92,74,.2)",borderRadius:"6px",fontSize:"12px",color:"var(--neg)"}},"Rejected: "+r.rejection));
+      if(r.account==="Cash Given"&&r.linkId){
+        var undoId=r.id;
+        item.appendChild(btn("Undo — Reverse This Transfer",function(){if(!confirm("Reverse this cash transfer? This removes it from both your and the recipient's balance."))return;addAudit("UNDO_GIVE_CASH","CB#"+r.cbNo);removeRow("cb","r7_cb",undoId);toast("Transfer reversed");render();},"btn-neg btn-sm"));
+      }
+      pCard.querySelector(".cb").appendChild(item);
+    });
+    w.appendChild(pCard);
+  }
   return Card("My Entries",hdr,w);
 }
 
@@ -1150,11 +1219,12 @@ function rAddCB(){
       var giveDate=fd.date||today();
       var reasonTxt=partEn||"";
       var giveCbNo=nCBNo();
+      var giveLinkId=uid();
       /* Two linked rows, both post instantly — this is an internal cash movement, not an
          expense, so it does not go through Danish/Director review. Leg 1: debit the giver. */
-      var debitRow={id:uid(),person:S.user,date:giveDate,account:"Cash Given",subAccount:"",area:"",qty:"",billNo:"",particulars:(reasonTxt?reasonTxt+" — ":"")+"Cash given to "+recipName,particularsUr:partUr,debit:amt,credit:0,status:"posted",bill_photo:"",filed:true,rejection:"",cbNo:giveCbNo,siteNo:"",created:now2(),approvedBy:S.user,editedBy:"",editedAt:""};
+      var debitRow={id:uid(),person:S.user,date:giveDate,account:"Cash Given",subAccount:"",area:"",qty:"",billNo:"",particulars:(reasonTxt?reasonTxt+" — ":"")+"Cash given to "+recipName,particularsUr:partUr,debit:amt,credit:0,status:"posted",bill_photo:"",filed:true,rejection:"",cbNo:giveCbNo,siteNo:"",linkId:giveLinkId,created:now2(),approvedBy:S.user,editedBy:"",editedAt:""};
       /* Leg 2: credit the recipient. */
-      var creditRow={id:uid(),person:fd.giveTo,date:giveDate,account:"Cash Received",subAccount:"",area:"",qty:"",billNo:"",particulars:(reasonTxt?reasonTxt+" — ":"")+"Cash received from "+giverName,particularsUr:partUr,debit:0,credit:amt,status:"posted",bill_photo:"",filed:true,rejection:"",cbNo:giveCbNo,siteNo:"",created:now2(),approvedBy:S.user,editedBy:"",editedAt:""};
+      var creditRow={id:uid(),person:fd.giveTo,date:giveDate,account:"Cash Received",subAccount:"",area:"",qty:"",billNo:"",particulars:(reasonTxt?reasonTxt+" — ":"")+"Cash received from "+giverName,particularsUr:partUr,debit:0,credit:amt,status:"posted",bill_photo:"",filed:true,rejection:"",cbNo:giveCbNo,siteNo:"",linkId:giveLinkId,created:now2(),approvedBy:S.user,editedBy:"",editedAt:""};
       S.cb=[...S.cb,debitRow,creditRow];
       svRow("cb","r7_cb",debitRow);svRow("cb","r7_cb",creditRow);
       addAudit("GIVE_CASH",giverName+" \u2192 "+recipName+" Rs "+fd.credit);
@@ -1391,7 +1461,7 @@ function rBank(){
     w.appendChild(el("div",{style:{height:"8px"}}));
     if(fd.recipType==="staff"){w.appendChild(Fld("Staff Member",Sel(fd.recipUser,function(v){fd.recipUser=v;},U.filter(function(u){return ROLE_MAP[u.id]==="staff";}).map(function(u){return{v:u.id,l:u.name+" — "+u.role};}))));w.appendChild(el("div",{cls:"al-b",style:{marginTop:"8px"}},"Cheque credits to staff member's cash balance"));}
     else{w.appendChild(el("div",{cls:"al-w"},"Cheque posts as direct expense in general journal."));var dlCA=el("datalist",{id:"dl_chq_a"});ACCS.forEach(function(a){dlCA.appendChild(el("option",{value:a}));});w.appendChild(dlCA);var fg3=el("div",{cls:"fg",style:{marginTop:"8px"}});fg3.appendChild(Fld("Recipient Name",Inp(fd.recipName,function(v){fd.recipName=v;},"text","Full name / company")));fg3.appendChild(Fld("Account",Inp(fd.account,function(v){fd.account=v;},"text","Account","dl_chq_a")));w.appendChild(fg3);w.appendChild(Fld("Description",TA(fd.particulars,function(v){fd.particulars=v;},2,"Purpose...")));}
-    w.appendChild(btn("Issue Cheque",function(){if(!fd.amount||!parseFloat(fd.amount)){toast("Enter amount",true);return;}if(fd.recipType==="staff"&&!fd.recipUser){toast("Select staff member",true);return;}if(fd.recipType==="others"&&(!fd.recipName.trim()||!fd.account||!fd.particulars.trim())){toast("Fill all fields",true);return;}var bkName=(BANKS.find(function(b){return b.id===fd.bid;})||{name:fd.bid}).name;var newBankTxn={id:uid(),bid:fd.bid,typ:"out",amount:parseFloat(fd.amount),particulars:fd.recipType==="staff"?"Cheque to "+gU(fd.recipUser).name:fd.particulars+" — "+fd.recipName,chqNo:chqNo,date:fd.date||today(),created:now2()};S.bank=[...S.bank,newBankTxn];svRow("bank","r7_bk",newBankTxn);if(fd.recipType==="staff"){var newCb={id:uid(),person:fd.recipUser,date:fd.date||today(),account:bkName,subAccount:"Cheque #"+chqNo,area:"",qty:"",billNo:chqNo,particulars:"Cheque #"+chqNo+" from "+bkName,particularsUr:"",debit:0,credit:parseFloat(fd.amount),status:"posted",filed:true,rejection:"",cbNo:nCBNo(),siteNo:"",approvedBy:S.user,created:now2(),bill_photo:"",editedBy:"",editedAt:""};S.cb=[...S.cb,newCb];svRow("cb","r7_cb",newCb);}else{var newCb2={id:uid(),person:S.user,date:fd.date||today(),account:fd.account,subAccount:fd.sub,area:"",qty:"",billNo:chqNo,particulars:fd.particulars+" — Cheque #"+chqNo+" to "+fd.recipName+" via "+bkName,particularsUr:"",debit:parseFloat(fd.amount),credit:0,status:"posted",filed:true,rejection:"",cbNo:nCBNo(),siteNo:fd.account&&CSITES.includes(fd.account)?nSNo(fd.account):"",approvedBy:S.user,created:now2(),bill_photo:"",editedBy:"",editedAt:""};S.cb=[...S.cb,newCb2];svRow("cb","r7_cb",newCb2);}addAudit("CHEQUE","CHQ#"+chqNo+" Rs "+Rs(fd.amount));S.fd[FID]={bid:"hs",recipType:"staff",recipUser:"",recipName:"",account:"",sub:"",particulars:"",amount:"",date:today()};toast("Cheque #"+chqNo+" issued");render();},"btn-g btn-full"));
+    w.appendChild(btn("Issue Cheque",function(){if(!fd.amount||!parseFloat(fd.amount)){toast("Enter amount",true);return;}if(fd.recipType==="staff"&&!fd.recipUser){toast("Select staff member",true);return;}if(fd.recipType==="others"&&(!fd.recipName.trim()||!fd.account||!fd.particulars.trim())){toast("Fill all fields",true);return;}var bkName=(BANKS.find(function(b){return b.id===fd.bid;})||{name:fd.bid}).name;var chqLinkId=fd.recipType==="staff"?uid():null;var newBankTxn={id:uid(),bid:fd.bid,typ:"out",amount:parseFloat(fd.amount),particulars:fd.recipType==="staff"?"Cheque to "+gU(fd.recipUser).name:fd.particulars+" — "+fd.recipName,chqNo:chqNo,date:fd.date||today(),linkId:chqLinkId,created:now2()};S.bank=[...S.bank,newBankTxn];svRow("bank","r7_bk",newBankTxn);if(fd.recipType==="staff"){var newCb={id:uid(),person:fd.recipUser,date:fd.date||today(),account:bkName,subAccount:"Cheque #"+chqNo,area:"",qty:"",billNo:chqNo,particulars:"Cheque #"+chqNo+" from "+bkName,particularsUr:"",debit:0,credit:parseFloat(fd.amount),status:"posted",filed:true,rejection:"",cbNo:nCBNo(),siteNo:"",linkId:chqLinkId,created:now2(),approvedBy:S.user,editedBy:"",editedAt:""};S.cb=[...S.cb,newCb];svRow("cb","r7_cb",newCb);}else{var newCb2={id:uid(),person:S.user,date:fd.date||today(),account:fd.account,subAccount:fd.sub,area:"",qty:"",billNo:chqNo,particulars:fd.particulars+" — Cheque #"+chqNo+" to "+fd.recipName+" via "+bkName,particularsUr:"",debit:parseFloat(fd.amount),credit:0,status:"posted",filed:true,rejection:"",cbNo:nCBNo(),siteNo:fd.account&&CSITES.includes(fd.account)?nSNo(fd.account):"",created:now2(),approvedBy:S.user,editedBy:"",editedAt:""};S.cb=[...S.cb,newCb2];svRow("cb","r7_cb",newCb2);}addAudit("CHEQUE","CHQ#"+chqNo+" Rs "+Rs(fd.amount));S.fd[FID]={bid:"hs",recipType:"staff",recipUser:"",recipName:"",account:"",sub:"",particulars:"",amount:"",date:today()};toast("Cheque #"+chqNo+" issued");render();},"btn-g btn-full"));
   }
   if(tab==="dep"){var FID2="bank_dep";if(!S.fd[FID2])S.fd[FID2]={bid:"hs",amount:"",date:today(),particulars:""};var fd2=S.fd[FID2];var fg4=el("div",{cls:"fg"});fg4.appendChild(Fld("Bank",Sel(fd2.bid,function(v){fd2.bid=v;},[{v:"hs",l:"HS Meezan"},{v:"am",l:"Ahmad Meezan"},{v:"ra",l:"Rehan Alfalah"}])));fg4.appendChild(Fld("Amount (Rs)",Inp(fd2.amount,function(v){fd2.amount=v;},"number")));fg4.appendChild(Fld("Date",Inp(fd2.date,function(v){fd2.date=v;},"date")));w.appendChild(fg4);w.appendChild(Fld("Details",TA(fd2.particulars,function(v){fd2.particulars=v;},2,"")));w.appendChild(btn("Record Deposit",function(){if(!fd2.amount){toast("Enter amount",true);return;}var newDep={id:uid(),bid:fd2.bid,typ:"in",amount:parseFloat(fd2.amount),particulars:fd2.particulars||"Deposit",date:fd2.date||today(),created:now2()};S.bank=[...S.bank,newDep];svRow("bank","r7_bk",newDep);S.fd[FID2]={bid:"hs",amount:"",date:today(),particulars:""};toast("Deposit recorded");render();},"btn-g btn-full"));}
   if(tab==="xfer"){
@@ -1439,13 +1509,14 @@ function rBank(){
       if(fd6.direction==="out"&&fd6.recipType==="others"&&(!fd6.recipName.trim()||!fd6.account)){toast("Fill recipient and account",true);return;}
       var bkName=(BANKS.find(function(b){return b.id===fd6.bid;})||{name:fd6.bid}).name;
       var xph=S.photo[FID6]||{};
-      var newXfer={id:uid(),bid:fd6.bid,typ:fd6.direction,amount:parseFloat(fd6.amount),particulars:(fd6.direction==="out"?(fd6.recipType==="staff"?"Transfer to "+gU(fd6.recipUser).name:fd6.particulars+" — "+fd6.recipName):fd6.particulars||"Online transfer received")+(xph.url?" [screenshot attached]":""),chqNo:"",date:fd6.date||today(),created:now2()};
+      var xferLinkId=(fd6.direction==="out"&&fd6.recipType==="staff")?uid():null;
+      var newXfer={id:uid(),bid:fd6.bid,typ:fd6.direction,amount:parseFloat(fd6.amount),particulars:(fd6.direction==="out"?(fd6.recipType==="staff"?"Transfer to "+gU(fd6.recipUser).name:fd6.particulars+" — "+fd6.recipName):fd6.particulars||"Online transfer received")+(xph.url?" [screenshot attached]":""),chqNo:"",date:fd6.date||today(),linkId:xferLinkId,created:now2()};
       S.bank=[...S.bank,newXfer];svRow("bank","r7_bk",newXfer);
       if(fd6.direction==="out"&&fd6.recipType==="staff"){
-        var newCbX={id:uid(),person:fd6.recipUser,date:fd6.date||today(),account:bkName,subAccount:"Online Transfer",area:"",qty:"",billNo:"",particulars:"Online transfer from "+bkName+(fd6.particulars?" — "+fd6.particulars:""),particularsUr:"",debit:0,credit:parseFloat(fd6.amount),status:"posted",filed:true,rejection:"",cbNo:nCBNo(),siteNo:"",approvedBy:S.user,created:now2(),bill_photo:xph.url||"",editedBy:"",editedAt:""};
+        var newCbX={id:uid(),person:fd6.recipUser,date:fd6.date||today(),account:bkName,subAccount:"Online Transfer",area:"",qty:"",billNo:"",particulars:"Online transfer from "+bkName+(fd6.particulars?" — "+fd6.particulars:""),particularsUr:"",debit:0,credit:parseFloat(fd6.amount),status:"posted",filed:true,rejection:"",cbNo:nCBNo(),siteNo:"",linkId:xferLinkId,created:now2(),approvedBy:S.user,bill_photo:xph.url||"",editedBy:"",editedAt:""};
         S.cb=[...S.cb,newCbX];svRow("cb","r7_cb",newCbX);
       }else if(fd6.direction==="out"){
-        var newCbX2={id:uid(),person:S.user,date:fd6.date||today(),account:fd6.account,subAccount:fd6.sub,area:"",qty:"",billNo:"",particulars:fd6.particulars+" — Online transfer to "+fd6.recipName+" via "+bkName,particularsUr:"",debit:parseFloat(fd6.amount),credit:0,status:"posted",filed:true,rejection:"",cbNo:nCBNo(),siteNo:fd6.account&&CSITES.includes(fd6.account)?nSNo(fd6.account):"",approvedBy:S.user,created:now2(),bill_photo:xph.url||"",editedBy:"",editedAt:""};
+        var newCbX2={id:uid(),person:S.user,date:fd6.date||today(),account:fd6.account,subAccount:fd6.sub,area:"",qty:"",billNo:"",particulars:fd6.particulars+" — Online transfer to "+fd6.recipName+" via "+bkName,particularsUr:"",debit:parseFloat(fd6.amount),credit:0,status:"posted",filed:true,rejection:"",cbNo:nCBNo(),siteNo:fd6.account&&CSITES.includes(fd6.account)?nSNo(fd6.account):"",created:now2(),approvedBy:S.user,bill_photo:xph.url||"",editedBy:"",editedAt:""};
         S.cb=[...S.cb,newCbX2];svRow("cb","r7_cb",newCbX2);
       }
       addAudit("BANK_TRANSFER",bkName+" "+fd6.direction+" Rs "+fd6.amount);
@@ -1921,7 +1992,7 @@ function rHR(){
   if(tab==="sal"){
     var cm=curMonth();
     var w2=el("div",{});
-    SAL_LIST.forEach(function(s){var paid=S.salrec.find(function(r){return r.person===s.p&&r.month===cm;});var sc=el("div",{cls:"ei"});sc.appendChild(dv({display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:"8px"},dv({},el("div",{style:{fontWeight:"700"}},s.p),el("div",{style:{fontSize:"11px",color:"var(--ink4)"}},s.r+" \u00b7 "+Rs(s.m))),paid?el("span",{cls:"badge bg"},"Paid "+cm):btn("Mark Paid",function(){var newSal={id:uid(),person:s.p,role:s.r,amount:s.m,month:cm,paidBy:S.user,paidAt:now2()};S.salrec=[...S.salrec,newSal];svRow("salrec","r7_sal",newSal);var newCb={id:uid(),person:S.user,date:today(),account:"Office",subAccount:"Salary",area:"",qty:"",billNo:"",particulars:"Salary "+cm+" — "+s.p,particularsUr:"",debit:s.m,credit:0,status:"posted",filed:true,rejection:"",cbNo:nCBNo(),siteNo:"",approvedBy:S.user,created:now2(),bill_photo:"",editedBy:"",editedAt:""};S.cb=[...S.cb,newCb];svRow("cb","r7_cb",newCb);toast("Paid");render();},"btn-pos btn-sm")));w2.appendChild(sc);});
+    SAL_LIST.forEach(function(s){var paid=S.salrec.find(function(r){return r.person===s.p&&r.month===cm;});var sc=el("div",{cls:"ei"});sc.appendChild(dv({display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:"8px"},dv({},el("div",{style:{fontWeight:"700"}},s.p),el("div",{style:{fontSize:"11px",color:"var(--ink4)"}},s.r+" \u00b7 "+Rs(s.m))),paid?el("span",{cls:"badge bg"},"Paid "+cm):btn("Mark Paid",function(){var salLinkId=uid();var newSal={id:uid(),person:s.p,role:s.r,amount:s.m,month:cm,paidBy:S.user,paidAt:now2(),linkId:salLinkId};S.salrec=[...S.salrec,newSal];svRow("salrec","r7_sal",newSal);var newCb={id:uid(),person:S.user,date:today(),account:"Office",subAccount:"Salary",area:"",qty:"",billNo:"",particulars:"Salary "+cm+" — "+s.p,particularsUr:"",debit:s.m,credit:0,status:"posted",filed:true,rejection:"",cbNo:nCBNo(),siteNo:"",linkId:salLinkId,created:now2(),approvedBy:S.user,editedBy:"",editedAt:""};S.cb=[...S.cb,newCb];svRow("cb","r7_cb",newCb);toast("Paid");render();},"btn-pos btn-sm")));w2.appendChild(sc);});
     w.appendChild(w2);
   }
   return w;
@@ -2037,6 +2108,19 @@ function rPage(view){
     document.getElementById("app").style.display="none";
     document.getElementById("bnav").style.display="none";
     rLogin();
+    /* Robust close-on-outside-tap for the mobile sidebar — wired here as a real JS
+       listener (not just the inline onclick on #soverlay) so it survives even if the
+       overlay element gets reflowed, and also catches taps that land on the dimmed
+       area behind the sidebar on any screen where it's open. */
+    document.addEventListener("click",function(ev){
+      var sb=document.getElementById("sb");
+      if(!sb||!sb.classList.contains("mob"))return;
+      if(window.innerWidth>768)return;
+      if(sb.contains(ev.target))return; // tap was inside the sidebar itself — don't close
+      var topbarBtn=ev.target.closest?ev.target.closest(".ibtn"):null;
+      if(topbarBtn)return; // let the hamburger's own handler manage its own toggle
+      sb.classList.remove("mob");
+    });
   });
 })();
 
