@@ -1223,6 +1223,7 @@ function rMyEntries(){
   var posted=allMine.filter(function(e){return e.status==="posted";}).sort(function(a,b){var av=a.created||a.date||"";var bv=b.created||b.date||"";return av>bv?1:-1;});
   var pendingOrRejected=allMine.filter(function(e){return e.status!=="posted";}).sort(function(a,b){return b.created>a.created?1:-1;});
   var w=el("div",{});
+  w.appendChild(el("div",{style:{fontFamily:"'Cormorant Garamond',serif",fontSize:"22px",fontWeight:"500",color:"var(--ink)",letterSpacing:".03em",marginBottom:"14px"}},"My Entries"));
 
   /* Posted entries render in the exact same statement format directors see — running
      balance, Total Debit/Credit, Export CSV, Print — via the shared LedgerTable. */
@@ -1255,7 +1256,7 @@ function rMyEntries(){
     });
     w.appendChild(pCard);
   }
-  return Card("My Entries",hdr,w);
+  return w;
 }
 
 function rAddCB(){
