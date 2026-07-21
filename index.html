@@ -283,16 +283,17 @@ function removeRow(stateKey,localKey,id){
 }
 
 var U=[
-  {id:"muzammil",name:"Muzammil",role:"Supervisor",pin:"1121",init:"MZ",clr:"#8A6E28",lang:"ur"},
-  {id:"junaid",name:"Junaid",role:"Sales",pin:"2231",init:"JN",clr:"#4A7FA5",lang:"en"},
-  {id:"umair",name:"Umair",role:"Doors Supervisor",pin:"3341",init:"UM",clr:"#7B6E5A",lang:"ur"},
-  {id:"usman",name:"Usman Ghani",role:"Supervisor J-1",pin:"4451",init:"UG",clr:"#5E8C6A",lang:"ur"},
-  {id:"danish",name:"Danish",role:"Accountant",pin:"5561",init:"DN",clr:"#C08B35",lang:"en"},
-  {id:"haroon",name:"Haroon sb",role:"Director",pin:"6671",init:"HS",clr:"#B85C4A",lang:"en"},
-  {id:"ahmad",name:"Ahmad sb",role:"Director",pin:"7781",init:"AS",clr:"#B8973A",lang:"en"},
-  {id:"rehan",name:"Rehan sb",role:"Director",pin:"8891",init:"RS",clr:"#6B6358",lang:"en"}
+  {id:"muzammil",name:"Muzammil",role:"Supervisor",pin:"1121",init:"MZ",clr:"#8A6E28",lang:"ur",email:"muzammil@royalinc.local"},
+  {id:"junaid",name:"Junaid",role:"Sales",pin:"2231",init:"JN",clr:"#4A7FA5",lang:"en",email:"junaid@royalinc.local"},
+  {id:"umair",name:"Umair",role:"Doors Supervisor",pin:"3341",init:"UM",clr:"#7B6E5A",lang:"ur",email:"umair@royalinc.local"},
+  {id:"usman",name:"Usman Ghani",role:"Supervisor J-1",pin:"4451",init:"UG",clr:"#5E8C6A",lang:"ur",email:"usman@royalinc.local"},
+  {id:"danish",name:"Danish",role:"Accountant",pin:"5561",init:"DN",clr:"#C08B35",lang:"en",email:"danish@royalinc.local"},
+  {id:"haroon",name:"Haroon sb",role:"Director",pin:"6671",init:"HS",clr:"#B85C4A",lang:"en",email:"royalcrownhomes@gmail.com"},
+  {id:"ahmad",name:"Ahmad sb",role:"Director",pin:"7781",init:"AS",clr:"#B8973A",lang:"en",email:"112ahmadharoon@gmail.com"},
+  {id:"rehan",name:"Rehan sb",role:"Director",pin:"8891",init:"RS",clr:"#6B6358",lang:"en",email:"rehanharoon13@gmail.com"}
 ];
 var ROLE_MAP={muzammil:"staff",junaid:"staff",umair:"staff",usman:"staff",danish:"danish",haroon:"director",ahmad:"director",rehan:"director"};
+var MAX_LOGIN_ATTEMPTS=10;
 var CSITES=["B-552","G-396","G-139","J-1","W-93"];
 var SITES=["B-552","G-396","G-139","J-1","Doors","W-93","Office"];
 var BANKS=[{id:"hs",name:"HS Meezan",modes:"Cheque+Online"},{id:"am",name:"Ahmad Meezan",modes:"Online"},{id:"ra",name:"Rehan Alfalah",modes:"Cheque+Online"}];
@@ -419,6 +420,38 @@ function svDoorInv(){var rows=S.doorInvStock.map(function(i){return{id:i.id,name
 function svSites(){var rows=S.sites.map(function(s){return{id:s.id,name:s.name||s.id,budget:s.budget||0,client:s.client||"",notes:s.notes||""};});LS("r7_si",S.sites);sbUp("sites",rows);}
 
 /* loadFromSupabase — pulls latest from cloud; called on login AND periodically */
+/* Login lockout — checked/updated only at login time, not part of the general 25s sync cycle.
+   Uses its own upsert (conflict key is user_id, not id like every other table) rather than
+   the shared sbUp(), which is hardcoded to on_conflict=id. */
+function sbUpLockout(row){
+  return fetch(SB_URL+"/rest/v1/login_lockout?on_conflict=user_id",{
+    method:"POST",
+    headers:Object.assign({},SBH,{"Prefer":"resolution=merge-duplicates,return=minimal"}),
+    body:JSON.stringify([row])
+  }).catch(function(e){console.warn("sbUpLockout",e);});
+}
+async function getLockoutStatus(userId){
+  try{
+    var rows=await sbGet("login_lockout");
+    var row=(rows||[]).find(function(r){return r.user_id===userId;});
+    return row||{user_id:userId,failed_count:0,locked:false};
+  }catch(e){return {user_id:userId,failed_count:0,locked:false};}
+}
+async function recordFailedLogin(userId,newCount){
+  var locked=newCount>=MAX_LOGIN_ATTEMPTS;
+  await sbUpLockout({user_id:userId,failed_count:newCount,locked:locked,locked_at:locked?now2():null});
+  return locked;
+}
+async function clearLoginAttempts(userId){
+  await sbUpLockout({user_id:userId,failed_count:0,locked:false,locked_at:null});
+}
+async function unlockUser(userId,byDirector){
+  await sbUpLockout({user_id:userId,failed_count:0,locked:false,locked_at:null,unlocked_by:byDirector,unlocked_at:now2()});
+}
+async function getAllLockouts(){
+  try{return (await sbGet("login_lockout"))||[];}catch(e){return [];}
+}
+
 async function loadFromSupabase(silent){
   if(!silent)loader(true,"Syncing from cloud...");
   try{
@@ -678,10 +711,11 @@ var NAV=[
   {sep:true,l:"Reports & AI",roles:["danish","director"]},
   {id:"reports",l:"Reports",icon:"📄",roles:["danish","director"]},
   {id:"ai",l:"AI Analysis",icon:"✦",roles:["director"]},
-  {id:"audit",l:"Audit Log",icon:"🔍",roles:["director"]}
+  {id:"audit",l:"Audit Log",icon:"🔍",roles:["director"]},
+  {id:"security",l:"Account Security",icon:"🔒",roles:["director"]}
 ];
 
-var PAGE_TITLES={dash:"Dashboard",att:"Attendance",expReq:"Expense Requests",expApprove:"Expense Approval",myE:"My Entries",dq:"Review Queue",dirApp:"Director Approval",ldg:"General Ledger",trial:"Trial Balance",pl:"Profit & Loss",cashflow:"Cash Flow",bank:"Bank",cc:"Credit Cards",vouch:"Vouchers",petty:"Petty Cash",constr:"Sites & Budget",mat:"Material",contr:"Contractors",vnd:"Vendors",doors:"Door Projects",doorInv:"Doors Inventory",hr:"HR Module",bills:"Bills & Salaries",crm:"CRM",reports:"Reports",ai:"AI Analysis",audit:"Audit Log",addCB:"New Entry",dirEdit:"Edit Entry"};
+var PAGE_TITLES={dash:"Dashboard",att:"Attendance",expReq:"Expense Requests",expApprove:"Expense Approval",myE:"My Entries",dq:"Review Queue",dirApp:"Director Approval",ldg:"General Ledger",trial:"Trial Balance",pl:"Profit & Loss",cashflow:"Cash Flow",bank:"Bank",cc:"Credit Cards",vouch:"Vouchers",petty:"Petty Cash",constr:"Sites & Budget",mat:"Material",contr:"Contractors",vnd:"Vendors",doors:"Door Projects",doorInv:"Doors Inventory",hr:"HR Module",bills:"Bills & Salaries",crm:"CRM",reports:"Reports",ai:"AI Analysis",audit:"Audit Log",addCB:"New Entry",dirEdit:"Edit Entry",security:"Account Security"};
 
 var BNAV={
   staff:[{id:"dash",icon:"⌂",l:"Home"},{id:"expReq",icon:"📋",l:"Requests"},{id:"myE",icon:"📒",l:"Entries"},{id:"mat",icon:"⬡",l:"Material"},{id:"att",icon:"✓",l:"Attend"}],
@@ -864,6 +898,7 @@ function LedgerTable(rows,showPerson,canEdit){
 function rLogin(){
   var root=document.getElementById("lr");root.innerHTML="";
   var selUser="",pin="";
+  var busy=false;
   var page=dv({minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",padding:"24px",background:"var(--bg)"});
   var box=dv({maxWidth:"400px",width:"100%"});
   var logo=dv({textAlign:"center",marginBottom:"30px"});
@@ -876,17 +911,42 @@ function rLogin(){
   var card=dv({background:"var(--s1)",borderRadius:"10px",border:"1px solid var(--bd)",padding:"28px",boxShadow:"0 4px 20px rgba(28,26,22,.08)"});
   var line=dv({height:"2px",background:"linear-gradient(90deg,var(--g3),var(--g),var(--g2))",margin:"-28px -28px 22px",borderRadius:"10px 10px 0 0"});
   card.appendChild(line);
-  card.appendChild(Fld("Your Name",el("select",{style:{width:"100%"},onChange:function(e){selUser=e.target.value;}},el("option",{value:""},"— Select —"),...U.map(function(u){return el("option",{value:u.id},u.name+" — "+u.role);}))));
+  var lockNotice=dv({});card.appendChild(lockNotice);
+  card.appendChild(Fld("Your Name",el("select",{style:{width:"100%"},onChange:function(e){selUser=e.target.value;lockNotice.innerHTML="";}},el("option",{value:""},"— Select —"),...U.map(function(u){return el("option",{value:u.id},u.name+" — "+u.role);}))));
   card.appendChild(el("div",{style:{height:"10px"}}));
   var pinInp=el("input",{type:"password",placeholder:"4-digit PIN"});
   pinInp.addEventListener("input",function(e){pin=e.target.value;});
-  pinInp.addEventListener("keydown",function(e){if(e.key==="Enter")go();});
   card.appendChild(Fld("PIN",pinInp));
   card.appendChild(el("div",{style:{height:"16px"}}));
-  function go(){
+  var gb=el("button",{style:{width:"100%",padding:"13px",background:"linear-gradient(135deg,var(--g3),var(--g))",color:"#fff",border:"none",borderRadius:"7px",fontFamily:"Inter,sans-serif",fontSize:"12px",fontWeight:"700",cursor:"pointer",letterSpacing:".1em",textTransform:"uppercase",touchAction:"manipulation"},onClick:function(){go();}},"Enter System");
+  async function go(){
+    if(busy)return;
     var u=U.find(function(x){return x.id===selUser;});
     if(!u){toast("Please select your name",true);return;}
-    if(pin!==u.pin){toast("Incorrect PIN",true);pinInp.value="";pin="";pinInp.focus();return;}
+    busy=true;gb.textContent="Checking…";
+    var status=await getLockoutStatus(u.id);
+    if(status.locked){
+      busy=false;gb.textContent="Enter System";
+      lockNotice.innerHTML="";
+      lockNotice.appendChild(el("div",{cls:"al-r"},"This account is locked after "+MAX_LOGIN_ATTEMPTS+" incorrect PIN attempts. A director must unlock it from their Dashboard \u2192 Account Security before you can log in again."));
+      return;
+    }
+    if(pin!==u.pin){
+      var newCount=(status.failed_count||0)+1;
+      var nowLocked=await recordFailedLogin(u.id,newCount);
+      busy=false;gb.textContent="Enter System";
+      pinInp.value="";pin="";pinInp.focus();
+      lockNotice.innerHTML="";
+      if(nowLocked){
+        lockNotice.appendChild(el("div",{cls:"al-r"},"Account locked after "+MAX_LOGIN_ATTEMPTS+" incorrect attempts. A director must unlock it."));
+      }else{
+        var remaining=MAX_LOGIN_ATTEMPTS-newCount;
+        toast("Incorrect PIN — "+remaining+" attempt"+(remaining===1?"":"s")+" remaining before lockout",true,3500);
+      }
+      return;
+    }
+    /* Correct PIN — clear any prior failed attempts for this account */
+    await clearLoginAttempts(u.id);
     S.user=selUser;
     addAudit("LOGIN",gU(selUser).name);
     document.getElementById("lr").style.display="none";
@@ -896,7 +956,7 @@ function rLogin(){
     renderShell();render();
     loadFromSupabase(false).then(function(){render();startAutoSync();});
   }
-  var gb=el("button",{style:{width:"100%",padding:"13px",background:"linear-gradient(135deg,var(--g3),var(--g))",color:"#fff",border:"none",borderRadius:"7px",fontFamily:"Inter,sans-serif",fontSize:"12px",fontWeight:"700",cursor:"pointer",letterSpacing:".1em",textTransform:"uppercase",touchAction:"manipulation"},onClick:go},"Enter System");
+  pinInp.addEventListener("keydown",function(e){if(e.key==="Enter")go();});
   card.appendChild(gb);
   box.appendChild(card);
   page.appendChild(box);root.appendChild(page);
@@ -2076,6 +2136,43 @@ function rAI(){
   return w;
 }
 
+function rSecurity(){
+  var w=el("div",{});
+  w.appendChild(el("div",{cls:"al-b"},"Accounts lock automatically after "+MAX_LOGIN_ATTEMPTS+" incorrect PIN attempts. Unlocking here clears the failed count and lets that person log in again."));
+  if(S.lockouts===undefined){
+    S.lockouts=null; // mark as "fetch in progress" so we don't fire twice
+    getAllLockouts().then(function(rows){S.lockouts=rows||[];render();});
+    w.appendChild(el("div",{style:{textAlign:"center",padding:"24px",color:"var(--ink4)"}},"Loading…"));
+    return w;
+  }
+  if(S.lockouts===null){
+    w.appendChild(el("div",{style:{textAlign:"center",padding:"24px",color:"var(--ink4)"}},"Loading…"));
+    return w;
+  }
+  var byUser={};(S.lockouts||[]).forEach(function(r){byUser[r.user_id]=r;});
+  U.forEach(function(u){
+    var status=byUser[u.id]||{failed_count:0,locked:false};
+    var row=el("div",{cls:"ei"});
+    row.appendChild(dv({display:"flex",justifyContent:"space-between",alignItems:"center",gap:"8px",flexWrap:"wrap"},
+      dv({display:"flex",alignItems:"center",gap:"10px"},Avatar(u.id,32),el("div",{},el("div",{style:{fontWeight:"700",fontSize:"13px"}},u.name),el("div",{style:{fontSize:"11px",color:"var(--ink4)"}},u.role+" \u00b7 "+(status.failed_count||0)+" failed attempt"+((status.failed_count||0)===1?"":"s")))),
+      status.locked?el("span",{cls:"badge br"},"LOCKED"):el("span",{cls:"badge bg"},"OK")
+    ));
+    if(status.locked){
+      var uid2=u.id;
+      row.appendChild(btn("Unlock "+u.name,async function(){
+        await unlockUser(uid2,S.user);
+        addAudit("UNLOCK_ACCOUNT",u.name);
+        toast(u.name+" unlocked");
+        S.lockouts=undefined;
+        render();
+      },"btn-pos btn-sm"));
+    }
+    w.appendChild(row);
+  });
+  w.appendChild(btn("Refresh",function(){S.lockouts=undefined;render();},"btn-o btn-sm"));
+  return w;
+}
+
 function rAudit(){
   var w=el("div",{});
   var logs=S.auditLog.slice(0,100);
@@ -2096,7 +2193,7 @@ function rPage(view){
     constr:rConstr,mat:rMat,contr:rContr,vnd:rVendors,
     doors:rDoors,doorInv:rDoorInv,
     hr:rHR,bills:rBills,crm:rCRM,
-    reports:rReports,ai:rAI,audit:rAudit
+    reports:rReports,ai:rAI,audit:rAudit,security:rSecurity
   };
   return (vm[view]||rDash)();
 }
