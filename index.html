@@ -1132,26 +1132,34 @@ function rAddCB(){
   w.appendChild(Fld(isUr?"قسم":"Entry Type",Sel(fd.mode,function(v){fd.mode=v;render();},[{v:"expense",l:isUr?"خرچہ / اکاؤنٹ اندراج":"Expense / Account Entry"},{v:"give",l:isUr?"نقد رقم کسی کو دیں":"Give Cash to Team Member"}])));
 
   if(fd.mode==="give"){
-    w.appendChild(el("div",{cls:"al-g"},isUr?"رقم منتخب فرد کے کیش بیلنس میں خودکار جمع ہو جائے گی":"Amount will be automatically credited to the selected person\'s cash balance"));
+    w.appendChild(el("div",{cls:"al-g"},isUr?"یہ اندراج فوری طور پر پوسٹ ہوگی — منظوری کی ضرورت نہیں۔ آپ کے کیش سے رقم منہا ہوگی اور وصول کنندہ کے کیش میں جمع ہوگی":"This posts immediately — no approval needed. Amount is debited from your cash and credited to the recipient's cash"));
     var giveFg=el("div",{cls:"fg"});
     giveFg.appendChild(Fld(isUr?"تاریخ":"Date",Inp(fd.date,function(v){fd.date=v;},"date")));
-    giveFg.appendChild(Fld(isUr?"کس کو دیا":"Give To",Sel(fd.giveTo,function(v){fd.giveTo=v;},U.map(function(u){return{v:u.id,l:u.name+" — "+u.role};}))));
+    giveFg.appendChild(Fld(isUr?"کس کو دیا":"Give To",Sel(fd.giveTo,function(v){fd.giveTo=v;},U.filter(function(u){return u.id!==S.user;}).map(function(u){return{v:u.id,l:u.name+" — "+u.role};}))));
     giveFg.appendChild(Fld(isUr?"رقم (روپے)":"Amount (Rs)",Inp(fd.credit,function(v){fd.credit=v;},"number","0")));
     w.appendChild(giveFg);
     w.appendChild(Fld(isUr?"وجہ (اختیاری)":"Reason (optional)",TA(isUr?fd.partUr:fd.part,function(v){if(isUr)fd.partUr=v;else fd.part=v;},2,isUr?"مثلاً: سائٹ اخراجات کے لیے":"e.g. For site expenses",isUr)));
-    var giveLbl=isDir?(isUr?"رقم دیں":"Give Cash"):(isUr?"ڈینش کو بھیجیں":"Submit to Danish");
-    w.appendChild(btn(giveLbl,async function(){
+    w.appendChild(btn(isUr?"رقم دیں":"Give Cash",async function(){
       if(!fd.giveTo){toast(isUr?"وصول کنندہ منتخب کریں":"Select who to give cash to",true);return;}
       if(!fd.credit||!parseFloat(fd.credit)){toast(isUr?"رقم لکھیں":"Enter amount",true);return;}
       var partEn=fd.part;var partUr=fd.partUr;
       if(isUr&&partUr&&!partEn)partEn=await translateToEnglish(partUr);
       var recipName=gU(fd.giveTo).name;
-      var status=isDir?"posted":"pending";
-      var row={id:uid(),person:fd.giveTo,date:fd.date||today(),account:"Cash Given",subAccount:"",area:"",qty:"",billNo:"",particulars:(partEn||"Cash given by "+gU(S.user).name)+" ["+recipName+"]",particularsUr:partUr,debit:0,credit:parseFloat(fd.credit),status:status,bill_photo:"",filed:isDir,rejection:"",cbNo:nCBNo(),siteNo:"",created:now2(),approvedBy:isDir?S.user:"",editedBy:"",editedAt:""};
-      S.cb=[...S.cb,row];
-      svRow("cb","r7_cb",row);addAudit(isDir?"GIVE_CASH":"SUBMIT_GIVE_CASH",recipName+" Rs "+fd.credit);
+      var giverName=gU(S.user).name;
+      var amt=parseFloat(fd.credit);
+      var giveDate=fd.date||today();
+      var reasonTxt=partEn||"";
+      var giveCbNo=nCBNo();
+      /* Two linked rows, both post instantly — this is an internal cash movement, not an
+         expense, so it does not go through Danish/Director review. Leg 1: debit the giver. */
+      var debitRow={id:uid(),person:S.user,date:giveDate,account:"Cash Given",subAccount:"",area:"",qty:"",billNo:"",particulars:(reasonTxt?reasonTxt+" — ":"")+"Cash given to "+recipName,particularsUr:partUr,debit:amt,credit:0,status:"posted",bill_photo:"",filed:true,rejection:"",cbNo:giveCbNo,siteNo:"",created:now2(),approvedBy:S.user,editedBy:"",editedAt:""};
+      /* Leg 2: credit the recipient. */
+      var creditRow={id:uid(),person:fd.giveTo,date:giveDate,account:"Cash Received",subAccount:"",area:"",qty:"",billNo:"",particulars:(reasonTxt?reasonTxt+" — ":"")+"Cash received from "+giverName,particularsUr:partUr,debit:0,credit:amt,status:"posted",bill_photo:"",filed:true,rejection:"",cbNo:giveCbNo,siteNo:"",created:now2(),approvedBy:S.user,editedBy:"",editedAt:""};
+      S.cb=[...S.cb,debitRow,creditRow];
+      svRow("cb","r7_cb",debitRow);svRow("cb","r7_cb",creditRow);
+      addAudit("GIVE_CASH",giverName+" \u2192 "+recipName+" Rs "+fd.credit);
       S.fd[FID]={mode:"give",date:today(),account:"",sub:"",area:"",qty:"",rate:"",vendor:"",billNo:"",part:"",partUr:"",debit:"",credit:"",giveTo:"",_fix:null};
-      toast(isDir?(isUr?recipName+" کو رقم دی گئی":"Credited to "+recipName):(isUr?"ڈینش کو بھیج دیا":"Submitted to Danish"));
+      toast(isUr?recipName+" کو رقم دی گئی":"Given to "+recipName);
       set({view:isDir?"ldg":"myE"});
     },"btn-g btn-full"));
     return Card(isUr?"نئی اندراج":"New Cash Entry",null,w);
