@@ -283,9 +283,9 @@ function removeRow(stateKey,localKey,id){
 }
 
 var U=[
-  {id:"muzammil",name:"Muzammil",role:"Supervisor",pin:"1121",init:"MZ",clr:"#8A6E28",lang:"ur",email:"muzammil@royalinc.local"},
-  {id:"junaid",name:"Junaid",role:"Sales",pin:"2231",init:"JN",clr:"#4A7FA5",lang:"en",email:"junaid@royalinc.local"},
-  {id:"umair",name:"Umair",role:"Doors Supervisor",pin:"3341",init:"UM",clr:"#7B6E5A",lang:"ur",email:"umair@royalinc.local"},
+  {id:"muzammil",name:"Muzammil Aslam",role:"Supervisor",pin:"1121",init:"MZ",clr:"#8A6E28",lang:"ur",email:"muzammil@royalinc.local"},
+  {id:"junaid",name:"Junaid Tahir",role:"Sales",pin:"2231",init:"JN",clr:"#4A7FA5",lang:"en",email:"junaid@royalinc.local"},
+  {id:"umair",name:"Umair Mirza",role:"Doors Supervisor",pin:"3341",init:"UM",clr:"#7B6E5A",lang:"ur",email:"umair@royalinc.local"},
   {id:"usman",name:"Usman Ghani",role:"Supervisor J-1",pin:"4451",init:"UG",clr:"#5E8C6A",lang:"ur",email:"usman@royalinc.local"},
   {id:"danish",name:"Danish",role:"Accountant",pin:"5561",init:"DN",clr:"#C08B35",lang:"en",email:"danish@royalinc.local"},
   {id:"haroon",name:"Haroon sb",role:"Director",pin:"6671",init:"HS",clr:"#B85C4A",lang:"en",email:"royalcrownhomes@gmail.com"},
@@ -307,7 +307,7 @@ var UNITS=["Bags","Nos","Kg","Ton","Sqft","Rft","Cubic ft","Litre","Set","Sheets
 var DOOR_STAGES=["Quotation","Approved","Production","Polishing","Packing","Dispatch","Installed","Completed"];
 var CSTAGES=["Mobilization","Foundation","Structure","Brickwork","Plaster","Plumbing","Electric","Finishing","Completion"];
 var DOOR_INV_DEF=[{id:"veneer",n:"Veneer",unit:"Sheets",reorder:50},{id:"hdf",n:"HDF Board",unit:"Sheets",reorder:30},{id:"mdf",n:"MDF Board",unit:"Sheets",reorder:30},{id:"hdx",n:"HDX Board",unit:"Sheets",reorder:20},{id:"pu",n:"PU Paint",unit:"Litre",reorder:20},{id:"hardware",n:"Hardware Sets",unit:"Nos",reorder:10},{id:"locks",n:"Locks",unit:"Nos",reorder:20},{id:"hinges",n:"Hinges",unit:"Pairs",reorder:30},{id:"polish",n:"Polish",unit:"Litre",reorder:15},{id:"glue",n:"Glue",unit:"Kg",reorder:10}];
-var SAL_LIST=[{p:"Junaid",r:"Sales",m:100000},{p:"Umair",r:"Doors Supervisor",m:105000},{p:"Muzammil",r:"Supervisor",m:45000},{p:"Abbas",r:"Peon",m:25000},{p:"Usman Ghani",r:"Supervisor J-1",m:50000},{p:"Danish",r:"Accountant",m:20000},{p:"Usman Draftsman",r:"Draftsman",m:30000},{p:"B-552 Guard",r:"Guard",m:25000},{p:"G-396 Guard",r:"Guard",m:25000},{p:"J-1 Guard",r:"Guard",m:30000},{p:"W-93 Guard",r:"Guard",m:30000},{p:"W-93 Sweepress",r:"Sweepress",m:14000},{p:"W-93 Gardener",r:"Gardener",m:13000}];
+var SAL_LIST=[{p:"Junaid Tahir",r:"Sales",m:100000},{p:"Umair Mirza",r:"Doors Supervisor",m:105000},{p:"Muzammil Aslam",r:"Supervisor",m:45000},{p:"Abbas",r:"Peon",m:25000},{p:"Usman Ghani",r:"Supervisor J-1",m:50000},{p:"Danish",r:"Accountant",m:20000},{p:"Usman Draftsman",r:"Draftsman",m:30000},{p:"B-552 Guard",r:"Guard",m:25000},{p:"G-396 Guard",r:"Guard",m:25000},{p:"J-1 Guard",r:"Guard",m:30000},{p:"W-93 Guard",r:"Guard",m:30000},{p:"W-93 Sweepress",r:"Sweepress",m:14000},{p:"W-93 Gardener",r:"Gardener",m:13000}];
 var BILLS_DEF=[{id:"gas_w93",n:"Gas",prop:"W-93",cat:"Utility",due:null,amt:0},{id:"elec_w93",n:"Electricity",prop:"W-93",cat:"Utility",due:null,amt:0},{id:"water_w93",n:"Water DHA",prop:"W-93",cat:"Utility",due:null,amt:0},{id:"elec_off",n:"Electricity",prop:"Office",cat:"Utility",due:null,amt:0},{id:"water_off",n:"Water",prop:"Office",cat:"Utility",due:null,amt:0},{id:"elec_b552",n:"Electricity",prop:"B-552",cat:"Utility",due:null,amt:0},{id:"elec_g396",n:"Electricity",prop:"G-396",cat:"Utility",due:null,amt:0},{id:"elec_j1",n:"Electricity",prop:"J-1",cat:"Utility",due:null,amt:0},{id:"water_j1",n:"Water",prop:"J-1",cat:"Utility",due:null,amt:0},{id:"cc_js",n:"JS Bank CC",prop:"Cards",cat:"Credit Card",due:8,amt:0},{id:"cc_bop",n:"BOP CC",prop:"Cards",cat:"Credit Card",due:22,amt:0},{id:"masjid1",n:"Masjid Ismail",prop:"",cat:"Donation",due:null,amt:0},{id:"masjid2",n:"Masjid Dispensary",prop:"",cat:"Donation",due:null,amt:0},{id:"pakpattan",n:"Pakpattan Masjid",prop:"",cat:"Donation",due:null,amt:0},{id:"hana",n:"Hana Monthly",prop:"",cat:"Personal",due:null,amt:0}];
 
 var UR={
@@ -1248,6 +1248,16 @@ function rMyEntries(){
       bot.appendChild(el("div",{style:{fontFamily:"'Cormorant Garamond',serif",fontSize:"18px",fontWeight:"600",color:isCr?"var(--pos)":"var(--neg)"}},(isCr?"+":"-")+Rs(isCr?r.credit:r.debit)));
       item.appendChild(bot);
       if(r.status==="rejected"&&r.rejection)item.appendChild(el("div",{style:{marginTop:"8px",padding:"8px 10px",background:"var(--neg2)",border:"1px solid rgba(184,92,74,.2)",borderRadius:"6px",fontSize:"12px",color:"var(--neg)"}},"Rejected: "+r.rejection));
+      /* Staff can edit their own entry while it's still pending (before Danish/Director have
+         reviewed it) to fix a typo or wrong amount, without needing to wait for a rejection
+         and resubmit from scratch. Once posted, editing is director-only via the main ledger. */
+      if(r.status==="pending"&&r.account!=="Cash Given"){
+        var editId=r.id;
+        item.appendChild(btn("Edit",function(){
+          S.fd["addCB"]={mode:"expense",date:r.date||today(),account:r.account||"",sub:r.subAccount||"",area:r.area||"",qty:r.qty||"",rate:"",vendor:"",billNo:r.billNo||"",part:r.particulars||"",partUr:r.particularsUr||"",debit:r.debit||"",credit:r.credit||"",giveTo:"",_fix:editId};
+          set({view:"addCB"});
+        },"btn-o btn-sm"));
+      }
       if(r.account==="Cash Given"&&r.linkId){
         var undoId=r.id;
         item.appendChild(btn("Undo — Reverse This Transfer",function(){if(!confirm("Reverse this cash transfer? This removes it from both your and the recipient's balance."))return;addAudit("UNDO_GIVE_CASH","CB#"+r.cbNo);removeRow("cb","r7_cb",undoId);toast("Transfer reversed");render();},"btn-neg btn-sm"));
