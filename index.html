@@ -360,6 +360,13 @@ function svRow(stateKey,localKey,row){
 }
 
 function canUrdu(){return S.user&&(gU(S.user).lang==="ur");}
+/* Staff designations (Supervisor, Sales, etc.) are no longer shown anywhere in the UI —
+   only the person's name. Danish and directors still show their role, since those are
+   functional titles that clarify authority in approval flows. */
+function displayRole(u){
+  if(!u||!u.id)return "";
+  return ROLE_MAP[u.id]==="staff"?"":(u.role||"");
+}
 function isUrdu(){if(!canUrdu())return false;return S.urLang[S.user]!==false;}
 function toggleLang(){if(!canUrdu())return;S.urLang[S.user]=!isUrdu();LS("r7_urLang",S.urLang);render();}
 
@@ -715,6 +722,7 @@ var NAV=[
   {id:"mat",l:"Material",icon:"⬡",roles:["staff","danish","director"],badge:"matPend"},
   {id:"contr",l:"Contractors",icon:"◈",roles:["danish","director"]},
   {id:"vnd",l:"Vendors",icon:"⬤",roles:["danish","director"]},
+  {id:"misc",l:"Misc Balances",icon:"\u25C7",roles:["danish","director"]},
   {sep:true,l:"Doors",roles:["umair","danish","director"]},
   {id:"doors",l:"Door Projects",icon:"▭",roles:["umair","danish","director"]},
   {id:"doorInv",l:"Doors Inventory",icon:"📦",roles:["umair","danish","director"]},
@@ -729,7 +737,7 @@ var NAV=[
   {id:"security",l:"Account Security",icon:"🔒",roles:["director"]}
 ];
 
-var PAGE_TITLES={dash:"Dashboard",att:"Attendance",expReq:"Expense Requests",expApprove:"Expense Approval",myE:"My Entries",dq:"Review Queue",dirApp:"Director Approval",ldg:"General Ledger",trial:"Trial Balance",pl:"Profit & Loss",cashflow:"Cash Flow",bank:"Bank",cc:"Credit Cards",vouch:"Vouchers",petty:"Petty Cash",constr:"Sites & Budget",mat:"Material",contr:"Contractors",vnd:"Vendors",doors:"Door Projects",doorInv:"Doors Inventory",hr:"HR Module",bills:"Bills & Salaries",crm:"CRM",reports:"Reports",ai:"AI Analysis",audit:"Audit Log",addCB:"New Entry",dirEdit:"Edit Entry",security:"Account Security"};
+var PAGE_TITLES={dash:"Dashboard",att:"Attendance",expReq:"Expense Requests",expApprove:"Expense Approval",myE:"My Entries",dq:"Review Queue",dirApp:"Director Approval",ldg:"General Ledger",trial:"Trial Balance",pl:"Profit & Loss",cashflow:"Cash Flow",bank:"Bank",cc:"Credit Cards",vouch:"Vouchers",petty:"Petty Cash",constr:"Sites & Budget",mat:"Material",contr:"Contractors",vnd:"Vendors",misc:"Misc Balances",doors:"Door Projects",doorInv:"Doors Inventory",hr:"HR Module",bills:"Bills & Salaries",crm:"CRM",reports:"Reports",ai:"AI Analysis",audit:"Audit Log",addCB:"New Entry",dirEdit:"Edit Entry",security:"Account Security"};
 
 var BNAV={
   staff:[{id:"dash",icon:"⌂",l:"Home"},{id:"expReq",icon:"📋",l:"Requests"},{id:"myE",icon:"📒",l:"Entries"},{id:"mat",icon:"⬡",l:"Material"},{id:"att",icon:"✓",l:"Attend"}],
@@ -793,7 +801,7 @@ function renderTopbar(){
   if(notifCnt>0){var dot=el("span",{style:{position:"absolute",top:"3px",right:"3px",width:"7px",height:"7px",background:"var(--neg)",borderRadius:"50%"}});nBtn.appendChild(dot);}
   r.appendChild(nBtn);
   var u=gU(S.user);
-  var av=dv({display:"flex",alignItems:"center",gap:"8px"},Avatar(S.user,34),el("div",{},el("div",{style:{fontSize:"12px",fontWeight:"600",color:"var(--ink)"}},u.name),el("div",{style:{fontSize:"9px",color:"var(--ink4)",letterSpacing:".1em",textTransform:"uppercase"}},u.role)));
+  var av=dv({display:"flex",alignItems:"center",gap:"8px"},Avatar(S.user,34),el("div",{},el("div",{style:{fontSize:"12px",fontWeight:"600",color:"var(--ink)"}},u.name),el("div",{style:{fontSize:"9px",color:"var(--ink4)",letterSpacing:".1em",textTransform:"uppercase"}},displayRole(u))));
   r.appendChild(av);tb.appendChild(r);
 }
 
@@ -1050,13 +1058,24 @@ function rExecDash(){
   }
 
   /* SITE BUDGETS */
-  var siteBCard=Card("Site Budget vs Spent");
-  CSITES.forEach(function(site){var spent=siteSpent(site);var budget=siteBudget(site);var pct=budget>0?Math.round((spent/budget)*100):0;var row=el("div",{style:{marginBottom:"12px"}});row.appendChild(dv({display:"flex",justifyContent:"space-between",fontSize:"12px",marginBottom:"3px"},el("span",{style:{fontWeight:"600"}},site),el("span",{style:{color:pct>100?"var(--neg)":pct>80?"var(--wrn)":"var(--pos)"}},Rs(spent)+(budget>0?" / "+Rs(budget):(budget===0?" (no budget set)":"")))));row.appendChild(ProgBar(pct,pct>100?"linear-gradient(90deg,var(--neg),#8B2020)":pct>80?"linear-gradient(90deg,var(--wrn),#8B5A1A)":undefined));siteBCard.querySelector(".cb").appendChild(row);});
+  /* SITE BALANCES — replaces the old budget-vs-spent view. Shows net spend per site;
+     tapping a site opens its full statement (every entry, running balance) via the
+     ledger's By Site view. W-93 excluded per director instruction. */
+  var siteBCard=Card("Site Balances",el("span",{style:{fontSize:"10px",color:"var(--ink4)",letterSpacing:".06em",textTransform:"uppercase"}},"Tap to view statement"));
+  CSITES.filter(function(site){return site!=="W-93";}).forEach(function(site){
+    var spent=siteSpent(site);
+    var row=dv({display:"flex",justifyContent:"space-between",alignItems:"center",padding:"8px 0",borderBottom:"1px solid var(--s2)",cursor:"pointer"},
+      el("span",{style:{fontWeight:"600",fontSize:"13px"}},site),
+      el("span",{style:{fontFamily:"'Cormorant Garamond',serif",fontSize:"16px",fontWeight:"600",color:"var(--neg)"}},Rs(spent))
+    );
+    row.addEventListener("click",function(){set({cbf:{lv:"byS",person:"",site:"",search:"",d1:"",d2:""},view:"ldg"});});
+    siteBCard.querySelector(".cb").appendChild(row);
+  });
   w.appendChild(siteBCard);
 
   /* MEMBER BALANCES — stays at BOTTOM, tapping a row opens that person's ledger */
   var membCard=Card("Member Cash Positions",el("span",{style:{fontSize:"10px",color:"var(--ink4)",letterSpacing:".06em",textTransform:"uppercase"}},"Tap to view ledger"));
-  U.forEach(function(u){var bal=pBal(u.id);var row=dv({display:"flex",justifyContent:"space-between",alignItems:"center",padding:"8px 0",borderBottom:"1px solid var(--s2)",cursor:"pointer"},dv({display:"flex",alignItems:"center",gap:"8px"},Avatar(u.id,28),el("div",{},el("div",{style:{fontWeight:"600",fontSize:"12px"}},u.name),el("div",{style:{fontSize:"10px",color:"var(--ink4)",letterSpacing:".06em",textTransform:"uppercase"}},u.role))),el("div",{style:{textAlign:"right"}},el("div",{style:{fontFamily:"'Cormorant Garamond',serif",fontSize:"16px",fontWeight:"600",color:bal>=0?"var(--pos)":"var(--neg)"}},Rs(Math.abs(bal))),el("div",{style:{fontSize:"9px",color:"var(--ink4)",textTransform:"uppercase",letterSpacing:".07em"}},bal>=0?"In Hand":"Shortfall")));row.addEventListener("click",function(){set({cbf:{lv:"byP",person:u.id,site:"",search:"",d1:"",d2:""},view:"ldg"});});membCard.querySelector(".cb").appendChild(row);});
+  U.forEach(function(u){var bal=pBal(u.id);var row=dv({display:"flex",justifyContent:"space-between",alignItems:"center",padding:"8px 0",borderBottom:"1px solid var(--s2)",cursor:"pointer"},dv({display:"flex",alignItems:"center",gap:"8px"},Avatar(u.id,28),el("div",{},el("div",{style:{fontWeight:"600",fontSize:"12px"}},u.name),el("div",{style:{fontSize:"10px",color:"var(--ink4)",letterSpacing:".06em",textTransform:"uppercase"}},displayRole(u)))),el("div",{style:{textAlign:"right"}},el("div",{style:{fontFamily:"'Cormorant Garamond',serif",fontSize:"16px",fontWeight:"600",color:bal>=0?"var(--pos)":"var(--neg)"}},Rs(Math.abs(bal))),el("div",{style:{fontSize:"9px",color:"var(--ink4)",textTransform:"uppercase",letterSpacing:".07em"}},bal>=0?"In Hand":"Shortfall")));row.addEventListener("click",function(){set({cbf:{lv:"byP",person:u.id,site:"",search:"",d1:"",d2:""},view:"ldg"});});membCard.querySelector(".cb").appendChild(row);});
   w.appendChild(membCard);
 
   return w;
@@ -1072,7 +1091,7 @@ function rStaffDash(){
   var hl=el("div",{});
   hl.appendChild(el("div",{style:{fontSize:"9px",fontWeight:"600",letterSpacing:".2em",textTransform:"uppercase",color:"var(--g3)",marginBottom:"7px"}},isUr?"خوش آمدید":"Welcome Back"));
   hl.appendChild(el("div",{style:{fontFamily:"'Cormorant Garamond',serif",fontSize:"28px",fontWeight:"500",color:"#F5EFE0"}},u.name));
-  hl.appendChild(el("div",{style:{fontSize:"11px",color:"var(--sbm)",marginTop:"3px"}},u.role+" \u00b7 Royal Inc."));
+  hl.appendChild(el("div",{style:{fontSize:"11px",color:"var(--sbm)",marginTop:"3px"}},(displayRole(u)?displayRole(u)+" \u00b7 ":"")+"Royal Inc."));
   var hr2=dv({textAlign:"right"});
   hr2.appendChild(el("div",{style:{fontSize:"9px",fontWeight:"600",letterSpacing:".18em",textTransform:"uppercase",color:"rgba(184,151,58,.6)",marginBottom:"5px"}},isUr?"نقد بقایا":"Cash Balance"));
   hr2.appendChild(el("div",{style:{fontFamily:"'Cormorant Garamond',serif",fontSize:"32px",fontWeight:"600",color:"var(--g2)"}},(bal<0?"-":"")+Rs(Math.abs(bal))));
@@ -1125,7 +1144,7 @@ function rAttendance(){
     people.forEach(function(p){
       var existing=S.attendance.find(function(a){return a.empId===p.id&&a.date===today();});
       var row=dv({display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 0",borderBottom:"1px solid var(--bd)",gap:"8px",flexWrap:"wrap"});
-      row.appendChild(dv({display:"flex",alignItems:"center",gap:"10px"},Avatar(p.id,32),el("div",{},el("div",{style:{fontWeight:"600",fontSize:"13px"}},p.name),el("div",{style:{fontSize:"10px",color:"var(--ink4)",letterSpacing:".08em",textTransform:"uppercase"}},p.role))));
+      row.appendChild(dv({display:"flex",alignItems:"center",gap:"10px"},Avatar(p.id,32),el("div",{},el("div",{style:{fontWeight:"600",fontSize:"13px"}},p.name),el("div",{style:{fontSize:"10px",color:"var(--ink4)",letterSpacing:".08em",textTransform:"uppercase"}},displayRole(p)))));
       if(existing){var sb2=dv({display:"flex",alignItems:"center",gap:"8px"});sb2.appendChild(el("span",{cls:"badge "+(existing.status==="present"?"bg":existing.status==="absent"?"br":"bw")},existing.status.charAt(0).toUpperCase()+existing.status.slice(1)));if(isAdmin){var pid=p.id;var existingId=existing.id;sb2.appendChild(btn("Change",function(){removeRow("attendance","r7_att",existingId);render();},"btn-o btn-sm"));}row.appendChild(sb2);}
       else{var btns3=dv({display:"flex",gap:"5px",flexWrap:"wrap"});var pid2=p.id;var pname=p.name;[["present","Present"],["absent","Absent"]].forEach(function(st){btns3.appendChild(btn(st[1],function(){var newAtt={id:uid(),empId:pid2,empName:pname,date:today(),status:st[0],by:S.user,created:now2()};S.attendance=[...S.attendance,newAtt];svRow("attendance","r7_att",newAtt);toast(pname+": "+st[1]);render();},"btn-o btn-sm"));});row.appendChild(btns3);}
       w.appendChild(row);
@@ -1265,7 +1284,7 @@ function rMyEntries(){
       /* Staff can edit their own entry while it's still pending (before Danish/Director have
          reviewed it) to fix a typo or wrong amount, without needing to wait for a rejection
          and resubmit from scratch. Once posted, editing is director-only via the main ledger. */
-      if(r.status==="pending"&&r.account!=="Cash Given"){
+      if((r.status==="pending"||r.status==="awaiting_approval")&&r.account!=="Cash Given"){
         var editId=r.id;
         item.appendChild(btn("Edit",function(){
           S.fd["addCB"]={mode:"expense",date:r.date||today(),account:r.account||"",sub:r.subAccount||"",area:r.area||"",qty:r.qty||"",rate:"",vendor:"",billNo:r.billNo||"",part:r.particulars||"",partUr:r.particularsUr||"",debit:r.debit||"",credit:r.credit||"",giveTo:"",_fix:editId};
@@ -1416,8 +1435,8 @@ function rDanishQueue(){
 function rDirApp(){
   var queue=S.cb.filter(function(e){return e.status==="awaiting_approval"||e.status==="escalated";}).sort(function(a,b){return a.created>b.created?1:-1;});
   var escs=S.esc||[];
-  if(!queue.length&&!escs.length)return el("div",{cls:"al-g",style:{textAlign:"center",padding:"22px",fontWeight:"600"}},"Nothing pending approval");
   var w=el("div",{});
+  if(!queue.length&&!escs.length)w.appendChild(el("div",{cls:"al-g",style:{textAlign:"center",padding:"22px",fontWeight:"600",marginBottom:"18px"}},"No cash entries pending approval"));
   if(escs.length){var ea=el("div",{cls:"al-r"});ea.appendChild(el("div",{style:{fontWeight:"700",marginBottom:"10px",fontSize:"13px"}},"Escalations from Danish ("+escs.length+")"));escs.forEach(function(esc){var ent=S.cb.find(function(x){return x.id===esc.entryId;});var ei2=dv({background:"var(--s1)",borderRadius:"7px",padding:"10px",marginBottom:"8px",border:"1px solid rgba(184,92,74,.2)"});ei2.appendChild(el("div",{style:{fontWeight:"600",fontSize:"13px",marginBottom:"3px"}},ent?(ent.account||"Entry"):"Entry"));if(ent&&ent.particularsUr)ei2.appendChild(el("div",{cls:"ur",style:{fontSize:"13px",marginBottom:"5px"}},ent.particularsUr));ei2.appendChild(el("div",{style:{fontSize:"12px",color:"var(--neg)",marginBottom:"8px"}},"Danish: "+esc.note));var eb=dv({display:"flex",gap:"8px"});var escId=esc.id,entId=esc.entryId;eb.appendChild(btn("Accept & Post",function(){S.cb=S.cb.map(function(e){return e.id===entId?Object.assign({},e,{status:"posted",approvedBy:S.user,approvedAt:now2()}):e;});var updated=S.cb.find(function(e){return e.id===entId;});S.esc=S.esc.filter(function(x){return x.id!==escId;});svRow("cb","r7_cb",updated);removeRow("esc","r7_esc",escId);addAudit("ACCEPT_ESC",entId);toast("Accepted");render();},"btn-pos btn-sm"));eb.appendChild(btn("Reject",function(){var note2=window.prompt("Rejection reason:");if(!note2)return;S.cb=S.cb.map(function(e){return e.id===entId?Object.assign({},e,{status:"rejected",rejection:"[Director] "+note2}):e;});var updated=S.cb.find(function(e){return e.id===entId;});S.esc=S.esc.filter(function(x){return x.id!==escId;});svRow("cb","r7_cb",updated);removeRow("esc","r7_esc",escId);toast("Returned");render();},"btn-neg btn-sm"));ei2.appendChild(eb);ea.appendChild(ei2);});w.appendChild(ea);}
   var awaiting=queue.filter(function(e){return e.status==="awaiting_approval";});
   if(awaiting.length){
@@ -1429,6 +1448,48 @@ function rDirApp(){
     w.appendChild(sb3);
     awaiting.forEach(function(r){var u2=gU(r.person);var isCr=parseFloat(r.credit||0)>0&&!parseFloat(r.debit||0);var note3="";var vc2=el("div",{cls:"vc"});vc2.appendChild(dv({display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:"10px",paddingBottom:"9px",borderBottom:"1px solid var(--bd)",gap:"8px",flexWrap:"wrap"},dv({display:"flex",gap:"9px",alignItems:"center"},Avatar(r.person,30),el("div",{},el("div",{style:{fontWeight:"700",fontSize:"13px"}},(r.account||"")+(r.subAccount?" / "+r.subAccount:"")),dv({display:"flex",gap:"7px",marginTop:"3px",alignItems:"center",flexWrap:"wrap"},r.cbNo?el("span",{style:{fontSize:"10px",fontWeight:"700",color:"var(--g)",background:"var(--g4)",borderRadius:"3px",padding:"1px 6px"}},r.cbNo):null,el("span",{style:{fontSize:"11px",color:"var(--ink4)"}},u2.name+" \u00b7 "+(r.date||""))))),el("div",{style:{fontFamily:"'Cormorant Garamond',serif",fontSize:"22px",fontWeight:"600",color:isCr?"var(--pos)":"var(--neg)"}},(isCr?"+":"-")+Rs(isCr?r.credit:r.debit))));vc2.appendChild(el("div",{style:{fontSize:"12px",color:"var(--ink2)",padding:"8px 10px",background:"var(--s2)",borderRadius:"6px",marginBottom:"6px"}},r.particulars||""));if(r.particularsUr)vc2.appendChild(el("div",{cls:"ur",style:{padding:"8px",background:"rgba(74,127,165,.08)",borderRadius:"5px",marginBottom:"10px",border:"1px solid rgba(74,127,165,.15)",fontSize:"13px"}},r.particularsUr));if(r.bill_photo){var iw2=dv({marginBottom:"10px",borderRadius:"7px",overflow:"hidden",border:"1px solid var(--bd)",cursor:"pointer"});iw2.appendChild(el("img",{src:r.bill_photo,style:{width:"100%",maxHeight:"150px",objectFit:"cover",display:"block"}}));iw2.addEventListener("click",function(){window.open(r.bill_photo,"_blank");});vc2.appendChild(iw2);}vc2.appendChild(el("div",{style:{fontSize:"12px",fontWeight:"500",marginBottom:"9px",color:r.filed?"var(--pos)":"var(--neg)"}},r.filed?"Bill filed by Danish":"Bill NOT filed yet"));var nta2=TA("",function(v){note3=v;},1,"Note...");nta2.style.marginBottom="8px";vc2.appendChild(nta2);var btns6=dv({display:"flex",gap:"7px",flexWrap:"wrap"});var rid2=r.id;btns6.appendChild(btn("Post",function(){S.cb=S.cb.map(function(e){return e.id===rid2?Object.assign({},e,{status:"posted",approvedBy:S.user,approvedAt:now2()}):e;});var updated=S.cb.find(function(e){return e.id===rid2;});svRow("cb","r7_cb",updated);addAudit("DIRECTOR_APPROVE","CB#"+r.cbNo);toast("Posted");render();},"btn-pos btn-sm"));btns6.appendChild(btn("Return",function(){if(!note3.trim()){toast("Enter reason",true);return;}S.cb=S.cb.map(function(e){return e.id===rid2?Object.assign({},e,{status:"rejected",rejection:"[Director] "+note3}):e;});var updated=S.cb.find(function(e){return e.id===rid2;});svRow("cb","r7_cb",updated);addAudit("DIRECTOR_REJECT","CB#"+r.cbNo);toast("Returned");render();},"btn-neg btn-sm"));vc2.appendChild(btns6);w.appendChild(vc2);});
   }
+
+  /* ATTENDANCE REVIEW — staff self-mark Present/Absent; a director confirms or overrides
+     today's marks here. This is separate from the cash approval queue above and always
+     shows, so it doesn't get hidden on days with no cash entries pending. */
+  var today2=today();
+  var todaysAtt={};
+  S.attendance.filter(function(a){return a.date===today2;}).forEach(function(a){todaysAtt[a.empId]=a;});
+  var attCard=Card("Today's Attendance — "+today2);
+  var staffList=U.filter(function(u){return ROLE_MAP[u.id]==="staff";});
+  staffList.forEach(function(p){
+    var rec=todaysAtt[p.id];
+    var row=dv({display:"flex",justifyContent:"space-between",alignItems:"center",padding:"9px 0",borderBottom:"1px solid var(--s2)",gap:"8px",flexWrap:"wrap"});
+    row.appendChild(dv({display:"flex",alignItems:"center",gap:"10px"},Avatar(p.id,30),el("div",{style:{fontWeight:"600",fontSize:"13px"}},p.name)));
+    var right=dv({display:"flex",gap:"7px",alignItems:"center"});
+    if(rec){
+      right.appendChild(el("span",{cls:"badge "+(rec.status==="present"?"bg":"br")},rec.status.charAt(0).toUpperCase()+rec.status.slice(1)));
+      var recId=rec.id,pid3=p.id,pname3=p.name;
+      right.appendChild(btn("Change",function(){
+        removeRow("attendance","r7_att",recId);
+        var newStatus=rec.status==="present"?"absent":"present";
+        var corrected={id:uid(),empId:pid3,empName:pname3,date:today2,status:newStatus,by:S.user,created:now2()};
+        S.attendance=[...S.attendance,corrected];svRow("attendance","r7_att",corrected);
+        addAudit("DIRECTOR_ATTENDANCE_OVERRIDE",pname3+" \u2192 "+newStatus);
+        toast("Updated");render();
+      },"btn-o btn-sm"));
+    }else{
+      right.appendChild(el("span",{cls:"badge bw"},"Not marked"));
+      var pid4=p.id,pname4=p.name;
+      [["present","Present"],["absent","Absent"]].forEach(function(st){
+        right.appendChild(btn(st[1],function(){
+          var newAtt={id:uid(),empId:pid4,empName:pname4,date:today2,status:st[0],by:S.user,created:now2()};
+          S.attendance=[...S.attendance,newAtt];svRow("attendance","r7_att",newAtt);
+          addAudit("DIRECTOR_MARK_ATTENDANCE",pname4+" "+st[0]);
+          toast(pname4+": "+st[1]);render();
+        },"btn-o btn-sm"));
+      });
+    }
+    row.appendChild(right);
+    attCard.querySelector(".cb").appendChild(row);
+  });
+  w.appendChild(attCard);
+
   return w;
 }
 
@@ -2023,7 +2084,22 @@ function rConstr(){
 
 function rDoors(){
   var tab=S.tab.doors||"proj";var w=el("div",{});
-  w.appendChild(Tabs([{id:"proj",l:"Projects"},{id:"add",l:"Add New"}],tab,function(id){set({tab:Object.assign({},S.tab,{doors:id})});}));
+  w.appendChild(Tabs([{id:"proj",l:"Projects"},{id:"bal",l:"Balances"},{id:"add",l:"Add New"}],tab,function(id){set({tab:Object.assign({},S.tab,{doors:id})});}));
+  if(tab==="bal"){
+    w.appendChild(el("div",{cls:"al-b"},"Balance per door project — matched to cash entries where the account or sub-account equals the project's client name."));
+    if(!S.doorProjects.length){w.appendChild(el("div",{style:{textAlign:"center",padding:"20px",color:"var(--ink4)"}},"No door projects yet"));return w;}
+    S.doorProjects.forEach(function(p){
+      var spent=S.cb.filter(function(e){return e.status==="posted"&&(e.account===p.client||e.subAccount===p.client);}).reduce(function(s,e){return s+parseFloat(e.debit||0);},0);
+      var received=S.cb.filter(function(e){return e.status==="posted"&&(e.account===p.client||e.subAccount===p.client);}).reduce(function(s,e){return s+parseFloat(e.credit||0);},0);
+      var net=received-spent;
+      var row=dv({display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 0",borderBottom:"1px solid var(--s2)"},
+        dv({},el("div",{style:{fontWeight:"600",fontSize:"13px"}},p.client),el("div",{style:{fontSize:"10px",color:"var(--ink4)",textTransform:"uppercase",letterSpacing:".06em"}},p.stage)),
+        el("div",{style:{fontFamily:"'Cormorant Garamond',serif",fontSize:"16px",fontWeight:"600",color:net>=0?"var(--pos)":"var(--neg)"}},Rs(Math.abs(net))+(net<0?" Spent":""))
+      );
+      w.appendChild(row);
+    });
+    return w;
+  }
   if(tab==="add"){
     var FID="door_add";if(!S.fd[FID])S.fd[FID]={client:"",contact:"",address:"",description:"",quotation:"",stage:"Quotation",date:today()};var fd=S.fd[FID];
     var fg=el("div",{cls:"fg"});fg.appendChild(Fld("Client Name",Inp(fd.client,function(v){fd.client=v;},"text")));fg.appendChild(Fld("Contact",Inp(fd.contact,function(v){fd.contact=v;},"text")));fg.appendChild(Fld("Address",Inp(fd.address,function(v){fd.address=v;},"text")));fg.appendChild(Fld("Quotation (Rs)",Inp(fd.quotation,function(v){fd.quotation=v;},"number")));fg.appendChild(Fld("Stage",Sel(fd.stage,function(v){fd.stage=v;},DOOR_STAGES.map(function(s){return{v:s,l:s};}))));fg.appendChild(Fld("Date",Inp(fd.date,function(v){fd.date=v;},"date")));w.appendChild(fg);
@@ -2221,6 +2297,46 @@ function rCRM(){
    BLOCK 12: REPORTS + AI + AUDIT + ROUTER + INIT
    ═══════════════════════════════════════════ */
 
+/* Misc Balances — surfaces any account name used on a posted entry that isn't a
+   recognized construction site, bank, the Cash Given/Received internal transfer
+   accounts, or a door project's client. This is where accounts like a partner or
+   contact (e.g. Ather, Zaheer) show up automatically the moment someone posts an
+   entry under their name — no need to pre-register them anywhere. */
+function rMisc(){
+  var w=el("div",{});
+  w.appendChild(el("div",{cls:"al-b"},"Any account that isn't a construction site, bank, or door project shows here automatically — just post an entry using that name."));
+  var knownSites={};CSITES.forEach(function(s){knownSites[s]=true;});SITES.forEach(function(s){knownSites[s]=true;});
+  var knownBanks={};BANKS.forEach(function(b){knownBanks[b.name]=true;});
+  var knownDoorClients={};S.doorProjects.forEach(function(p){knownDoorClients[p.client]=true;});
+  var excluded={"Cash Given":true,"Cash Received":true,"Office":true,"TDC":true,"Suspense":true,"Cash Office":true,"Payables":true,"Other Exp":true,"Personal":true};
+
+  var posted=S.cb.filter(function(e){return e.status==="posted";});
+  var accountTotals={};
+  posted.forEach(function(e){
+    var acc=e.account;
+    if(!acc)return;
+    if(knownSites[acc]||knownBanks[acc]||knownDoorClients[acc]||excluded[acc])return;
+    if(!accountTotals[acc])accountTotals[acc]={debit:0,credit:0};
+    accountTotals[acc].debit+=parseFloat(e.debit||0);
+    accountTotals[acc].credit+=parseFloat(e.credit||0);
+  });
+
+  var names=Object.keys(accountTotals).sort();
+  if(!names.length){w.appendChild(el("div",{style:{textAlign:"center",padding:"24px",color:"var(--ink4)"}},"No miscellaneous accounts yet"));return w;}
+
+  names.forEach(function(name){
+    var t=accountTotals[name];
+    var net=t.credit-t.debit;
+    var row=dv({display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 0",borderBottom:"1px solid var(--s2)",cursor:"pointer"},
+      el("span",{style:{fontWeight:"600",fontSize:"13px"}},name),
+      el("span",{style:{fontFamily:"'Cormorant Garamond',serif",fontSize:"16px",fontWeight:"600",color:net>=0?"var(--pos)":"var(--neg)"}},Rs(Math.abs(net))+(net<0?" Dr":""))
+    );
+    row.addEventListener("click",function(){set({cbf:{lv:"journal",person:"",site:name,search:"",d1:"",d2:""},view:"ldg"});});
+    w.appendChild(row);
+  });
+  return w;
+}
+
 function rReports(){
   var posted=S.cb.filter(function(e){return e.status==="posted";});
   var m=curMonth();var yr=new Date().getFullYear().toString();
@@ -2246,7 +2362,7 @@ function rReports(){
   var membCard=Card("Member Balances",null,expBtn(headTrs,"member_balances.csv"));
   var mTbl=el("div",{cls:"tbl-wrap"});var mt=el("table",{});var mth=el("thead",{});var mtr=el("tr",{});["Member","Role","Balance","Status"].forEach(function(h){mtr.appendChild(el("th",{},h));});mth.appendChild(mtr);mt.appendChild(mth);
   var mtb=el("tbody",{});
-  U.forEach(function(u){var bal=pBal(u.id);var tr=el("tr",{});tr.appendChild(el("td",{},dv({display:"flex",alignItems:"center",gap:"7px"},Avatar(u.id,24),el("span",{},u.name))));tr.appendChild(el("td",{style:{color:"var(--ink4)"}},u.role));tr.appendChild(el("td",{style:{fontFamily:"'Cormorant Garamond',serif",fontSize:"16px",fontWeight:"600",color:bal>=0?"var(--pos)":"var(--neg)"}},Rs(Math.abs(bal))));tr.appendChild(el("td",{},el("span",{cls:"badge "+(bal>=0?"bg":"br")},bal>=0?"In Hand":"Shortfall")));mtb.appendChild(tr);});
+  U.forEach(function(u){var bal=pBal(u.id);var tr=el("tr",{});tr.appendChild(el("td",{},dv({display:"flex",alignItems:"center",gap:"7px"},Avatar(u.id,24),el("span",{},u.name))));tr.appendChild(el("td",{style:{color:"var(--ink4)"}},displayRole(u)));tr.appendChild(el("td",{style:{fontFamily:"'Cormorant Garamond',serif",fontSize:"16px",fontWeight:"600",color:bal>=0?"var(--pos)":"var(--neg)"}},Rs(Math.abs(bal))));tr.appendChild(el("td",{},el("span",{cls:"badge "+(bal>=0?"bg":"br")},bal>=0?"In Hand":"Shortfall")));mtb.appendChild(tr);});
   mt.appendChild(mtb);mTbl.appendChild(mt);membCard.querySelector(".cb").appendChild(mTbl);w.appendChild(membCard);
   return w;
 }
@@ -2328,7 +2444,7 @@ function rPage(view){
     addCB:rAddCB,dq:rDanishQueue,dirApp:rDirApp,dirEdit:rDirEdit,
     ldg:rLedger,trial:rTrial,pl:rPL,cashflow:rCashFlow,
     bank:rBank,cc:rCC,vouch:rVouchers,petty:rPetty,
-    constr:rConstr,mat:rMat,contr:rContr,vnd:rVendors,
+    constr:rConstr,mat:rMat,contr:rContr,vnd:rVendors,misc:rMisc,
     doors:rDoors,doorInv:rDoorInv,
     hr:rHR,bills:rBills,crm:rCRM,
     reports:rReports,ai:rAI,audit:rAudit,security:rSecurity
