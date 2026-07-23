@@ -363,15 +363,20 @@ function canUrdu(){return S.user&&(gU(S.user).lang==="ur");}
 
 /* Shared edit-permission check for any cashbook row, used everywhere the ledger is
    shown so the rule is identical no matter which screen you're looking at it from.
-   Directors can edit any posted entry. Everyone else — staff, Danish, anyone — can
-   edit their OWN entries, at any status except the two special linked-transaction
-   types (Cash Given/Received legs, which have their own dedicated Undo flow to keep
-   both sides of a double-entry pair in sync — editing one side directly here would
-   desync the pair). */
+   Directors can edit or delete ANY entry, any status — that's the final authority.
+   Everyone else — staff, Danish, anyone — can edit or delete their OWN entries only
+   while still working through approval (pending / awaiting_approval / escalated /
+   rejected — rejected specifically so they can fix and resubmit). Once a director
+   has posted an entry, it is LOCKED for the person who submitted it — only a
+   director can change or remove it from that point on. The two special linked-
+   transaction types (Cash Given/Received legs) are excluded entirely from this path;
+   they have their own dedicated Undo flow to keep both sides of a double-entry pair
+   in sync — editing one side directly here would desync the pair. */
 function canEditRow(row){
   if(!row)return false;
   if(ROLE_MAP[S.user]==="director")return true;
   if(row.account==="Cash Given"||row.account==="Cash Received")return false;
+  if(row.status==="posted")return false;
   return row.person===S.user;
 }
 /* Staff designations (Supervisor, Sales, etc.) are no longer shown anywhere in the UI —
@@ -583,8 +588,17 @@ function nCHQNo(){var max=S.bank.filter(function(e){return e.chqNo;}).reduce(fun
 function accountLedger(accountKind,accountId,opts){
   opts=opts||{};
   var includeAllStatuses=!!opts.includeAllStatuses; // My Entries needs pending/rejected too
+  /* includeProvisional: sums posted + pending + awaiting_approval + escalated (i.e.
+     everything except rejected) into debit/credit/balance. This gives a staff member
+     their real current position — cash they've already spent but is still working
+     through approval counts against them immediately, not just once a director signs
+     off — while a rejected entry does NOT count until they fix and resubmit it (a
+     resubmission creates a fresh pending entry, which then counts again). The official
+     posted-only balance (used for company reports, site budgets, director views) is
+     untouched by this flag and still only ever sums posted rows. */
+  var includeProvisional=!!opts.includeProvisional;
   var rows=S.cb.filter(function(e){
-    if(!includeAllStatuses&&e.status!=="posted")return false;
+    if(!includeAllStatuses&&!includeProvisional&&e.status!=="posted")return false;
     if(accountKind==="person")return e.person===accountId;
     return e.account===accountId||e.subAccount===accountId;
   }).sort(function(a,b){
@@ -593,10 +607,15 @@ function accountLedger(accountKind,accountId,opts){
   });
   var debit=0,credit=0;
   rows.forEach(function(e){
-    if(e.status==="posted"){debit+=parseFloat(e.debit||0);credit+=parseFloat(e.credit||0);}
+    var counts=includeProvisional?e.status!=="rejected":e.status==="posted";
+    if(counts){debit+=parseFloat(e.debit||0);credit+=parseFloat(e.credit||0);}
   });
   return {rows:rows,debit:debit,credit:credit,balance:credit-debit};
 }
+
+/* A staff member's own real-time position: everything they've submitted that isn't
+   rejected, so they can see cash already committed even before final director sign-off. */
+function pBalProvisional(pid){return accountLedger("person",pid,{includeAllStatuses:true,includeProvisional:true}).balance;}
 
 /* Every account currently in use, grouped by kind — used to build the Misc Balances
    list and to make sure nothing posted against a real name gets missed anywhere. */
@@ -982,11 +1001,37 @@ function LedgerTable(rows,showPerson,canEditFn){
   var net=totCr-totDr;
   var w=el("div",{});
   w.appendChild(el("div",{cls:"kgrid",style:{gridTemplateColumns:"repeat(3,1fr)",marginBottom:"14px"}},KPI("Total Debit",totDr,"var(--neg)"),KPI("Total Credit",totCr,"var(--pos)"),KPI(net>=0?"Net In Hand":"Net Deficit",Math.abs(net),net>=0?"var(--pos)":"var(--neg)")));
+
+  /* Build export/print rows with a running balance computed in the exact same order
+     the table itself renders — so CSV, Print, and the on-screen statement always show
+     identical numbers in identical columns, never a mismatched subset. */
+  var runningBal=0;
+  var exportRows=rows.map(function(r,i){
+    runningBal+=parseFloat(r.credit||0)-parseFloat(r.debit||0);
+    var row={"#":i+1,"Date":r.date||""};
+    if(showPerson)row["Person"]=gU(r.person).name;
+    row["CB#"]=r.cbNo||"";
+    row["Account"]=r.account||"";
+    row["Sub"]=r.subAccount||"";
+    row["Area"]=r.area||"";
+    row["Qty"]=r.qty||"";
+    row["Bill#"]=r.billNo||"";
+    row["Particulars"]=r.particulars||"";
+    row["Debit"]=r.debit?commaFmt(r.debit):"";
+    row["Credit"]=r.credit?commaFmt(r.credit):"";
+    row["Balance"]=commaFmt(Math.abs(runningBal))+(runningBal<0?" Dr":"");
+    row["Status"]=r.status||"posted";
+    return row;
+  });
+
   var actRow=dv({display:"flex",gap:"8px",marginBottom:"12px",flexWrap:"wrap"});
-  actRow.appendChild(expBtn(rows,"ledger.csv"));
+  actRow.appendChild(expBtn(exportRows,"ledger.csv"));
   actRow.appendChild(btn("Print",function(){
-    var tbl=rows.map(function(r){return "<tr><td>"+(r.date||"")+"</td><td>"+(r.account||"")+(r.subAccount?" / "+r.subAccount:"")+"</td><td>"+String(r.particulars||"").slice(0,60)+"</td><td class='neg' style='text-align:right'>"+(r.debit?Rs(r.debit):"")+"</td><td class='pos' style='text-align:right'>"+(r.credit?Rs(r.credit):"")+"</td></tr>";}).join("");
-    printStatement("General Ledger","<table><thead><tr><th>Date</th><th>Account</th><th>Particulars</th><th style='text-align:right'>Debit</th><th style='text-align:right'>Credit</th></tr></thead><tbody>"+tbl+"</tbody><tfoot><tr><td colspan='3'>TOTAL</td><td style='text-align:right'>"+Rs(totDr)+"</td><td style='text-align:right'>"+Rs(totCr)+"</td></tr></tfoot></table>");
+    var cols2=Object.keys(exportRows[0]);
+    var headHtml=cols2.map(function(c){return "<th"+(["Debit","Credit","Balance","Qty","#"].includes(c)?" style='text-align:right'":"")+">"+c+"</th>";}).join("");
+    var bodyHtml=exportRows.map(function(row){return "<tr>"+cols2.map(function(c){var v=row[c];var isNum=["Debit","Credit","Balance","Qty","#"].includes(c);return "<td"+(isNum?" style='text-align:right'":"")+">"+(v===""?"":String(v))+"</td>";}).join("")+"</tr>";}).join("");
+    var footCols=cols2.length-2;
+    printStatement("General Ledger","<table><thead><tr>"+headHtml+"</tr></thead><tbody>"+bodyHtml+"</tbody><tfoot><tr><td colspan='"+footCols+"'>TOTAL</td><td style='text-align:right'>"+Rs(totDr)+"</td><td style='text-align:right'>"+Rs(totCr)+"</td></tr></tfoot></table>");
   },"btn-o btn-sm"));
   w.appendChild(actRow);
   var thead=el("thead",{},el("tr",{}));
@@ -1188,7 +1233,7 @@ function rExecDash(){
 }
 
 function rStaffDash(){
-  var u=gU(S.user);var bal=pBal(S.user);var isUr=isUrdu();
+  var u=gU(S.user);var bal=pBalProvisional(S.user);var isUr=isUrdu();
   var myExp=S.expReq.filter(function(e){return e.requestedBy===S.user;});
   var todayAtt=S.attendance.find(function(a){return a.empId===S.user&&a.date===today();});
   var w=el("div",{});
@@ -1201,6 +1246,10 @@ function rStaffDash(){
   var hr2=dv({textAlign:"right"});
   hr2.appendChild(el("div",{style:{fontSize:"9px",fontWeight:"600",letterSpacing:".18em",textTransform:"uppercase",color:"rgba(184,151,58,.6)",marginBottom:"5px"}},isUr?"نقد بقایا":"Cash Balance"));
   hr2.appendChild(el("div",{style:{fontFamily:"'Cormorant Garamond',serif",fontSize:"32px",fontWeight:"600",color:"var(--g2)"}},(bal<0?"-":"")+Rs(Math.abs(bal))));
+  var notYetApproved=pBalProvisional(S.user)-pBal(S.user);
+  if(Math.abs(notYetApproved)>0.5){
+    hr2.appendChild(el("div",{style:{fontSize:"10px",color:"var(--wrn)",marginTop:"4px"}},(isUr?"زیر التواء میں شامل: ":"Includes pending: ")+Rs(Math.abs(notYetApproved))));
+  }
   hrow.appendChild(hl);hrow.appendChild(hr2);hero.appendChild(hrow);w.appendChild(hero);
   if(canUrdu())w.appendChild(LangToggle());
   if(!todayAtt){
@@ -1390,13 +1439,23 @@ function rMyEntries(){
       if(r.status==="rejected"&&r.rejection)item.appendChild(el("div",{style:{marginTop:"8px",padding:"8px 10px",background:"var(--neg2)",border:"1px solid rgba(184,92,74,.2)",borderRadius:"6px",fontSize:"12px",color:"var(--neg)"}},"Rejected: "+r.rejection));
       /* Staff can edit their own entry while it's still pending (before Danish/Director have
          reviewed it) to fix a typo or wrong amount, without needing to wait for a rejection
-         and resubmit from scratch. Once posted, editing is director-only via the main ledger. */
-      if((r.status==="pending"||r.status==="awaiting_approval")&&r.account!=="Cash Given"){
+         and resubmit from scratch. A rejected entry can also be fixed and resubmitted
+         here — doing so clears the rejection note and sends it back to pending. Once
+         posted by a director, editing is director-only from that point on. */
+      if((r.status==="pending"||r.status==="awaiting_approval"||r.status==="rejected")&&r.account!=="Cash Given"){
         var editId=r.id;
-        item.appendChild(btn("Edit",function(){
+        var actWrap=dv({display:"flex",gap:"7px",flexWrap:"wrap"});
+        actWrap.appendChild(btn(r.status==="rejected"?"Fix & Resubmit":"Edit",function(){
           S.fd["addCB"]={mode:"expense",date:r.date||today(),account:r.account||"",sub:r.subAccount||"",area:r.area||"",qty:r.qty||"",rate:"",vendor:"",billNo:r.billNo||"",part:r.particulars||"",partUr:r.particularsUr||"",debit:r.debit||"",credit:r.credit||"",giveTo:"",_fix:editId};
           set({view:"addCB"});
         },"btn-o btn-sm"));
+        actWrap.appendChild(btn("Delete",function(){
+          if(!confirm("Delete this entry? This cannot be undone."))return;
+          addAudit("SELF_DELETE","CB#"+r.cbNo);
+          removeRow("cb","r7_cb",editId);
+          toast("Deleted");render();
+        },"btn-neg btn-sm"));
+        item.appendChild(actWrap);
       }
       if(r.account==="Cash Given"&&r.linkId){
         var undoId=r.id;
@@ -1673,17 +1732,19 @@ function rDirEdit(){
   var btnRow=dv({display:"flex",gap:"10px"});
   btnRow.appendChild(btn("Save Changes",function(){
     if(!fd.account){toast("Enter account",true);return;}
-    /* Non-directors editing an already-posted entry send it back for review rather
-       than silently keeping it posted with unreviewed changes — same rule as the
-       pending/awaiting_approval edit path in My Entries, applied consistently here too. */
-    var wasPosted=targetRow&&targetRow.status==="posted";
-    var newStatus=isDirector?(targetRow?targetRow.status:"posted"):(wasPosted?"pending":(targetRow?targetRow.status:"pending"));
+    /* canEditRow already guarantees a non-director can never reach this screen for an
+       entry that's already posted — so status never needs to change here on save,
+       for anyone. A director's edit to a posted entry stays posted; a staff member's
+       edit to their own not-yet-posted entry keeps whatever status it already had
+       (pending stays pending, a rejected entry being fixed stays available for
+       resubmission via its own explicit flow rather than silently flipping status
+       here). */
     addAudit("EDIT","CB#"+fd._id);
-    S.cb=S.cb.map(function(e){return e.id!==fd._id?e:Object.assign({},e,{date:fd.date||e.date,account:fd.account,subAccount:fd.sub,area:fd.area,qty:fd.qty,billNo:fd.billNo,particulars:fd.part,debit:parseFloat(fd.debit||0)||0,credit:parseFloat(fd.credit||0)||0,status:newStatus,editedBy:S.user,editedAt:now2()});});
+    S.cb=S.cb.map(function(e){return e.id!==fd._id?e:Object.assign({},e,{date:fd.date||e.date,account:fd.account,subAccount:fd.sub,area:fd.area,qty:fd.qty,billNo:fd.billNo,particulars:fd.part,debit:parseFloat(fd.debit||0)||0,credit:parseFloat(fd.credit||0)||0,editedBy:S.user,editedAt:now2()});});
     var updated=S.cb.find(function(e){return e.id===fd._id;});
     svRow("cb","r7_cb",updated);
     S.fd["dir_edit"]=null;
-    toast(!isDirector&&wasPosted?"Updated — sent back for review":"Updated");
+    toast("Updated");
     if(isDirector)S.cbf={lv:"journal",person:"",site:"",search:"",d1:"",d2:""};
     set({view:backView});
   },"btn-g"));
