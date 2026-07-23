@@ -360,6 +360,20 @@ function svRow(stateKey,localKey,row){
 }
 
 function canUrdu(){return S.user&&(gU(S.user).lang==="ur");}
+
+/* Shared edit-permission check for any cashbook row, used everywhere the ledger is
+   shown so the rule is identical no matter which screen you're looking at it from.
+   Directors can edit any posted entry. Everyone else — staff, Danish, anyone — can
+   edit their OWN entries, at any status except the two special linked-transaction
+   types (Cash Given/Received legs, which have their own dedicated Undo flow to keep
+   both sides of a double-entry pair in sync — editing one side directly here would
+   desync the pair). */
+function canEditRow(row){
+  if(!row)return false;
+  if(ROLE_MAP[S.user]==="director")return true;
+  if(row.account==="Cash Given"||row.account==="Cash Received")return false;
+  return row.person===S.user;
+}
 /* Staff designations (Supervisor, Sales, etc.) are no longer shown anywhere in the UI —
    only the person's name. Danish and directors still show their role, since those are
    functional titles that clarify authority in approval flows. */
@@ -539,12 +553,75 @@ function nCBNo(){var max=S.cb.reduce(function(a,e){return Math.max(a,parseInt((e
 function nSNo(site){var cnt=S.cb.filter(function(e){return e.account===site;}).length;return site+"-"+String(cnt+1).padStart(3,"0");}
 function nCHQNo(){var max=S.bank.filter(function(e){return e.chqNo;}).reduce(function(a,e){return Math.max(a,parseInt(e.chqNo)||0);},0);return String(max+1).padStart(4,"0");}
 
-function pBal(pid){return S.cb.filter(function(e){return e.person===pid&&e.status==="posted";}).reduce(function(s,e){return s+parseFloat(e.credit||0)-parseFloat(e.debit||0);},0);}
+/* ═══════════════════════════════════════════════════════════════════════
+   CORE ACCOUNT LEDGER — the ONLY function in the entire app that decides
+   which cashbook entries belong to a given account. Every balance shown
+   anywhere (dashboard, ledger, statements, reports) must be derived from
+   this function's output — never write a new independent S.cb.filter for
+   "does this entry belong to account X." That pattern is exactly what
+   caused entries to show in one place and not another: 5+ separate
+   hand-written filters that could silently drift out of sync with each
+   other. This is the fix — one rule, everywhere.
+
+   accountKind: "person" | "site" | "vendor" | "door" | "misc"
+   accountId:   the person's id, OR the exact account/client name string
+
+   Matching rule per kind:
+   - person: entry.person === accountId
+   - site / door / misc: entry.account === accountId OR entry.subAccount === accountId
+     (site, door-project-by-client-name, and freeform/misc accounts are all
+     just "named accounts" — they use the identical matching rule; only
+     "person" is special because staff/directors are matched by their
+     internal user id field, not by the free-text account name).
+
+   Returns: { rows: [...posted entries, oldest first], debit, credit, balance }
+   where balance = credit - debit (positive = in hand / owed to them,
+   negative = spent / they owe). Callers that specifically need "total
+   spent" (a site) or "net balance" (a person) just read .debit or
+   .balance from the same result — no separate calculation logic anywhere.
+   ═══════════════════════════════════════════════════════════════════════ */
+function accountLedger(accountKind,accountId,opts){
+  opts=opts||{};
+  var includeAllStatuses=!!opts.includeAllStatuses; // My Entries needs pending/rejected too
+  var rows=S.cb.filter(function(e){
+    if(!includeAllStatuses&&e.status!=="posted")return false;
+    if(accountKind==="person")return e.person===accountId;
+    return e.account===accountId||e.subAccount===accountId;
+  }).sort(function(a,b){
+    var av=a.created||a.date||"";var bv=b.created||b.date||"";
+    return av>bv?1:-1;
+  });
+  var debit=0,credit=0;
+  rows.forEach(function(e){
+    if(e.status==="posted"){debit+=parseFloat(e.debit||0);credit+=parseFloat(e.credit||0);}
+  });
+  return {rows:rows,debit:debit,credit:credit,balance:credit-debit};
+}
+
+/* Every account currently in use, grouped by kind — used to build the Misc Balances
+   list and to make sure nothing posted against a real name gets missed anywhere. */
+function allActiveAccounts(){
+  var knownSites={};CSITES.forEach(function(s){knownSites[s]=true;});SITES.forEach(function(s){knownSites[s]=true;});
+  var knownBanks={};BANKS.forEach(function(b){knownBanks[b.name]=true;});
+  var knownDoorClients={};S.doorProjects.forEach(function(p){knownDoorClients[p.client]=true;});
+  var excluded={"Cash Given":true,"Cash Received":true,"Office":true,"TDC":true,"Suspense":true,"Cash Office":true,"Payables":true,"Other Exp":true,"Personal":true};
+  var misc={};
+  S.cb.filter(function(e){return e.status==="posted";}).forEach(function(e){
+    [e.account,e.subAccount].forEach(function(acc){
+      if(!acc)return;
+      if(knownSites[acc]||knownBanks[acc]||knownDoorClients[acc]||excluded[acc])return;
+      misc[acc]=true;
+    });
+  });
+  return Object.keys(misc).sort();
+}
+
+function pBal(pid){return accountLedger("person",pid).balance;}
 function bBal(bid){return S.bank.filter(function(e){return e.bid===bid;}).reduce(function(s,e){return s+(e.typ==="in"?parseFloat(e.amount||0):-parseFloat(e.amount||0));},0);}
 function cBal(cid){return S.cc.filter(function(e){return e.cid===cid;}).reduce(function(s,e){return s+(e.typ==="pay"?-parseFloat(e.amount||0):parseFloat(e.amount||0));},0);}
-function vBal(vid){var b=S.ventry.filter(function(e){return e.vid===vid&&e.type==="bill";}).reduce(function(s,e){return s+parseFloat(e.amount||0);},0);var p=S.ventry.filter(function(e){return e.vid===vid&&e.type==="pay";}).reduce(function(s,e){return s+parseFloat(e.amount||0);},0);return b-p;}
+function siteSpent(s){return accountLedger("site",s).debit;}
 function siteBudget(s){return(S.sites.find(function(x){return x.id===s;})||{budget:0}).budget||0;}
-function siteSpent(s){return S.cb.filter(function(e){return e.status==="posted"&&e.account===s;}).reduce(function(x,e){return x+parseFloat(e.debit||0);},0);}
+function vBal(vid){var b=S.ventry.filter(function(e){return e.vid===vid&&e.type==="bill";}).reduce(function(s,e){return s+parseFloat(e.amount||0);},0);var p=S.ventry.filter(function(e){return e.vid===vid&&e.type==="pay";}).reduce(function(s,e){return s+parseFloat(e.amount||0);},0);return b-p;}
 function totalPayables(){return S.vendors.reduce(function(s,v){return s+Math.max(0,vBal(v.id));},0);}
 
 function addAudit(action,detail){var newLog={id:uid(),user:S.user,action:action,detail:detail,at:now2()};S.auditLog=[newLog].concat(S.auditLog).slice(0,500);svRow("auditLog","r7_au",newLog);}
@@ -893,8 +970,13 @@ function startAutoSync(){
 
 /* ═══ BLOCK 5: LEDGER TABLE + LOGIN ═══ */
 
-function LedgerTable(rows,showPerson,canEdit){
+function LedgerTable(rows,showPerson,canEditFn){
   if(!rows||!rows.length)return el("div",{style:{textAlign:"center",padding:"30px",color:"var(--ink4)",fontSize:"12px"}},"No entries");
+  /* canEditFn may be passed as a plain boolean (legacy callers) meaning "everyone can
+     edit every row here" (used for a director's own filtered/person view), or as a
+     function(row) for per-row checks — this is what lets every user edit their own
+     entries specifically, without directors losing their blanket edit rights elsewhere. */
+  var editCheck=typeof canEditFn==="function"?canEditFn:function(){return !!canEditFn;};
   var totDr=rows.reduce(function(s,r){return s+parseFloat(r.debit||0);},0);
   var totCr=rows.reduce(function(s,r){return s+parseFloat(r.credit||0);},0);
   var net=totCr-totDr;
@@ -908,7 +990,8 @@ function LedgerTable(rows,showPerson,canEdit){
   },"btn-o btn-sm"));
   w.appendChild(actRow);
   var thead=el("thead",{},el("tr",{}));
-  var cols=["#","Date"].concat(showPerson?["Person"]:[]).concat(["CB#","Account","Sub","Area","Qty","Bill#","Particulars","Debit","Credit","Balance","Status","Bill"]).concat(canEdit?[""]:[]);
+  var anyEditable=rows.some(function(r){return editCheck(r);});
+  var cols=["#","Date"].concat(showPerson?["Person"]:[]).concat(["CB#","Account","Sub","Area","Qty","Bill#","Particulars","Debit","Credit","Balance","Status","Bill"]).concat(anyEditable?[""]:[]);
   cols.forEach(function(c){var th=el("th",{},c);if(["Debit","Credit","Balance","Qty"].includes(c))th.style.textAlign="right";thead.querySelector("tr").appendChild(th);});
   var tbody=el("tbody",{});
   var bal=0;
@@ -935,11 +1018,13 @@ function LedgerTable(rows,showPerson,canEdit){
     var bc=el("td",{style:{textAlign:"right",fontFamily:"'Cormorant Garamond',serif",fontSize:"15px",fontWeight:"600",color:bal>=0?"var(--pos)":"var(--neg)",whiteSpace:"nowrap"}});bc.textContent=Rs(bal)+(bal<0?" Dr":"");tr.appendChild(bc);
     var stc=el("td",{});stc.appendChild(Badge(r.status||"posted"));tr.appendChild(stc);
     var billc=el("td",{});if(r.bill_photo)billc.appendChild(el("a",{href:r.bill_photo,target:"_blank",style:{fontSize:"11px",color:"var(--g)",fontWeight:"600"}},"View"));else{billc.style.color="var(--ink4)";billc.textContent="—";}tr.appendChild(billc);
-    if(canEdit){
+    if(anyEditable){
       var ec=el("td",{style:{whiteSpace:"nowrap"}});
-      var rid=r.id;
-      ec.appendChild(el("button",{style:{background:"var(--g4)",border:"1px solid rgba(184,151,58,.25)",color:"var(--g)",borderRadius:"4px",padding:"4px 8px",cursor:"pointer",fontSize:"11px",marginRight:"4px"},onClick:function(){S.fd["dir_edit"]={_id:rid,date:r.date||"",account:r.account||"",sub:r.subAccount||"",area:r.area||"",qty:r.qty||"",billNo:r.billNo||"",part:r.particulars||"",partUr:r.particularsUr||"",debit:r.debit||"",credit:r.credit||""};set({view:"dirEdit"});}},"\u270F Edit"));
-      ec.appendChild(el("button",{style:{background:"var(--neg2)",border:"1px solid rgba(184,92,74,.25)",color:"var(--neg)",borderRadius:"4px",padding:"4px 8px",cursor:"pointer",fontSize:"11px"},onClick:function(){if(!confirm("Delete this entry?"))return;addAudit("DELETE","CB#"+r.cbNo);removeRow("cb","r7_cb",rid);toast("Deleted");render();}},"\u2715"));
+      if(editCheck(r)){
+        var rid=r.id;
+        ec.appendChild(el("button",{style:{background:"var(--g4)",border:"1px solid rgba(184,151,58,.25)",color:"var(--g)",borderRadius:"4px",padding:"4px 8px",cursor:"pointer",fontSize:"11px",marginRight:"4px"},onClick:function(){S.fd["dir_edit"]={_id:rid,date:r.date||"",account:r.account||"",sub:r.subAccount||"",area:r.area||"",qty:r.qty||"",billNo:r.billNo||"",part:r.particulars||"",partUr:r.particularsUr||"",debit:r.debit||"",credit:r.credit||""};set({view:"dirEdit"});}},"\u270F Edit"));
+        ec.appendChild(el("button",{style:{background:"var(--neg2)",border:"1px solid rgba(184,92,74,.25)",color:"var(--neg)",borderRadius:"4px",padding:"4px 8px",cursor:"pointer",fontSize:"11px"},onClick:function(){if(!confirm("Delete this entry?"))return;addAudit("DELETE","CB#"+r.cbNo);removeRow("cb","r7_cb",rid);toast("Deleted");render();}},"\u2715"));
+      }
       tr.appendChild(ec);
     }
     tbody.appendChild(tr);
@@ -1273,7 +1358,8 @@ function rExpApprove(){
 /* ═══ BLOCK 8: CASH BOOK ENTRIES + APPROVAL QUEUES ═══ */
 
 function rMyEntries(){
-  var allMine=S.cb.filter(function(e){return e.person===S.user;});
+  var mineAcct=accountLedger("person",S.user,{includeAllStatuses:true});
+  var allMine=mineAcct.rows;
   var posted=allMine.filter(function(e){return e.status==="posted";}).sort(function(a,b){var av=a.created||a.date||"";var bv=b.created||b.date||"";return av>bv?1:-1;});
   var pendingOrRejected=allMine.filter(function(e){return e.status!=="posted";}).sort(function(a,b){return b.created>a.created?1:-1;});
   var w=el("div",{});
@@ -1283,7 +1369,7 @@ function rMyEntries(){
      balance, Total Debit/Credit, Export CSV, Print — via the shared LedgerTable. */
   if(posted.length){
     w.appendChild(el("div",{style:{fontFamily:"'Cormorant Garamond',serif",fontSize:"17px",fontWeight:"500",color:"var(--ink)",letterSpacing:".03em",marginBottom:"10px"}},"My Statement"));
-    w.appendChild(LedgerTable(posted,false,false));
+    w.appendChild(LedgerTable(posted,false,canEditRow));
   }else{
     w.appendChild(Card("My Statement",null,el("div",{style:{textAlign:"center",padding:"20px",color:"var(--ink4)",fontSize:"12px"}},"No posted entries yet")));
   }
@@ -1546,16 +1632,28 @@ function rLedger(){
   if(cf.person||cf.site||cf.search||cf.d1||cf.d2)fb.appendChild(btn("Clear",function(){set({cbf:{lv:cf.lv||"journal",sort:sortDir}});},"btn-o btn-sm"));
   if(isDir)fb.appendChild(btn("+ New Entry",function(){set({view:"addCB"});},"btn-g btn-sm"));
   w.appendChild(fb);
-  if(lv==="byP"){U.forEach(function(u){var mine=posted.filter(function(e){return e.person===u.id;});if(!mine.length)return;var bal=mine.reduce(function(s,e){return s+parseFloat(e.credit||0)-parseFloat(e.debit||0);},0);var bb=el("span",{cls:"badge "+(bal>=0?"bg":"br")},(bal>=0?"In Hand: ":"Shortfall: ")+Rs(Math.abs(bal)));w.appendChild(Card(u.name+" — "+u.role,bb,LedgerTable(mine,false,isDir)));});}
-  else if(lv==="byS"){SITES.forEach(function(site){var rows=posted.filter(function(e){return e.account===site||e.subAccount===site;});if(!rows.length)return;var tot=rows.reduce(function(s,e){return s+parseFloat(e.debit||0);},0);var bb=el("span",{cls:"badge bgold"},"Spent: "+Rs(tot));w.appendChild(Card(site,bb,LedgerTable(rows,true,isDir)));});}
-  else w.appendChild(LedgerTable(posted,true,isDir));
+  if(lv==="byP"){U.forEach(function(u){var mine=posted.filter(function(e){return e.person===u.id;});if(!mine.length)return;var bal=mine.reduce(function(s,e){return s+parseFloat(e.credit||0)-parseFloat(e.debit||0);},0);var bb=el("span",{cls:"badge "+(bal>=0?"bg":"br")},(bal>=0?"In Hand: ":"Shortfall: ")+Rs(Math.abs(bal)));w.appendChild(Card(u.name,bb,LedgerTable(mine,false,canEditRow)));});}
+  else if(lv==="byS"){SITES.filter(function(s){return s!=="W-93";}).forEach(function(site){var rows=posted.filter(function(e){return e.account===site||e.subAccount===site;});if(!rows.length)return;var tot=rows.reduce(function(s,e){return s+parseFloat(e.debit||0);},0);var bb=el("span",{cls:"badge bgold"},"Spent: "+Rs(tot));w.appendChild(Card(site,bb,LedgerTable(rows,true,canEditRow)));});}
+  else w.appendChild(LedgerTable(posted,true,canEditRow));
   return w;
 }
 
 function rDirEdit(){
-  var fd=S.fd["dir_edit"];if(!fd){set({view:"ldg"});return el("div",{});}
+  var fd=S.fd["dir_edit"];if(!fd){set({view:ROLE_MAP[S.user]==="director"?"ldg":"myE"});return el("div",{});}
+  var targetRow=S.cb.find(function(e){return e.id===fd._id;});
+  var isDirector=ROLE_MAP[S.user]==="director";
+  if(!isDirector&&!canEditRow(targetRow)){
+    /* Safety net: this screen should only ever be reached via a button that already
+       checked canEditRow, but if state ever gets here some other way, refuse rather
+       than silently let someone edit an entry that isn't theirs. */
+    S.fd["dir_edit"]=null;
+    toast("You can only edit your own entries",true);
+    set({view:"myE"});
+    return el("div",{});
+  }
+  var backView=isDirector?"ldg":"myE";
   var w=el("div",{});
-  w.appendChild(el("div",{cls:"al-w"},"Director Edit — changes apply immediately"));
+  w.appendChild(el("div",{cls:"al-w"},isDirector?"Director Edit — changes apply immediately":"Editing your own entry"));
   var dlAcc=el("datalist",{id:"dl_de_acc"});ACCS.forEach(function(a){dlAcc.appendChild(el("option",{value:a}));});
   var dlSub=el("datalist",{id:"dl_de_sub"});SUBS.forEach(function(a){dlSub.appendChild(el("option",{value:a}));});
   w.appendChild(dlAcc);w.appendChild(dlSub);
@@ -1573,8 +1671,23 @@ function rDirEdit(){
   amtRow.appendChild(dv({background:"rgba(94,140,106,.06)",border:"1px solid rgba(94,140,106,.2)",borderRadius:"7px",padding:"10px"},Fld("Credit (Rs)",Inp(fd.credit,function(v){fd.credit=v;if(v)fd.debit="";},"number","0"))));
   w.appendChild(amtRow);
   var btnRow=dv({display:"flex",gap:"10px"});
-  btnRow.appendChild(btn("Save Changes",function(){if(!fd.account){toast("Enter account",true);return;}addAudit("EDIT","CB#"+fd._id);S.cb=S.cb.map(function(e){return e.id!==fd._id?e:Object.assign({},e,{date:fd.date||e.date,account:fd.account,subAccount:fd.sub,area:fd.area,qty:fd.qty,billNo:fd.billNo,particulars:fd.part,editedBy:S.user,editedAt:now2()});});var updated=S.cb.find(function(e){return e.id===fd._id;});svRow("cb","r7_cb",updated);S.fd["dir_edit"]=null;toast("Updated");S.cbf={lv:"journal",person:"",site:"",search:"",d1:"",d2:""};set({view:"ldg"});},"btn-g"));
-  btnRow.appendChild(btn("Cancel",function(){S.fd["dir_edit"]=null;set({view:"ldg"});},"btn-o"));
+  btnRow.appendChild(btn("Save Changes",function(){
+    if(!fd.account){toast("Enter account",true);return;}
+    /* Non-directors editing an already-posted entry send it back for review rather
+       than silently keeping it posted with unreviewed changes — same rule as the
+       pending/awaiting_approval edit path in My Entries, applied consistently here too. */
+    var wasPosted=targetRow&&targetRow.status==="posted";
+    var newStatus=isDirector?(targetRow?targetRow.status:"posted"):(wasPosted?"pending":(targetRow?targetRow.status:"pending"));
+    addAudit("EDIT","CB#"+fd._id);
+    S.cb=S.cb.map(function(e){return e.id!==fd._id?e:Object.assign({},e,{date:fd.date||e.date,account:fd.account,subAccount:fd.sub,area:fd.area,qty:fd.qty,billNo:fd.billNo,particulars:fd.part,debit:parseFloat(fd.debit||0)||0,credit:parseFloat(fd.credit||0)||0,status:newStatus,editedBy:S.user,editedAt:now2()});});
+    var updated=S.cb.find(function(e){return e.id===fd._id;});
+    svRow("cb","r7_cb",updated);
+    S.fd["dir_edit"]=null;
+    toast(!isDirector&&wasPosted?"Updated — sent back for review":"Updated");
+    if(isDirector)S.cbf={lv:"journal",person:"",site:"",search:"",d1:"",d2:""};
+    set({view:backView});
+  },"btn-g"));
+  btnRow.appendChild(btn("Cancel",function(){S.fd["dir_edit"]=null;set({view:backView});},"btn-o"));
   w.appendChild(btnRow);
   return Card("Edit Entry",null,w);
 }
@@ -1604,7 +1717,7 @@ function rPL(){
     w.appendChild(dv({display:"flex",gap:"8px",marginBottom:"10px"},expBtn(rows2,"pl_monthly.csv")));
     w.appendChild(tbl2);
   }
-  if(tab==="sites"){SITES.forEach(function(site){var sE=posted.filter(function(e){return e.account===site||e.subAccount===site;});if(!sE.length)return;var income=sE.reduce(function(s,e){return s+parseFloat(e.credit||0);},0);var expenses=sE.reduce(function(s,e){return s+parseFloat(e.debit||0);},0);var net=income-expenses;var budget=siteBudget(site);var c=el("div",{});c.appendChild(el("div",{cls:"kgrid",style:{gridTemplateColumns:"repeat(3,1fr)"}},KPIsm("Income",income,"var(--pos)"),KPIsm("Expenses",expenses,"var(--neg)"),KPIsm("Net",Math.abs(net),net>=0?"var(--pos)":"var(--neg)")));if(budget>0){c.appendChild(el("div",{style:{fontSize:"12px",marginBottom:"3px"}},"Budget: "+Rs(budget)+" — "+Math.round((expenses/budget)*100)+"% used"));c.appendChild(ProgBar(Math.round((expenses/budget)*100)));}w.appendChild(Card(site,el("span",{cls:"badge "+(net>=0?"bg":"br")},net>=0?"Profit: "+Rs(net):"Loss: "+Rs(Math.abs(net))),c));});}
+  if(tab==="sites"){SITES.filter(function(s){return s!=="W-93";}).forEach(function(site){var acct=accountLedger("site",site);if(!acct.rows.length)return;var income=acct.credit;var expenses=acct.debit;var net=income-expenses;var budget=siteBudget(site);var c=el("div",{});c.appendChild(el("div",{cls:"kgrid",style:{gridTemplateColumns:"repeat(3,1fr)"}},KPIsm("Income",income,"var(--pos)"),KPIsm("Expenses",expenses,"var(--neg)"),KPIsm("Net",Math.abs(net),net>=0?"var(--pos)":"var(--neg)")));if(budget>0){c.appendChild(el("div",{style:{fontSize:"12px",marginBottom:"3px"}},"Budget: "+Rs(budget)+" — "+Math.round((expenses/budget)*100)+"% used"));c.appendChild(ProgBar(Math.round((expenses/budget)*100)));}w.appendChild(Card(site,el("span",{cls:"badge "+(net>=0?"bg":"br")},net>=0?"Profit: "+Rs(net):"Loss: "+Rs(Math.abs(net))),c));});}
   if(tab==="ytd"){var yr=new Date().getFullYear().toString();var yE=posted.filter(function(e){return(e.date||"").startsWith(yr);});var income2=yE.reduce(function(s,e){return s+parseFloat(e.credit||0);},0);var expenses2=yE.reduce(function(s,e){return s+parseFloat(e.debit||0);},0);var net2=income2-expenses2;w.appendChild(el("div",{cls:"kgrid"},KPI("Total Income "+yr,income2,"var(--pos)"),KPI("Total Expenses "+yr,expenses2,"var(--neg)"),KPI(net2>=0?"Net Profit":"Net Loss",Math.abs(net2),net2>=0?"var(--pos)":"var(--neg)")));}
   return w;
 }
@@ -1625,7 +1738,7 @@ function rCashFlow(){
   w.appendChild(oblCard);
   var membCard=Card("Member Cash Positions");
   var mg=dv({display:"flex",gap:"10px",flexWrap:"wrap"});
-  U.forEach(function(u){var bal=pBal(u.id);var bc=dv({background:"var(--s2)",border:"1px solid var(--bd)",borderRadius:"8px",padding:"12px 14px",minWidth:"130px"});bc.appendChild(dv({display:"flex",alignItems:"center",gap:"7px",marginBottom:"7px"},Avatar(u.id,26),el("div",{},el("div",{style:{fontWeight:"600",fontSize:"12px"}},u.name),el("div",{style:{fontSize:"10px",color:"var(--ink4)",textTransform:"uppercase",letterSpacing:".08em"}},u.role))));bc.appendChild(el("div",{style:{fontFamily:"'Cormorant Garamond',serif",fontSize:"18px",fontWeight:"600",color:bal>=0?"var(--pos)":"var(--neg)"}},Rs(Math.abs(bal))));bc.appendChild(el("div",{style:{fontSize:"9px",color:"var(--ink4)",textTransform:"uppercase",letterSpacing:".08em",marginTop:"2px"}},bal>=0?"In Hand":"Shortfall"));mg.appendChild(bc);});
+  U.forEach(function(u){var bal=pBal(u.id);var bc=dv({background:"var(--s2)",border:"1px solid var(--bd)",borderRadius:"8px",padding:"12px 14px",minWidth:"130px"});bc.appendChild(dv({display:"flex",alignItems:"center",gap:"7px",marginBottom:"7px"},Avatar(u.id,26),el("div",{},el("div",{style:{fontWeight:"600",fontSize:"12px"}},u.name),el("div",{style:{fontSize:"10px",color:"var(--ink4)",textTransform:"uppercase",letterSpacing:".08em"}},displayRole(u)))));bc.appendChild(el("div",{style:{fontFamily:"'Cormorant Garamond',serif",fontSize:"18px",fontWeight:"600",color:bal>=0?"var(--pos)":"var(--neg)"}},Rs(Math.abs(bal))));bc.appendChild(el("div",{style:{fontSize:"9px",color:"var(--ink4)",textTransform:"uppercase",letterSpacing:".08em",marginTop:"2px"}},bal>=0?"In Hand":"Shortfall"));mg.appendChild(bc);});
   membCard.querySelector(".cb").appendChild(mg);w.appendChild(membCard);
   return w;
 }
@@ -2107,16 +2220,16 @@ function rDoors(){
   var tab=S.tab.doors||"proj";var w=el("div",{});
   w.appendChild(Tabs([{id:"proj",l:"Projects"},{id:"bal",l:"Balances"},{id:"add",l:"Add New"}],tab,function(id){set({tab:Object.assign({},S.tab,{doors:id})});}));
   if(tab==="bal"){
-    w.appendChild(el("div",{cls:"al-b"},"Balance per door project — matched to cash entries where the account or sub-account equals the project's client name."));
+    w.appendChild(el("div",{cls:"al-b"},"Balance per door project — matched to cash entries where the account or sub-account equals the project's client name. Tap to view full statement."));
     if(!S.doorProjects.length){w.appendChild(el("div",{style:{textAlign:"center",padding:"20px",color:"var(--ink4)"}},"No door projects yet"));return w;}
     S.doorProjects.forEach(function(p){
-      var spent=S.cb.filter(function(e){return e.status==="posted"&&(e.account===p.client||e.subAccount===p.client);}).reduce(function(s,e){return s+parseFloat(e.debit||0);},0);
-      var received=S.cb.filter(function(e){return e.status==="posted"&&(e.account===p.client||e.subAccount===p.client);}).reduce(function(s,e){return s+parseFloat(e.credit||0);},0);
-      var net=received-spent;
-      var row=dv({display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 0",borderBottom:"1px solid var(--s2)"},
+      var acct=accountLedger("door",p.client);
+      var row=dv({display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 0",borderBottom:"1px solid var(--s2)",cursor:"pointer"},
         dv({},el("div",{style:{fontWeight:"600",fontSize:"13px"}},p.client),el("div",{style:{fontSize:"10px",color:"var(--ink4)",textTransform:"uppercase",letterSpacing:".06em"}},p.stage)),
-        el("div",{style:{fontFamily:"'Cormorant Garamond',serif",fontSize:"16px",fontWeight:"600",color:net>=0?"var(--pos)":"var(--neg)"}},Rs(Math.abs(net))+(net<0?" Spent":""))
+        el("div",{style:{fontFamily:"'Cormorant Garamond',serif",fontSize:"16px",fontWeight:"600",color:acct.balance>=0?"var(--pos)":"var(--neg)"}},Rs(Math.abs(acct.balance))+(acct.balance<0?" Spent":""))
       );
+      var clientName=p.client;
+      row.addEventListener("click",function(){set({cbf:{lv:"journal",person:"",site:clientName,search:"",d1:"",d2:""},view:"ldg"});});
       w.appendChild(row);
     });
     return w;
@@ -2326,31 +2439,13 @@ function rCRM(){
 function rMisc(){
   var w=el("div",{});
   w.appendChild(el("div",{cls:"al-b"},"Any account that isn't a construction site, bank, or door project shows here automatically — just post an entry using that name."));
-  var knownSites={};CSITES.forEach(function(s){knownSites[s]=true;});SITES.forEach(function(s){knownSites[s]=true;});
-  var knownBanks={};BANKS.forEach(function(b){knownBanks[b.name]=true;});
-  var knownDoorClients={};S.doorProjects.forEach(function(p){knownDoorClients[p.client]=true;});
-  var excluded={"Cash Given":true,"Cash Received":true,"Office":true,"TDC":true,"Suspense":true,"Cash Office":true,"Payables":true,"Other Exp":true,"Personal":true};
-
-  var posted=S.cb.filter(function(e){return e.status==="posted";});
-  var accountTotals={};
-  posted.forEach(function(e){
-    var acc=e.account;
-    if(!acc)return;
-    if(knownSites[acc]||knownBanks[acc]||knownDoorClients[acc]||excluded[acc])return;
-    if(!accountTotals[acc])accountTotals[acc]={debit:0,credit:0};
-    accountTotals[acc].debit+=parseFloat(e.debit||0);
-    accountTotals[acc].credit+=parseFloat(e.credit||0);
-  });
-
-  var names=Object.keys(accountTotals).sort();
+  var names=allActiveAccounts();
   if(!names.length){w.appendChild(el("div",{style:{textAlign:"center",padding:"24px",color:"var(--ink4)"}},"No miscellaneous accounts yet"));return w;}
-
   names.forEach(function(name){
-    var t=accountTotals[name];
-    var net=t.credit-t.debit;
+    var acct=accountLedger("misc",name);
     var row=dv({display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 0",borderBottom:"1px solid var(--s2)",cursor:"pointer"},
       el("span",{style:{fontWeight:"600",fontSize:"13px"}},name),
-      el("span",{style:{fontFamily:"'Cormorant Garamond',serif",fontSize:"16px",fontWeight:"600",color:net>=0?"var(--pos)":"var(--neg)"}},Rs(Math.abs(net))+(net<0?" Dr":""))
+      el("span",{style:{fontFamily:"'Cormorant Garamond',serif",fontSize:"16px",fontWeight:"600",color:acct.balance>=0?"var(--pos)":"var(--neg)"}},Rs(Math.abs(acct.balance))+(acct.balance<0?" Dr":""))
     );
     row.addEventListener("click",function(){set({cbf:{lv:"journal",person:"",site:name,search:"",d1:"",d2:""},view:"ldg"});});
     w.appendChild(row);
