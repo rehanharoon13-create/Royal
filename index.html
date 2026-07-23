@@ -301,7 +301,21 @@ var CARDS=[{id:"bop",name:"BOP Credit Card",due:22},{id:"js",name:"JS Bank",due:
 /* NOTE: per-employee "X Cash" text accounts were removed from here — Give Cash mode
    (see rAddCB) is the only correct way to move cash to a team member, since typing a name
    into a free-text account field here would NOT actually credit that person's balance. */
-var ACCS=["B-552","G-396","G-139","J-1","Doors","W-93","Office","TDC","Suspense","Cash Office","Payables","Other Exp","Personal","HS Meezan","Ahmad Meezan","Rehan Alfalah","Cash Given","Cash Received"];
+var ACCS=["B-552","G-396","G-139","J-1","Doors","W-93","Office","TDC","Suspense","Cash Office","Payables","Other Exp","Personal","HS Meezan","Ahmad Meezan","Rehan Alfalah","Cash Given","Cash Received","Office Exp","Zaheer","Ather","Rehan Expense"];
+
+/* Sub-account suggestions specific to Office Exp — shown only when Office Exp is the
+   selected main account, instead of the generic construction-material SUBS list which
+   doesn't apply here. One line per staff member's salary is generated from SAL_LIST
+   automatically so it never drifts out of sync with the real employee list. */
+var OFFICE_EXP_SUBS=["Stationery","Rehan sb Mobile","Haroon sb Mobile","Ahmad sb Mobile",
+  "LE 9463 Petrol","LE 9463 Repairs","LE 9463",
+  "LED 1891 Petrol","LED 1891 Repairs","LED 1891",
+  "AJB-200 Petrol","AJB-200 Repairs","AJB-200",
+  "Entertainment","Advertisement","Printing"];
+function officeExpSubOptions(){
+  var salaryLines=SAL_LIST.map(function(s){return s.p+" Salary";});
+  return OFFICE_EXP_SUBS.concat(salaryLines);
+}
 var SUBS=["Cement","Bricks","Steel","Steel Wire","Crush","Bajjar","Filling","Waterstopper","Plastic","Bore","Water Motor","Electric","Hardware","Carriage","Freight","Guard","Guard-Salary","Paint","Glass","Grass","Carpenter","Gardner","Marble Polish","Entertainment","Printing","Stationery","Marketing","Groceries","Bank Charges","Salary","Fuel","Advance","Labour","Travel","Other"];
 var UNITS=["Bags","Nos","Kg","Ton","Sqft","Rft","Cubic ft","Litre","Set","Sheets","Truck","Other"];
 var DOOR_STAGES=["Quotation","Approved","Production","Polishing","Packing","Dispatch","Installed","Completed"];
@@ -1483,7 +1497,11 @@ function rAddCB(){
   }
 
   var dlAcc=el("datalist",{id:"dl_cb_acc"});ACCS.forEach(function(a){dlAcc.appendChild(el("option",{value:a}));});
-  var dlSub=el("datalist",{id:"dl_cb_sub"});SUBS.forEach(function(a){dlSub.appendChild(el("option",{value:a}));});
+  /* Sub Account suggestions depend on which main Account is selected — Office Exp
+     gets its own specific list (phones, vehicles, staff salaries) instead of the
+     generic construction-material list, which doesn't apply there. */
+  var subOptions=fd.account==="Office Exp"?officeExpSubOptions():SUBS;
+  var dlSub=el("datalist",{id:"dl_cb_sub"});subOptions.forEach(function(a){dlSub.appendChild(el("option",{value:a}));});
   var dlVnd=el("datalist",{id:"dl_cb_vnd"});S.vendors.forEach(function(v){dlVnd.appendChild(el("option",{value:v.name}));});
   w.appendChild(dlAcc);w.appendChild(dlSub);w.appendChild(dlVnd);
   w.appendChild(PhotoZone(FID,isUr?UR.photoBtn:"Attach Bill Photo"));
@@ -1492,16 +1510,17 @@ function rAddCB(){
   var fixEntry=fd._fix?S.cb.find(function(e){return e.id===fd._fix;}):null;
   var previewCBNo=fixEntry?fixEntry.cbNo:nCBNo();
   w.appendChild(dv({background:"var(--g4)",border:"1px solid rgba(184,151,58,.2)",borderRadius:"6px",padding:"8px 12px",marginBottom:"12px",fontSize:"12px"},el("span",{style:{fontWeight:"700",color:"var(--g)"}},previewCBNo)));
+  if(fd.account==="TDC")w.appendChild(el("div",{cls:"al-b"},isUr?"TDC اندراج: سب اکاؤنٹ میں پراجیکٹ نمبر لکھیں (مثلاً P-274)، اور وینڈر میں کام کی قسم اور شخص کا نام (مثلاً \"ترکھان — اشرف\")":"TDC entry: put the project name/number in Sub Account (e.g. P-274), and the category and person in Vendor (e.g. \"Carpenter — Ashraf\")"));
   if(fd.account&&(fd.debit||fd.credit)){var dups=detectDups({id:"new",account:fd.account,date:fd.date||today(),debit:parseFloat(fd.debit||0),credit:parseFloat(fd.credit||0)});if(dups.length>0)w.appendChild(el("div",{cls:"al-w"},"Possible duplicate: "+dups.length+" similar entries in last 3 days"));}
   if(fd.account&&fd.sub&&!fd.part&&!fd.partUr){var suggestion=learnPattern(fd.account,fd.sub);if(suggestion){w.appendChild(dv({display:"flex",gap:"8px",alignItems:"center",padding:"9px 11px",background:"var(--g5)",border:"1px solid rgba(184,151,58,.2)",borderRadius:"6px",marginBottom:"10px"},el("span",{style:{fontSize:"11px",color:"var(--g3)",flex:"1"}},"\u2728 AI pattern match: "+suggestion.slice(0,55)),btn("Use",function(){fd.part=suggestion;render();},"btn-o btn-sm")));}}
   var fg=el("div",{cls:"fg"});
   fg.appendChild(Fld(isUr?"تاریخ":"Date",Inp(fd.date,function(v){fd.date=v;},"date")));
   fg.appendChild(Fld(isUr?"اکاؤنٹ":"Account",Inp(fd.account,function(v){fd.account=v;render();},"text",isUr?"لکھیں یا فہرست سے چنیں":"Type or pick from list","dl_cb_acc")));
-  fg.appendChild(Fld(isUr?"ذیلی اکاؤنٹ":"Sub Account",Inp(fd.sub,function(v){fd.sub=v;render();},"text",isUr?"لکھیں یا فہرست سے چنیں":"Type or pick from list","dl_cb_sub")));
+  fg.appendChild(Fld(isUr?"ذیلی اکاؤنٹ":"Sub Account",Inp(fd.sub,function(v){fd.sub=v;render();},"text",fd.account==="TDC"?(isUr?"پراجیکٹ نمبر، مثلاً P-274":"Project name/number, e.g. P-274"):(isUr?"لکھیں یا فہرست سے چنیں":"Type or pick from list"),"dl_cb_sub")));
   fg.appendChild(Fld(isUr?"علاقہ":"Area",Inp(fd.area,function(v){fd.area=v;},"text")));
   fg.appendChild(Fld(isUr?"مقدار":"Qty",Inp(fd.qty,function(v){fd.qty=v;if(v&&fd.rate)fd.debit=String((parseFloat(v)*parseFloat(fd.rate||0))||"");render();},"number")));
   fg.appendChild(Fld(isUr?"ریٹ":"Rate (per unit)",Inp(fd.rate,function(v){fd.rate=v;if(v&&fd.qty)fd.debit=String((parseFloat(fd.qty)*parseFloat(v||0))||"");render();},"number","0")));
-  fg.appendChild(Fld(isUr?"وینڈر":"Vendor",Inp(fd.vendor,function(v){fd.vendor=v;},"text",isUr?"لکھیں یا فہرست سے چنیں":"Type or pick from list","dl_cb_vnd")));
+  fg.appendChild(Fld(isUr?"وینڈر":"Vendor",Inp(fd.vendor,function(v){fd.vendor=v;},"text",fd.account==="TDC"?(isUr?"مثلاً: ترکھان — اشرف":"e.g. Carpenter — Ashraf"):(isUr?"لکھیں یا فہرست سے چنیں":"Type or pick from list"),"dl_cb_vnd")));
   fg.appendChild(Fld(isUr?"بل نمبر":"Bill #",Inp(fd.billNo,function(v){fd.billNo=v;},"text")));
   w.appendChild(fg);
   w.appendChild(Fld(isUr?"تفصیل (اردو)":"Particulars / Description",TA(isUr?fd.partUr:fd.part,function(v){if(isUr)fd.partUr=v;else fd.part=v;},3,isUr?"اردو میں تفصیل...":"Describe the transaction...",isUr)));
