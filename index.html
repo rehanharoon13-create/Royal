@@ -459,6 +459,27 @@ async function getAllLockouts(){
   try{return (await sbGet("login_lockout"))||[];}catch(e){return [];}
 }
 
+/* Merges freshly-pulled Supabase rows into local state by id, instead of replacing the
+   array wholesale. This is the critical fix for a real data-loss bug: the 25-second
+   auto-sync was calling loadFromSupabase, which did S[key]=rows — a full overwrite. If a
+   person just created an entry and its background push to Supabase (sbUp) hadn't finished
+   yet, or failed, the next auto-sync would pull the OLD cloud data and silently erase the
+   brand-new local entry before it ever had a chance to sync. Merging by id means: any row
+   that exists locally but isn't in the cloud data yet is kept, not deleted, and Supabase's
+   version wins only for rows that exist on both sides (since a successful sync means the
+   cloud copy is the confirmed, current one). */
+function mergeById(localArr,cloudArr){
+  var cloudMap={};
+  cloudArr.forEach(function(r){cloudMap[r.id]=r;});
+  var localMap={};
+  localArr.forEach(function(r){localMap[r.id]=r;});
+  var merged=[];
+  var seen={};
+  cloudArr.forEach(function(r){merged.push(r);seen[r.id]=true;});
+  localArr.forEach(function(r){if(!seen[r.id])merged.push(r);});
+  return merged;
+}
+
 async function loadFromSupabase(silent){
   if(!silent)loader(true,"Syncing from cloud...");
   try{
@@ -478,11 +499,11 @@ async function loadFromSupabase(silent){
     ];
     for(var i=0;i<loads.length;i++){
       var l=loads[i];
-      try{var rows=await sbGet(l.t);if(rows&&rows.length){S[l.p]=rows.map(l.f);LS(l.k,S[l.p]);}}catch(e2){console.warn("load",l.t,e2);}
+      try{var rows=await sbGet(l.t);if(rows){var cloudRows=rows.map(l.f);S[l.p]=mergeById(S[l.p]||[],cloudRows);LS(l.k,S[l.p]);}}catch(e2){console.warn("load",l.t,e2);}
     }
-    try{var bl=await sbGet("bills");if(bl&&bl.length)S.bills=bl.map(function(r){return{id:r.id,n:r.bill_name||"",prop:r.prop||"",cat:r.cat||"",due:r.due_day||null,amt:parseFloat(r.amt||0),paid:r.paid_month||null};});}catch(e3){}
-    try{var di=await sbGet("door_inv");if(di&&di.length)S.doorInvStock=di.map(function(r){return{id:r.id,n:r.name,unit:r.unit||"",qty:parseFloat(r.qty||0),reorder:parseFloat(r.reorder||0),updated:r.updated_at||""};});}catch(e4){}
-    try{var si=await sbGet("sites");if(si&&si.length)S.sites=si.map(function(r){return{id:r.id,name:r.name||r.id,budget:parseFloat(r.budget||0),client:r.client||"",notes:r.notes||""};});}catch(e5){}
+    try{var bl=await sbGet("bills");if(bl){var cloudBills=bl.map(function(r){return{id:r.id,n:r.bill_name||"",prop:r.prop||"",cat:r.cat||"",due:r.due_day||null,amt:parseFloat(r.amt||0),paid:r.paid_month||null};});S.bills=mergeById(S.bills||[],cloudBills);}}catch(e3){}
+    try{var di=await sbGet("door_inv");if(di){var cloudDoorInv=di.map(function(r){return{id:r.id,n:r.name,unit:r.unit||"",qty:parseFloat(r.qty||0),reorder:parseFloat(r.reorder||0),updated:r.updated_at||""};});S.doorInvStock=mergeById(S.doorInvStock||[],cloudDoorInv);}}catch(e4){}
+    try{var si=await sbGet("sites");if(si){var cloudSites=si.map(function(r){return{id:r.id,name:r.name||r.id,budget:parseFloat(r.budget||0),client:r.client||"",notes:r.notes||""};});S.sites=mergeById(S.sites||[],cloudSites);}}catch(e5){}
     if(!silent)toast("Synced",false,1500);
   }catch(e){console.error("sync error",e);if(!silent)toast("Local data only",true,2000);}
   if(!silent)loader(false);
@@ -1552,7 +1573,7 @@ function rDirEdit(){
   amtRow.appendChild(dv({background:"rgba(94,140,106,.06)",border:"1px solid rgba(94,140,106,.2)",borderRadius:"7px",padding:"10px"},Fld("Credit (Rs)",Inp(fd.credit,function(v){fd.credit=v;if(v)fd.debit="";},"number","0"))));
   w.appendChild(amtRow);
   var btnRow=dv({display:"flex",gap:"10px"});
-  btnRow.appendChild(btn("Save Changes",function(){if(!fd.account){toast("Enter account",true);return;}addAudit("EDIT","CB#"+fd._id);S.cb=S.cb.map(function(e){return e.id!==fd._id?e:Object.assign({},e,{date:fd.date||e.date,account:fd.account,subAccount:fd.sub,area:fd.area,qty:fd.qty,billNo:fd.billNo,particulars:fd.part,editedBy:S.user,editedAt:now2()});});var updated=S.cb.find(function(e){return e.id===fd._id;});svRow("cb","r7_cb",updated);S.fd["dir_edit"]=null;toast("Updated");set({view:"ldg"});},"btn-g"));
+  btnRow.appendChild(btn("Save Changes",function(){if(!fd.account){toast("Enter account",true);return;}addAudit("EDIT","CB#"+fd._id);S.cb=S.cb.map(function(e){return e.id!==fd._id?e:Object.assign({},e,{date:fd.date||e.date,account:fd.account,subAccount:fd.sub,area:fd.area,qty:fd.qty,billNo:fd.billNo,particulars:fd.part,editedBy:S.user,editedAt:now2()});});var updated=S.cb.find(function(e){return e.id===fd._id;});svRow("cb","r7_cb",updated);S.fd["dir_edit"]=null;toast("Updated");S.cbf={lv:"journal",person:"",site:"",search:"",d1:"",d2:""};set({view:"ldg"});},"btn-g"));
   btnRow.appendChild(btn("Cancel",function(){S.fd["dir_edit"]=null;set({view:"ldg"});},"btn-o"));
   w.appendChild(btnRow);
   return Card("Edit Entry",null,w);
