@@ -1322,25 +1322,28 @@ function rAttendance(){
 function rMyEntries(){
   var mineAcct=accountLedger("person",S.user,{includeAllStatuses:true});
   var allMine=mineAcct.rows;
-  var posted=allMine.filter(function(e){return e.status==="posted";}).sort(function(a,b){var av=a.created||a.date||"";var bv=b.created||b.date||"";return av>bv?1:-1;});
-  var pendingOrRejected=allMine.filter(function(e){return e.status!=="posted";}).sort(function(a,b){return b.created>a.created?1:-1;});
+  /* ONE unified cashbook — posted + pending + awaiting_approval + escalated all show
+     together in a single running-balance table, exactly like a real cashbook, so
+     staff always see their real position without hunting across separate sections.
+     Rejected entries are NOT part of the running balance (they are not a real
+     transaction until fixed and resubmitted) — shown separately below with a
+     Fix & Resubmit action instead. */
+  var inBook=allMine.filter(function(e){return e.status!=="rejected";}).sort(function(a,b){var av=a.created||a.date||"";var bv=b.created||b.date||"";return av>bv?1:-1;});
+  var rejected=allMine.filter(function(e){return e.status==="rejected";}).sort(function(a,b){return b.created>a.created?1:-1;});
   var w=el("div",{});
-  w.appendChild(el("div",{style:{fontFamily:"'Cormorant Garamond',serif",fontSize:"22px",fontWeight:"500",color:"var(--ink)",letterSpacing:".03em",marginBottom:"14px"}},"My Entries"));
+  w.appendChild(el("div",{style:{fontFamily:"'Cormorant Garamond',serif",fontSize:"22px",fontWeight:"500",color:"var(--ink)",letterSpacing:".03em",marginBottom:"14px"}},"My Cash Book"));
 
-  /* Posted entries render in the exact same statement format directors see — running
-     balance, Total Debit/Credit, Export CSV, Print — via the shared LedgerTable. */
-  if(posted.length){
-    w.appendChild(el("div",{style:{fontFamily:"'Cormorant Garamond',serif",fontSize:"17px",fontWeight:"500",color:"var(--ink)",letterSpacing:".03em",marginBottom:"10px"}},"My Statement"));
-    w.appendChild(LedgerTable(posted,false,canEditRow));
+  if(inBook.length){
+    w.appendChild(LedgerTable(inBook,false,canEditRow));
   }else{
-    w.appendChild(Card("My Statement",null,el("div",{style:{textAlign:"center",padding:"20px",color:"var(--ink4)",fontSize:"12px"}},"No posted entries yet")));
+    w.appendChild(Card("My Cash Book",null,el("div",{style:{textAlign:"center",padding:"20px",color:"var(--ink4)",fontSize:"12px"}},"No entries yet")));
   }
 
-  /* Pending/rejected entries are not yet part of the official ledger, so they're kept
-     separate below rather than mixed into the running balance above. */
-  if(pendingOrRejected.length){
-    var pCard=Card("Pending & Returned",el("span",{cls:"badge bgold"},pendingOrRejected.length));
-    pendingOrRejected.forEach(function(r){
+  /* Rejected entries — kept separate since they don't count toward the balance above
+     until fixed and resubmitted, at which point they rejoin the main table as pending. */
+  if(rejected.length){
+    var pCard=Card("Rejected — Needs Your Attention",el("span",{cls:"badge br"},rejected.length));
+    rejected.forEach(function(r){
       var isCr=parseFloat(r.credit||0)>0&&!parseFloat(r.debit||0);
       var item=el("div",{cls:"ei"});
       item.appendChild(dv({display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:"7px",gap:"8px"},dv({flex:"1",minWidth:"0"},el("div",{style:{fontWeight:"600",fontSize:"13px",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},(r.account||"")+(r.subAccount?" / "+r.subAccount:"")),dv({display:"flex",gap:"7px",marginTop:"3px",alignItems:"center",flexWrap:"wrap"},r.cbNo?el("span",{style:{fontSize:"10px",fontWeight:"700",color:"var(--g)",background:"var(--g4)",borderRadius:"3px",padding:"1px 6px"}},r.cbNo):null,el("span",{style:{fontSize:"11px",color:"var(--ink4)"}},r.date||""))),Badge(r.status)));
@@ -1349,16 +1352,11 @@ function rMyEntries(){
       var bot=dv({display:"flex",justifyContent:"space-between",alignItems:"center",gap:"8px"});
       bot.appendChild(el("div",{style:{fontFamily:"'Cormorant Garamond',serif",fontSize:"18px",fontWeight:"600",color:isCr?"var(--pos)":"var(--neg)"}},(isCr?"+":"-")+Rs(isCr?r.credit:r.debit)));
       item.appendChild(bot);
-      if(r.status==="rejected"&&r.rejection)item.appendChild(el("div",{style:{marginTop:"8px",padding:"8px 10px",background:"var(--neg2)",border:"1px solid rgba(184,92,74,.2)",borderRadius:"6px",fontSize:"12px",color:"var(--neg)"}},"Rejected: "+r.rejection));
-      /* Staff can edit their own entry while it's still pending (before Danish/Director have
-         reviewed it) to fix a typo or wrong amount, without needing to wait for a rejection
-         and resubmit from scratch. A rejected entry can also be fixed and resubmitted
-         here — doing so clears the rejection note and sends it back to pending. Once
-         posted by a director, editing is director-only from that point on. */
-      if((r.status==="pending"||r.status==="awaiting_approval"||r.status==="rejected")&&r.account!=="Cash Given"){
+      if(r.rejection)item.appendChild(el("div",{style:{marginTop:"8px",padding:"8px 10px",background:"var(--neg2)",border:"1px solid rgba(184,92,74,.2)",borderRadius:"6px",fontSize:"12px",color:"var(--neg)"}},"Rejected: "+r.rejection));
+      if(r.account!=="Cash Given"){
         var editId=r.id;
         var actWrap=dv({display:"flex",gap:"7px",flexWrap:"wrap"});
-        actWrap.appendChild(btn(r.status==="rejected"?"Fix & Resubmit":"Edit",function(){
+        actWrap.appendChild(btn("Fix & Resubmit",function(){
           S.fd["addCB"]={mode:"expense",date:r.date||today(),account:r.account||"",sub:r.subAccount||"",area:r.area||"",qty:r.qty||"",rate:"",vendor:"",billNo:r.billNo||"",part:r.particulars||"",partUr:r.particularsUr||"",debit:r.debit||"",credit:r.credit||"",giveTo:"",_fix:editId};
           set({view:"addCB"});
         },"btn-o btn-sm"));
@@ -1370,16 +1368,29 @@ function rMyEntries(){
         },"btn-neg btn-sm"));
         item.appendChild(actWrap);
       }
-      if(r.account==="Cash Given"&&r.linkId){
-        var undoId=r.id;
-        item.appendChild(btn("Undo — Reverse This Transfer",function(){if(!confirm("Reverse this cash transfer? This removes it from both your and the recipient's balance."))return;addAudit("UNDO_GIVE_CASH","CB#"+r.cbNo);removeRow("cb","r7_cb",undoId);toast("Transfer reversed");render();},"btn-neg btn-sm"));
-      }
       pCard.querySelector(".cb").appendChild(item);
     });
     w.appendChild(pCard);
   }
+
+  /* Cash Given/Received internal transfers are excluded from canEditRow (editing one
+     side directly would desync the linked pair), so they get their own dedicated
+     Undo action here instead — reversing removes both linked legs together. */
+  var myTransfers=inBook.filter(function(e){return e.account==="Cash Given"&&e.linkId;});
+  if(myTransfers.length){
+    var tCard=Card("Cash Given — Reversible",el("span",{cls:"badge bgold"},myTransfers.length));
+    myTransfers.forEach(function(r){
+      var item=el("div",{cls:"ei"});
+      item.appendChild(dv({display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:"7px",gap:"8px"},dv({flex:"1",minWidth:"0"},el("div",{style:{fontWeight:"600",fontSize:"13px"}},r.particulars||""),el("div",{style:{fontSize:"11px",color:"var(--ink4)",marginTop:"3px"}},r.date||"")),el("div",{style:{fontFamily:"'Cormorant Garamond',serif",fontSize:"18px",fontWeight:"600",color:"var(--neg)"}},"-"+Rs(r.debit))));
+      var undoId=r.id;
+      item.appendChild(btn("Undo — Reverse This Transfer",function(){if(!confirm("Reverse this cash transfer? This removes it from both your and the recipient's balance."))return;addAudit("UNDO_GIVE_CASH","CB#"+r.cbNo);removeRow("cb","r7_cb",undoId);toast("Transfer reversed");render();},"btn-neg btn-sm"));
+      tCard.querySelector(".cb").appendChild(item);
+    });
+    w.appendChild(tCard);
+  }
   return w;
 }
+
 
 function rAddCB(){
   var FID="addCB";
@@ -1391,7 +1402,50 @@ function rAddCB(){
   if(canUrdu())w.appendChild(LangToggle());
   if(isDir)w.appendChild(el("div",{cls:"al-b"},"Director entry — posts directly to ledger"));
 
-  w.appendChild(Fld(isUr?"قسم":"Entry Type",Sel(fd.mode,function(v){fd.mode=v;render();},[{v:"expense",l:isUr?"خرچہ / اکاؤنٹ اندراج":"Expense / Account Entry"},{v:"give",l:isUr?"نقد رقم کسی کو دیں":"Give Cash to Team Member"}])));
+  w.appendChild(Fld(isUr?"قسم":"Entry Type",Sel(fd.mode,function(v){fd.mode=v;render();},[{v:"expense",l:isUr?"خرچہ / اکاؤنٹ اندراج":"Expense / Account Entry"},{v:"give",l:isUr?"نقد رقم کسی کو دیں":"Give Cash to Team Member"},{v:"transfer",l:isUr?"دو اکاؤنٹس کے درمیان منتقلی":"Transfer Between Accounts"}])));
+
+  if(fd.mode==="transfer"){
+    if(!isDir){
+      w.appendChild(el("div",{cls:"al-r"},isUr?"صرف ڈائریکٹر اکاؤنٹس کے درمیان رقم منتقل کر سکتے ہیں":"Only directors can transfer money between accounts"));
+      return Card(isUr?"نئی اندراج":"New Cash Entry",null,w);
+    }
+    w.appendChild(el("div",{cls:"al-g"},isUr?"یہ اندراج فوری طور پر پوسٹ ہوگی۔ ایک اکاؤنٹ سے رقم منہا ہوگی اور دوسرے میں جمع ہوگی — دونوں طرف ایک ہی لین دین کے طور پر جڑے ہوں گے":"This posts immediately as a true double entry — debits the From account and credits the To account, linked as one transaction on both sides"));
+    var dlXferFrom=el("datalist",{id:"dl_xfer_from"});ACCS.forEach(function(a){dlXferFrom.appendChild(el("option",{value:a}));});
+    var dlXferTo=el("datalist",{id:"dl_xfer_to"});ACCS.forEach(function(a){dlXferTo.appendChild(el("option",{value:a}));});
+    w.appendChild(dlXferFrom);w.appendChild(dlXferTo);
+    var xferFg=el("div",{cls:"fg"});
+    xferFg.appendChild(Fld(isUr?"تاریخ":"Date",Inp(fd.date,function(v){fd.date=v;},"date")));
+    xferFg.appendChild(Fld(isUr?"سے (منہا)":"From (Debit)",Inp(fd.account,function(v){fd.account=v;},"text",isUr?"لکھیں یا فہرست سے چنیں":"Type or pick an account","dl_xfer_from")));
+    xferFg.appendChild(Fld(isUr?"کو (جمع)":"To (Credit)",Inp(fd.sub,function(v){fd.sub=v;},"text",isUr?"لکھیں یا فہرست سے چنیں":"Type or pick an account","dl_xfer_to")));
+    xferFg.appendChild(Fld(isUr?"رقم (روپے)":"Amount (Rs)",Inp(fd.debit,function(v){fd.debit=v;},"number","0")));
+    w.appendChild(xferFg);
+    w.appendChild(Fld(isUr?"وجہ (اختیاری)":"Reason (optional)",TA(isUr?fd.partUr:fd.part,function(v){if(isUr)fd.partUr=v;else fd.part=v;},2,isUr?"مثلاً: سائٹ کے درمیان بجٹ ایڈجسٹمنٹ":"e.g. Budget reallocation between sites",isUr)));
+    w.appendChild(btn(isUr?"منتقل کریں":"Transfer",async function(){
+      if(!fd.account||!fd.sub){toast(isUr?"دونوں اکاؤنٹس لکھیں":"Enter both accounts",true);return;}
+      if(fd.account===fd.sub){toast(isUr?"دونوں اکاؤنٹس ایک جیسے نہیں ہو سکتے":"From and To accounts must be different",true);return;}
+      if(!fd.debit||!parseFloat(fd.debit)){toast(isUr?"رقم لکھیں":"Enter amount",true);return;}
+      var partEn=fd.part;var partUr=fd.partUr;
+      if(isUr&&partUr&&!partEn)partEn=await translateToEnglish(partUr);
+      var amt=parseFloat(fd.debit);
+      var xferDate=fd.date||today();
+      var reasonTxt=partEn||"";
+      var xferCbNo=nCBNo();
+      var xferLinkId=uid();
+      /* True double entry — two linked rows, both post instantly (director-only, same
+         authority as Give Cash). Leg 1: debit the From account. */
+      var debitRow={id:uid(),person:S.user,date:xferDate,account:fd.account,subAccount:"",area:"",qty:"",billNo:"",particulars:(reasonTxt?reasonTxt+" — ":"")+"Transfer to "+fd.sub,particularsUr:partUr,debit:amt,credit:0,status:"posted",bill_photo:"",filed:true,rejection:"",cbNo:xferCbNo,siteNo:fd.account&&CSITES.includes(fd.account)?nSNo(fd.account):"",linkId:xferLinkId,created:now2(),approvedBy:S.user,editedBy:"",editedAt:""};
+      /* Leg 2: credit the To account. */
+      var creditRow={id:uid(),person:S.user,date:xferDate,account:fd.sub,subAccount:"",area:"",qty:"",billNo:"",particulars:(reasonTxt?reasonTxt+" — ":"")+"Transfer from "+fd.account,particularsUr:partUr,debit:0,credit:amt,status:"posted",bill_photo:"",filed:true,rejection:"",cbNo:xferCbNo,siteNo:fd.sub&&CSITES.includes(fd.sub)?nSNo(fd.sub):"",linkId:xferLinkId,created:now2(),approvedBy:S.user,editedBy:"",editedAt:""};
+      S.cb=[...S.cb,debitRow,creditRow];
+      svRow("cb","r7_cb",debitRow);svRow("cb","r7_cb",creditRow);
+      addAudit("ACCOUNT_TRANSFER",fd.account+" \u2192 "+fd.sub+" Rs "+fd.debit);
+      S.fd[FID]={mode:"transfer",date:today(),account:"",sub:"",area:"",qty:"",rate:"",vendor:"",billNo:"",part:"",partUr:"",debit:"",credit:"",giveTo:"",_fix:null};
+      toast(isUr?"منتقلی مکمل ہوئی":"Transfer complete");
+      S.cbf={lv:"journal",person:"",site:"",search:"",d1:"",d2:""};
+      set({view:"ldg"});
+    },"btn-g btn-full"));
+    return Card(isUr?"نئی اندراج":"New Cash Entry",null,w);
+  }
 
   if(fd.mode==="give"){
     w.appendChild(el("div",{cls:"al-g"},isUr?"یہ اندراج فوری طور پر پوسٹ ہوگی — منظوری کی ضرورت نہیں۔ آپ کے کیش سے رقم منہا ہوگی اور وصول کنندہ کے کیش میں جمع ہوگی":"This posts immediately — no approval needed. Amount is debited from your cash and credited to the recipient's cash"));
