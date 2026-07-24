@@ -351,6 +351,13 @@ var S={
   vouchers:LD("r7_vo",[]),petty:LD("r7_pt",[]),
   bills:LD("r7_bl",BILLS_DEF.map(function(b){return{id:b.id,n:b.n,prop:b.prop,cat:b.cat,due:b.due,amt:b.amt,paid:null};})),
   esc:LD("r7_esc",[]),auditLog:LD("r7_au",[]),
+  /* Chart of Accounts (light version): a director-managed, editable list layered on
+     top of the original hardcoded ACCS/SUBS. New accounts added here show up in every
+     account picker across the app immediately. This does NOT replace free-text entry
+     — "Others" style typing still works everywhere (e.g. Ather/Zaheer auto-discovery
+     on Misc Balances) — it just gives directors a way to formally register accounts
+     so they suggest consistently and typos don't silently create duplicate accounts. */
+  customAccounts:LD("r7_cacc",[]),customSubs:LD("r7_csub",[]),
   tab:{bank:"ov",cc:"ov",mat:"rcv",contr:"list",att:"today",vouch:"add",petty:"add",hr:"emp",bills:"bills",crm:"contacts",doors:"proj",doorInv:"stock"},
   photo:{},fd:{},
   cbf:{lv:"journal",person:"",site:"",search:"",d1:"",d2:""},
@@ -537,6 +544,8 @@ async function loadFromSupabase(silent){
     try{var bl=await sbGet("bills");if(bl){var cloudBills=bl.map(function(r){return{id:r.id,n:r.bill_name||"",prop:r.prop||"",cat:r.cat||"",due:r.due_day||null,amt:parseFloat(r.amt||0),paid:r.paid_month||null};});S.bills=mergeById(S.bills||[],cloudBills);}}catch(e3){}
     try{var di=await sbGet("door_inv");if(di){var cloudDoorInv=di.map(function(r){return{id:r.id,n:r.name,unit:r.unit||"",qty:parseFloat(r.qty||0),reorder:parseFloat(r.reorder||0),updated:r.updated_at||""};});S.doorInvStock=mergeById(S.doorInvStock||[],cloudDoorInv);}}catch(e4){}
     try{var si=await sbGet("sites");if(si){var cloudSites=si.map(function(r){return{id:r.id,name:r.name||r.id,budget:parseFloat(r.budget||0),client:r.client||"",notes:r.notes||""};});S.sites=mergeById(S.sites||[],cloudSites);}}catch(e5){}
+    try{var ca=await sbGet("custom_accounts");if(ca){var cloudNames=ca.map(function(r){return r.name;}).filter(Boolean);S.customAccounts=Array.from(new Set((S.customAccounts||[]).concat(cloudNames)));LS("r7_cacc",S.customAccounts);}}catch(e6){}
+    try{var cs=await sbGet("custom_subs");if(cs){var cloudSubNames=cs.map(function(r){return r.name;}).filter(Boolean);S.customSubs=Array.from(new Set((S.customSubs||[]).concat(cloudSubNames)));LS("r7_csub",S.customSubs);}}catch(e7){}
     if(!silent)toast("Synced",false,1500);
   }catch(e){console.error("sync error",e);if(!silent)toast("Local data only",true,2000);}
   if(!silent)loader(false);
@@ -633,6 +642,55 @@ function pBalProvisional(pid){return accountLedger("person",pid,{includeAllStatu
 
 /* Every account currently in use, grouped by kind — used to build the Misc Balances
    list and to make sure nothing posted against a real name gets missed anywhere. */
+/* The effective account list any picker in the app should use — hardcoded defaults
+   plus whatever a director has added via Account Security > Manage Accounts,
+   deduplicated and sorted. This is the ONE place that combines the two sources, same
+   principle as accountLedger being the one place balances are computed. */
+function effectiveAccounts(){
+  var combined=ACCS.concat(S.customAccounts||[]);
+  var seen={};var out=[];
+  combined.forEach(function(a){var k=a.trim();if(k&&!seen[k.toLowerCase()]){seen[k.toLowerCase()]=true;out.push(k);}});
+  return out.sort();
+}
+function effectiveSubs(){
+  var combined=SUBS.concat(S.customSubs||[]);
+  var seen={};var out=[];
+  combined.forEach(function(a){var k=a.trim();if(k&&!seen[k.toLowerCase()]){seen[k.toLowerCase()]=true;out.push(k);}});
+  return out.sort();
+}
+function addCustomAccount(name){
+  var trimmed=(name||"").trim();
+  if(!trimmed)return false;
+  if(effectiveAccounts().some(function(a){return a.toLowerCase()===trimmed.toLowerCase();})){toast("That account already exists",true);return false;}
+  S.customAccounts=[...S.customAccounts,trimmed];
+  LS("r7_cacc",S.customAccounts);
+  sbUp("custom_accounts",[{id:trimmed.toLowerCase(),name:trimmed,added_by:S.user,created_at:now2()}]);
+  addAudit("ADD_ACCOUNT",trimmed);
+  return true;
+}
+function addCustomSub(name){
+  var trimmed=(name||"").trim();
+  if(!trimmed)return false;
+  if(effectiveSubs().some(function(a){return a.toLowerCase()===trimmed.toLowerCase();})){toast("That sub-account already exists",true);return false;}
+  S.customSubs=[...S.customSubs,trimmed];
+  LS("r7_csub",S.customSubs);
+  sbUp("custom_subs",[{id:trimmed.toLowerCase(),name:trimmed,added_by:S.user,created_at:now2()}]);
+  addAudit("ADD_SUBACCOUNT",trimmed);
+  return true;
+}
+function removeCustomAccount(name){
+  S.customAccounts=S.customAccounts.filter(function(a){return a!==name;});
+  LS("r7_cacc",S.customAccounts);
+  sbDel("custom_accounts",name.toLowerCase());
+  addAudit("REMOVE_ACCOUNT",name);
+}
+function removeCustomSub(name){
+  S.customSubs=S.customSubs.filter(function(a){return a!==name;});
+  LS("r7_csub",S.customSubs);
+  sbDel("custom_subs",name.toLowerCase());
+  addAudit("REMOVE_SUBACCOUNT",name);
+}
+
 function allActiveAccounts(){
   var knownSites={};CSITES.forEach(function(s){knownSites[s]=true;});SITES.forEach(function(s){knownSites[s]=true;});
   var knownBanks={};BANKS.forEach(function(b){knownBanks[b.name]=true;});
@@ -721,6 +779,23 @@ function sp(s){var e=document.createElement("span");if(s&&typeof s==="object"&&!
 function btn(text,fn,cls){var b=el("button",{cls:"btn "+(cls||"btn-g"),onClick:fn});if(typeof text==="string")b.textContent=text;else b.appendChild(text);return b;}
 function Lbl(t){return el("div",{cls:"fl"},t);}
 function Inp(v,fn,type,ph,listId){var i=el("input",{type:type||"text",value:String(v||""),placeholder:ph||""});if(listId)i.setAttribute("list",listId);i.addEventListener("input",function(e){fn(e.target.value);});return i;}
+/* Same as Inp, but for fields whose value drives OTHER visible UI (contextual hints,
+   dynamic sub-account suggestions, banners) that needs to update live as the person
+   types. The critical difference: the state-updating callback fires on every
+   keystroke exactly like Inp, but the callback itself is expected to call render()
+   — and doing that on the "input" event forces the browser to recreate the input
+   element every keystroke, which drops focus and closes the on-screen keyboard after
+   every single character. This variant updates state silently on "input" (no
+   re-render, keyboard stays open, typing feels normal) and only fires the re-render
+   on "change" (blur, or picking a datalist option) — so hints still update, just not
+   mid-keystroke. Use this instead of Inp anywhere the onChange handler calls render(). */
+function InpLive(v,fn,onSettle,type,ph,listId){
+  var i=el("input",{type:type||"text",value:String(v||""),placeholder:ph||""});
+  if(listId)i.setAttribute("list",listId);
+  i.addEventListener("input",function(e){fn(e.target.value);});
+  i.addEventListener("change",function(){if(onSettle)onSettle();});
+  return i;
+}
 function TA(v,fn,rows,ph,isUr){var t=el("textarea",{rows:rows||2,placeholder:ph||""});if(isUr){t.style.direction="rtl";t.style.textAlign="right";t.style.fontFamily='"Noto Nastaliq Urdu",serif';t.style.fontSize="15px";t.style.lineHeight="2";}t.value=v||"";t.style.resize="vertical";t.addEventListener("input",function(e){fn(e.target.value);});return t;}
 function Sel(v,fn,opts){var s=el("select",{},el("option",{value:""},"— select —"));opts.forEach(function(o){var ov=o.v!==undefined?o.v:o;var ol=o.l!==undefined?o.l:o;var opt=el("option",{value:ov},ol);if(String(ov)===String(v||""))opt.selected=true;s.appendChild(opt);});s.addEventListener("change",function(e){fn(e.target.value);});return s;}
 function Fld(label,input){return dv({display:"flex",flexDirection:"column",gap:"4px"},Lbl(label),input);}
@@ -861,10 +936,10 @@ var NAV=[
   {id:"reports",l:"Reports",icon:"📄",roles:["danish","director"]},
   {id:"ai",l:"AI Analysis",icon:"✦",roles:["director"]},
   {id:"audit",l:"Audit Log",icon:"🔍",roles:["director"]},
-  {id:"security",l:"Account Security",icon:"🔒",roles:["director"]}
+  {id:"security",l:"Security & Accounts",icon:"🔒",roles:["director"]}
 ];
 
-var PAGE_TITLES={dash:"Dashboard",att:"Attendance",myE:"My Entries",dq:"Review Queue",dirApp:"Director Approval",ldg:"General Ledger",trial:"Trial Balance",pl:"Profit & Loss",cashflow:"Cash Flow",bank:"Bank",cc:"Credit Cards",vouch:"Vouchers",petty:"Petty Cash",constr:"Sites & Budget",mat:"Material",contr:"Contractors",vnd:"Vendors",misc:"Misc Balances",doors:"Door Projects",doorInv:"Doors Inventory",hr:"HR Module",bills:"Bills & Salaries",crm:"CRM",reports:"Reports",ai:"AI Analysis",audit:"Audit Log",addCB:"New Entry",dirEdit:"Edit Entry",security:"Account Security"};
+var PAGE_TITLES={dash:"Dashboard",att:"Attendance",myE:"My Entries",dq:"Review Queue",dirApp:"Director Approval",ldg:"General Ledger",trial:"Trial Balance",pl:"Profit & Loss",cashflow:"Cash Flow",bank:"Bank",cc:"Credit Cards",vouch:"Vouchers",petty:"Petty Cash",constr:"Sites & Budget",mat:"Material",contr:"Contractors",vnd:"Vendors",misc:"Misc Balances",doors:"Door Projects",doorInv:"Doors Inventory",hr:"HR Module",bills:"Bills & Salaries",crm:"CRM",reports:"Reports",ai:"AI Analysis",audit:"Audit Log",addCB:"New Entry",dirEdit:"Edit Entry",security:"Security & Accounts"};
 
 var BNAV={
   staff:[{id:"dash",icon:"⌂",l:"Home"},{id:"myE",icon:"📒",l:"Entries"},{id:"mat",icon:"⬡",l:"Material"},{id:"att",icon:"✓",l:"Attend"}],
@@ -1424,8 +1499,8 @@ function rAddCB(){
       return Card(isUr?"نئی اندراج":"New Cash Entry",null,w);
     }
     w.appendChild(el("div",{cls:"al-g"},isUr?"یہ اندراج فوری طور پر پوسٹ ہوگی۔ ایک اکاؤنٹ سے رقم منہا ہوگی اور دوسرے میں جمع ہوگی — دونوں طرف ایک ہی لین دین کے طور پر جڑے ہوں گے":"This posts immediately as a true double entry — debits the From account and credits the To account, linked as one transaction on both sides"));
-    var dlXferFrom=el("datalist",{id:"dl_xfer_from"});ACCS.forEach(function(a){dlXferFrom.appendChild(el("option",{value:a}));});
-    var dlXferTo=el("datalist",{id:"dl_xfer_to"});ACCS.forEach(function(a){dlXferTo.appendChild(el("option",{value:a}));});
+    var dlXferFrom=el("datalist",{id:"dl_xfer_from"});effectiveAccounts().forEach(function(a){dlXferFrom.appendChild(el("option",{value:a}));});
+    var dlXferTo=el("datalist",{id:"dl_xfer_to"});effectiveAccounts().forEach(function(a){dlXferTo.appendChild(el("option",{value:a}));});
     w.appendChild(dlXferFrom);w.appendChild(dlXferTo);
     var xferFg=el("div",{cls:"fg"});
     xferFg.appendChild(Fld(isUr?"تاریخ":"Date",Inp(fd.date,function(v){fd.date=v;},"date")));
@@ -1496,11 +1571,11 @@ function rAddCB(){
     return Card(isUr?"نئی اندراج":"New Cash Entry",null,w);
   }
 
-  var dlAcc=el("datalist",{id:"dl_cb_acc"});ACCS.forEach(function(a){dlAcc.appendChild(el("option",{value:a}));});
+  var dlAcc=el("datalist",{id:"dl_cb_acc"});effectiveAccounts().forEach(function(a){dlAcc.appendChild(el("option",{value:a}));});
   /* Sub Account suggestions depend on which main Account is selected — Office Exp
      gets its own specific list (phones, vehicles, staff salaries) instead of the
      generic construction-material list, which doesn't apply there. */
-  var subOptions=fd.account==="Office Exp"?officeExpSubOptions():SUBS;
+  var subOptions=fd.account==="Office Exp"?officeExpSubOptions():effectiveSubs();
   var dlSub=el("datalist",{id:"dl_cb_sub"});subOptions.forEach(function(a){dlSub.appendChild(el("option",{value:a}));});
   var dlVnd=el("datalist",{id:"dl_cb_vnd"});S.vendors.forEach(function(v){dlVnd.appendChild(el("option",{value:v.name}));});
   w.appendChild(dlAcc);w.appendChild(dlSub);w.appendChild(dlVnd);
@@ -1515,11 +1590,11 @@ function rAddCB(){
   if(fd.account&&fd.sub&&!fd.part&&!fd.partUr){var suggestion=learnPattern(fd.account,fd.sub);if(suggestion){w.appendChild(dv({display:"flex",gap:"8px",alignItems:"center",padding:"9px 11px",background:"var(--g5)",border:"1px solid rgba(184,151,58,.2)",borderRadius:"6px",marginBottom:"10px"},el("span",{style:{fontSize:"11px",color:"var(--g3)",flex:"1"}},"\u2728 AI pattern match: "+suggestion.slice(0,55)),btn("Use",function(){fd.part=suggestion;render();},"btn-o btn-sm")));}}
   var fg=el("div",{cls:"fg"});
   fg.appendChild(Fld(isUr?"تاریخ":"Date",Inp(fd.date,function(v){fd.date=v;},"date")));
-  fg.appendChild(Fld(isUr?"اکاؤنٹ":"Account",Inp(fd.account,function(v){fd.account=v;render();},"text",isUr?"لکھیں یا فہرست سے چنیں":"Type or pick from list","dl_cb_acc")));
-  fg.appendChild(Fld(isUr?"ذیلی اکاؤنٹ":"Sub Account",Inp(fd.sub,function(v){fd.sub=v;render();},"text",fd.account==="TDC"?(isUr?"پراجیکٹ نمبر، مثلاً P-274":"Project name/number, e.g. P-274"):(isUr?"لکھیں یا فہرست سے چنیں":"Type or pick from list"),"dl_cb_sub")));
+  fg.appendChild(Fld(isUr?"اکاؤنٹ":"Account",InpLive(fd.account,function(v){fd.account=v;},function(){render();},"text",isUr?"لکھیں یا فہرست سے چنیں":"Type or pick from list","dl_cb_acc")));
+  fg.appendChild(Fld(isUr?"ذیلی اکاؤنٹ":"Sub Account",InpLive(fd.sub,function(v){fd.sub=v;},function(){render();},"text",fd.account==="TDC"?(isUr?"پراجیکٹ نمبر، مثلاً P-274":"Project name/number, e.g. P-274"):(isUr?"لکھیں یا فہرست سے چنیں":"Type or pick from list"),"dl_cb_sub")));
   fg.appendChild(Fld(isUr?"علاقہ":"Area",Inp(fd.area,function(v){fd.area=v;},"text")));
-  fg.appendChild(Fld(isUr?"مقدار":"Qty",Inp(fd.qty,function(v){fd.qty=v;if(v&&fd.rate)fd.debit=String((parseFloat(v)*parseFloat(fd.rate||0))||"");render();},"number")));
-  fg.appendChild(Fld(isUr?"ریٹ":"Rate (per unit)",Inp(fd.rate,function(v){fd.rate=v;if(v&&fd.qty)fd.debit=String((parseFloat(fd.qty)*parseFloat(v||0))||"");render();},"number","0")));
+  fg.appendChild(Fld(isUr?"مقدار":"Qty",InpLive(fd.qty,function(v){fd.qty=v;if(v&&fd.rate)fd.debit=String((parseFloat(v)*parseFloat(fd.rate||0))||"");},function(){render();},"number")));
+  fg.appendChild(Fld(isUr?"ریٹ":"Rate (per unit)",InpLive(fd.rate,function(v){fd.rate=v;if(v&&fd.qty)fd.debit=String((parseFloat(fd.qty)*parseFloat(v||0))||"");},function(){render();},"number","0")));
   fg.appendChild(Fld(isUr?"وینڈر":"Vendor",Inp(fd.vendor,function(v){fd.vendor=v;},"text",fd.account==="TDC"?(isUr?"مثلاً: ترکھان — اشرف":"e.g. Carpenter — Ashraf"):(isUr?"لکھیں یا فہرست سے چنیں":"Type or pick from list"),"dl_cb_vnd")));
   fg.appendChild(Fld(isUr?"بل نمبر":"Bill #",Inp(fd.billNo,function(v){fd.billNo=v;},"text")));
   w.appendChild(fg);
@@ -1675,7 +1750,7 @@ function rLedger(){
   var fb=dv({display:"flex",gap:"8px",flexWrap:"wrap",marginBottom:"14px",alignItems:"center"});
   fb.appendChild(btn(sortDir==="oldest"?"\u2191 Oldest First":"\u2193 Newest First",function(){set({cbf:Object.assign({},cf,{sort:sortDir==="oldest"?"newest":"oldest"})});},"btn-o btn-sm"));
   if(lv!=="byS")fb.appendChild(Sel(cf.person||"",function(v){set({cbf:Object.assign({},cf,{person:v})});},[{v:"",l:"All Members"},...U.map(function(u){return{v:u.id,l:u.name};})]));
-  if(lv==="journal")fb.appendChild(Sel(cf.site||"",function(v){set({cbf:Object.assign({},cf,{site:v})});},[{v:"",l:"All Accounts"},...ACCS.map(function(a){return{v:a,l:a};})]));
+  if(lv==="journal")fb.appendChild(Sel(cf.site||"",function(v){set({cbf:Object.assign({},cf,{site:v})});},[{v:"",l:"All Accounts"},...effectiveAccounts().map(function(a){return{v:a,l:a};})]));
   var si=Inp(cf.search||"",function(v){set({cbf:Object.assign({},cf,{search:v})});},"text","Search...");si.style.maxWidth="130px";fb.appendChild(si);
   var d1i=Inp(cf.d1||"",function(v){set({cbf:Object.assign({},cf,{d1:v})});},"date");d1i.style.maxWidth="140px";fb.appendChild(d1i);
   var d2i=Inp(cf.d2||"",function(v){set({cbf:Object.assign({},cf,{d2:v})});},"date");d2i.style.maxWidth="140px";fb.appendChild(d2i);
@@ -1704,8 +1779,8 @@ function rDirEdit(){
   var backView=isDirector?(fd._postOnSave?"dirApp":"ldg"):"myE";
   var w=el("div",{});
   w.appendChild(el("div",{cls:"al-w"},fd._postOnSave?"Correct this entry, then Post — it will be approved immediately.":(isDirector?"Director Edit — changes apply immediately":"Editing your own entry")));
-  var dlAcc=el("datalist",{id:"dl_de_acc"});ACCS.forEach(function(a){dlAcc.appendChild(el("option",{value:a}));});
-  var dlSub=el("datalist",{id:"dl_de_sub"});SUBS.forEach(function(a){dlSub.appendChild(el("option",{value:a}));});
+  var dlAcc=el("datalist",{id:"dl_de_acc"});effectiveAccounts().forEach(function(a){dlAcc.appendChild(el("option",{value:a}));});
+  var dlSub=el("datalist",{id:"dl_de_sub"});effectiveSubs().forEach(function(a){dlSub.appendChild(el("option",{value:a}));});
   w.appendChild(dlAcc);w.appendChild(dlSub);
   var fg=el("div",{cls:"fg"});
   fg.appendChild(Fld("Date",Inp(fd.date,function(v){fd.date=v;},"date")));
@@ -1805,7 +1880,7 @@ function rBank(){
     w.appendChild(Fld("Payable To",Sel(fd.recipType,function(v){fd.recipType=v;fd.recipUser="";fd.recipName="";render();},[{v:"staff",l:"Staff Member"},{v:"others",l:"Others / Vendor / External"}])));
     w.appendChild(el("div",{style:{height:"8px"}}));
     if(fd.recipType==="staff"){w.appendChild(Fld("Staff Member",Sel(fd.recipUser,function(v){fd.recipUser=v;},U.filter(function(u){return ROLE_MAP[u.id]==="staff";}).map(function(u){return{v:u.id,l:u.name+" — "+u.role};}))));w.appendChild(el("div",{cls:"al-b",style:{marginTop:"8px"}},"Cheque credits to staff member's cash balance"));}
-    else{w.appendChild(el("div",{cls:"al-w"},"Cheque posts as direct expense in general journal."));var dlCA=el("datalist",{id:"dl_chq_a"});ACCS.forEach(function(a){dlCA.appendChild(el("option",{value:a}));});w.appendChild(dlCA);var fg3=el("div",{cls:"fg",style:{marginTop:"8px"}});fg3.appendChild(Fld("Recipient Name",Inp(fd.recipName,function(v){fd.recipName=v;},"text","Full name / company")));fg3.appendChild(Fld("Account",Inp(fd.account,function(v){fd.account=v;},"text","Account","dl_chq_a")));w.appendChild(fg3);w.appendChild(Fld("Description",TA(fd.particulars,function(v){fd.particulars=v;},2,"Purpose...")));}
+    else{w.appendChild(el("div",{cls:"al-w"},"Cheque posts as direct expense in general journal."));var dlCA=el("datalist",{id:"dl_chq_a"});effectiveAccounts().forEach(function(a){dlCA.appendChild(el("option",{value:a}));});w.appendChild(dlCA);var fg3=el("div",{cls:"fg",style:{marginTop:"8px"}});fg3.appendChild(Fld("Recipient Name",Inp(fd.recipName,function(v){fd.recipName=v;},"text","Full name / company")));fg3.appendChild(Fld("Account",Inp(fd.account,function(v){fd.account=v;},"text","Account","dl_chq_a")));w.appendChild(fg3);w.appendChild(Fld("Description",TA(fd.particulars,function(v){fd.particulars=v;},2,"Purpose...")));}
     w.appendChild(btn("Issue Cheque",function(){if(!fd.amount||!parseFloat(fd.amount)){toast("Enter amount",true);return;}if(fd.recipType==="staff"&&!fd.recipUser){toast("Select staff member",true);return;}if(fd.recipType==="others"&&(!fd.recipName.trim()||!fd.account||!fd.particulars.trim())){toast("Fill all fields",true);return;}var bkName=(BANKS.find(function(b){return b.id===fd.bid;})||{name:fd.bid}).name;var chqLinkId=fd.recipType==="staff"?uid():null;var newBankTxn={id:uid(),bid:fd.bid,typ:"out",amount:parseFloat(fd.amount),particulars:fd.recipType==="staff"?"Cheque to "+gU(fd.recipUser).name:fd.particulars+" — "+fd.recipName,chqNo:chqNo,date:fd.date||today(),linkId:chqLinkId,created:now2()};S.bank=[...S.bank,newBankTxn];svRow("bank","r7_bk",newBankTxn);if(fd.recipType==="staff"){var newCb={id:uid(),person:fd.recipUser,date:fd.date||today(),account:bkName,subAccount:"Cheque #"+chqNo,area:"",qty:"",billNo:chqNo,particulars:"Cheque #"+chqNo+" from "+bkName,particularsUr:"",debit:0,credit:parseFloat(fd.amount),status:"posted",filed:true,rejection:"",cbNo:nCBNo(),siteNo:"",linkId:chqLinkId,created:now2(),approvedBy:S.user,editedBy:"",editedAt:""};S.cb=[...S.cb,newCb];svRow("cb","r7_cb",newCb);}else{var newCb2={id:uid(),person:S.user,date:fd.date||today(),account:fd.account,subAccount:fd.sub,area:"",qty:"",billNo:chqNo,particulars:fd.particulars+" — Cheque #"+chqNo+" to "+fd.recipName+" via "+bkName,particularsUr:"",debit:parseFloat(fd.amount),credit:0,status:"posted",filed:true,rejection:"",cbNo:nCBNo(),siteNo:fd.account&&CSITES.includes(fd.account)?nSNo(fd.account):"",created:now2(),approvedBy:S.user,editedBy:"",editedAt:""};S.cb=[...S.cb,newCb2];svRow("cb","r7_cb",newCb2);}addAudit("CHEQUE","CHQ#"+chqNo+" Rs "+Rs(fd.amount));S.fd[FID]={bid:"hs",recipType:"staff",recipUser:"",recipName:"",account:"",sub:"",particulars:"",amount:"",date:today()};toast("Cheque #"+chqNo+" issued");render();},"btn-g btn-full"));
   }
   if(tab==="dep"){var FID2="bank_dep";if(!S.fd[FID2])S.fd[FID2]={bid:"hs",amount:"",date:today(),particulars:""};var fd2=S.fd[FID2];var fg4=el("div",{cls:"fg"});fg4.appendChild(Fld("Bank",Sel(fd2.bid,function(v){fd2.bid=v;},[{v:"hs",l:"HS Meezan"},{v:"am",l:"Ahmad Meezan"},{v:"ra",l:"Rehan Alfalah"}])));fg4.appendChild(Fld("Amount (Rs)",Inp(fd2.amount,function(v){fd2.amount=v;},"number")));fg4.appendChild(Fld("Date",Inp(fd2.date,function(v){fd2.date=v;},"date")));w.appendChild(fg4);w.appendChild(Fld("Details",TA(fd2.particulars,function(v){fd2.particulars=v;},2,"")));w.appendChild(btn("Record Deposit",function(){if(!fd2.amount){toast("Enter amount",true);return;}var newDep={id:uid(),bid:fd2.bid,typ:"in",amount:parseFloat(fd2.amount),particulars:fd2.particulars||"Deposit",date:fd2.date||today(),created:now2()};S.bank=[...S.bank,newDep];svRow("bank","r7_bk",newDep);S.fd[FID2]={bid:"hs",amount:"",date:today(),particulars:""};toast("Deposit recorded");render();},"btn-g btn-full"));}
@@ -1840,7 +1915,7 @@ function rBank(){
         w.appendChild(Fld("Staff Member",Sel(fd6.recipUser,function(v){fd6.recipUser=v;},U.map(function(u){return{v:u.id,l:u.name+" — "+u.role};}))));
         w.appendChild(el("div",{cls:"al-b",style:{marginTop:"8px"}},"Transfer credits to staff member's cash balance"));
       }else{
-        var dlXA=el("datalist",{id:"dl_xfer_acc"});ACCS.forEach(function(a){dlXA.appendChild(el("option",{value:a}));});w.appendChild(dlXA);
+        var dlXA=el("datalist",{id:"dl_xfer_acc"});effectiveAccounts().forEach(function(a){dlXA.appendChild(el("option",{value:a}));});w.appendChild(dlXA);
         var fg7b=el("div",{cls:"fg"});
         fg7b.appendChild(Fld("Recipient Name",Inp(fd6.recipName,function(v){fd6.recipName=v;},"text","Full name / company")));
         fg7b.appendChild(Fld("Account",Inp(fd6.account,function(v){fd6.account=v;},"text","Account","dl_xfer_acc")));
@@ -2591,6 +2666,60 @@ function rSecurity(){
     w.appendChild(row);
   });
   w.appendChild(btn("Refresh",function(){S.lockouts=undefined;render();},"btn-o btn-sm"));
+
+  /* Chart of Accounts management — light version. Directors can register new
+     accounts/sub-accounts so they show up as suggestions everywhere, without
+     removing the ability to type a one-off "Others" account freely elsewhere
+     (e.g. Ather/Zaheer-style auto-discovery on Misc Balances still works). */
+  var acctCard=Card("Manage Accounts",el("span",{style:{fontSize:"10px",color:"var(--ink4)"}},"Chart of Accounts"));
+  var acctBody=acctCard.querySelector(".cb");
+  acctBody.appendChild(el("div",{style:{fontSize:"12px",color:"var(--ink3)",marginBottom:"12px"}},"Accounts added here appear as suggestions in every Account/Sub Account field across the app. Anyone can still type a custom one-off name — this list just makes the common ones consistent and typo-free."));
+
+  var FID_ACC="new_custom_acc";if(!S.fd[FID_ACC])S.fd[FID_ACC]="";
+  var accRow=dv({display:"flex",gap:"8px",marginBottom:"14px"});
+  var accInp=Inp(S.fd[FID_ACC],function(v){S.fd[FID_ACC]=v;},"text","New account name");
+  accInp.style.flex="1";
+  accRow.appendChild(accInp);
+  accRow.appendChild(btn("Add",function(){if(addCustomAccount(S.fd[FID_ACC])){S.fd[FID_ACC]="";toast("Account added");render();}},"btn-g btn-sm"));
+  acctBody.appendChild(el("div",{style:{fontSize:"9px",fontWeight:"600",letterSpacing:".14em",textTransform:"uppercase",color:"var(--g3)",marginBottom:"6px"}},"Accounts"));
+  acctBody.appendChild(accRow);
+  var accList=dv({display:"flex",flexWrap:"wrap",gap:"6px",marginBottom:"18px"});
+  effectiveAccounts().forEach(function(a){
+    var isCustom=(S.customAccounts||[]).indexOf(a)!==-1;
+    var chip=dv({display:"flex",alignItems:"center",gap:"5px",background:isCustom?"var(--g4)":"var(--s2)",border:"1px solid "+(isCustom?"rgba(184,151,58,.25)":"var(--bd)"),borderRadius:"5px",padding:"4px 8px",fontSize:"11px"});
+    chip.appendChild(sp({},a));
+    if(isCustom){
+      var xBtn=el("span",{style:{cursor:"pointer",color:"var(--neg)",fontWeight:"700",marginLeft:"2px"}},"\u2715");
+      xBtn.addEventListener("click",function(){if(!confirm("Remove \""+a+"\" from the suggested accounts list?"))return;removeCustomAccount(a);toast("Removed");render();});
+      chip.appendChild(xBtn);
+    }
+    accList.appendChild(chip);
+  });
+  acctBody.appendChild(accList);
+
+  var FID_SUB="new_custom_sub";if(!S.fd[FID_SUB])S.fd[FID_SUB]="";
+  var subRow=dv({display:"flex",gap:"8px",marginBottom:"14px"});
+  var subInp=Inp(S.fd[FID_SUB],function(v){S.fd[FID_SUB]=v;},"text","New sub-account name");
+  subInp.style.flex="1";
+  subRow.appendChild(subInp);
+  subRow.appendChild(btn("Add",function(){if(addCustomSub(S.fd[FID_SUB])){S.fd[FID_SUB]="";toast("Sub-account added");render();}},"btn-g btn-sm"));
+  acctBody.appendChild(el("div",{style:{fontSize:"9px",fontWeight:"600",letterSpacing:".14em",textTransform:"uppercase",color:"var(--g3)",marginBottom:"6px"}},"Sub Accounts"));
+  acctBody.appendChild(subRow);
+  var subList=dv({display:"flex",flexWrap:"wrap",gap:"6px"});
+  effectiveSubs().forEach(function(a){
+    var isCustom=(S.customSubs||[]).indexOf(a)!==-1;
+    var chip=dv({display:"flex",alignItems:"center",gap:"5px",background:isCustom?"var(--g4)":"var(--s2)",border:"1px solid "+(isCustom?"rgba(184,151,58,.25)":"var(--bd)"),borderRadius:"5px",padding:"4px 8px",fontSize:"11px"});
+    chip.appendChild(sp({},a));
+    if(isCustom){
+      var xBtn2=el("span",{style:{cursor:"pointer",color:"var(--neg)",fontWeight:"700",marginLeft:"2px"}},"\u2715");
+      xBtn2.addEventListener("click",function(){if(!confirm("Remove \""+a+"\" from the suggested sub-accounts list?"))return;removeCustomSub(a);toast("Removed");render();});
+      chip.appendChild(xBtn2);
+    }
+    subList.appendChild(chip);
+  });
+  acctBody.appendChild(subList);
+  w.appendChild(acctCard);
+
   return w;
 }
 
