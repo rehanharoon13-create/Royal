@@ -210,6 +210,29 @@ function sbGet(tbl){
     .then(function(r){if(!r.ok)return[];return r.json();})
     .catch(function(){return[];});
 }
+/* Uploads a photo (bill, CC slip, material receipt, etc.) to a real, permanent
+   Supabase Storage bucket and returns its public URL. This is the fix for photos
+   "not viewable after logging in again" — the app previously only ever created a
+   temporary browser blob URL (URL.createObjectURL), which is destroyed the moment
+   the page reloads or a new session starts. That URL was never a real upload; it
+   just looked like one worked because the blob stayed alive within a single
+   browser tab session. This function actually persists the image data.
+   Requires a public Storage bucket named "bill-photos" to exist in Supabase. */
+function sbUploadPhoto(b64,mime,filenameHint){
+  var bytes=atob(b64);
+  var arr=new Uint8Array(bytes.length);
+  for(var i=0;i<bytes.length;i++)arr[i]=bytes.charCodeAt(i);
+  var ext=(mime||"image/jpeg").split("/")[1]||"jpg";
+  var path=(filenameHint||"photo")+"_"+Date.now()+"_"+Math.random().toString(36).slice(2,8)+"."+ext;
+  return fetch(SB_URL+"/storage/v1/object/bill-photos/"+path,{
+    method:"POST",
+    headers:{"apikey":SB_KEY,"Authorization":"Bearer "+SB_KEY,"Content-Type":mime||"image/jpeg"},
+    body:arr
+  }).then(function(r){
+    if(!r.ok){console.warn("Photo upload failed",r.status);return "";}
+    return SB_URL+"/storage/v1/object/public/bill-photos/"+path;
+  }).catch(function(e){console.warn("Photo upload error",e);return "";});
+}
 function sbUp(tbl,rows){
   if(!rows||!rows.length)return Promise.resolve();
   return fetch(SB_URL+"/rest/v1/"+tbl+"?on_conflict=id",{
@@ -283,14 +306,14 @@ function removeRow(stateKey,localKey,id){
 }
 
 var U=[
-  {id:"muzammil",name:"Muzammil Aslam",role:"Supervisor",pin:"1121",init:"MZ",clr:"#8A6E28",lang:"ur",email:"muzammil@royalinc.local"},
-  {id:"junaid",name:"Junaid Tahir",role:"Sales",pin:"2231",init:"JN",clr:"#4A7FA5",lang:"en",email:"junaid@royalinc.local"},
-  {id:"umair",name:"Umair Mirza",role:"Doors Supervisor",pin:"3341",init:"UM",clr:"#7B6E5A",lang:"ur",email:"umair@royalinc.local"},
-  {id:"usman",name:"Usman Ghani",role:"Supervisor J-1",pin:"4451",init:"UG",clr:"#5E8C6A",lang:"ur",email:"usman@royalinc.local"},
-  {id:"danish",name:"Danish",role:"Accountant",pin:"5561",init:"DN",clr:"#C08B35",lang:"en",email:"danish@royalinc.local"},
-  {id:"haroon",name:"Haroon sb",role:"Director",pin:"6671",init:"HS",clr:"#B85C4A",lang:"en",email:"royalcrownhomes@gmail.com"},
-  {id:"ahmad",name:"Ahmad sb",role:"Director",pin:"7781",init:"AS",clr:"#B8973A",lang:"en",email:"112ahmadharoon@gmail.com"},
-  {id:"rehan",name:"Rehan sb",role:"Director",pin:"8891",init:"RS",clr:"#6B6358",lang:"en",email:"rehanharoon13@gmail.com"}
+  {id:"muzammil",username:"muzammil",name:"Muzammil Aslam",role:"Supervisor",pin:"1121",init:"MZ",clr:"#8A6E28",lang:"ur",email:"muzammil@royalinc.local"},
+  {id:"junaid",username:"junaid",name:"Junaid Tahir",role:"Sales",pin:"2231",init:"JN",clr:"#4A7FA5",lang:"en",email:"junaid@royalinc.local"},
+  {id:"umair",username:"umair",name:"Umair Mirza",role:"Doors Supervisor",pin:"3341",init:"UM",clr:"#7B6E5A",lang:"ur",email:"umair@royalinc.local"},
+  {id:"usman",username:"usman",name:"Usman Ghani",role:"Supervisor J-1",pin:"4451",init:"UG",clr:"#5E8C6A",lang:"ur",email:"usman@royalinc.local"},
+  {id:"danish",username:"danish",name:"Danish",role:"Accountant",pin:"5561",init:"DN",clr:"#C08B35",lang:"en",email:"danish@royalinc.local"},
+  {id:"haroon",username:"haroon",name:"Haroon sb",role:"Director",pin:"6671",init:"HS",clr:"#B85C4A",lang:"en",email:"royalcrownhomes@gmail.com"},
+  {id:"ahmad",username:"ahmad",name:"Ahmad sb",role:"Director",pin:"7781",init:"AS",clr:"#B8973A",lang:"en",email:"112ahmadharoon@gmail.com"},
+  {id:"rehan",username:"rehan",name:"Rehan sb",role:"Director",pin:"8891",init:"RS",clr:"#6B6358",lang:"en",email:"rehanharoon13@gmail.com"}
 ];
 var ROLE_MAP={muzammil:"staff",junaid:"staff",umair:"staff",usman:"staff",danish:"danish",haroon:"director",ahmad:"director",rehan:"director"};
 var MAX_LOGIN_ATTEMPTS=10;
@@ -845,6 +868,21 @@ function PhotoZone(fid,label,onPhotoSet){
    directly from the browser — a public HTML page can never safely hold an API key.
    The Edge Function "royal-ai" must be deployed with ANTHROPIC_API_KEY set as a secret. */
 var AI_PROXY_URL=SB_URL+"/functions/v1/royal-ai";
+/* Real username+password login goes through this Edge Function, exactly like AI
+   calls go through royal-ai — the actual password check happens server-side using
+   Supabase's service role key, which the browser never sees. The browser only ever
+   sends what the person typed and gets back ok:true/false — it never has access to
+   password hashes or the ability to compare them itself. */
+var AUTH_PROXY_URL=SB_URL+"/functions/v1/royal-auth";
+async function callAuth(payload){
+  var resp=await fetch(AUTH_PROXY_URL,{
+    method:"POST",
+    headers:{"Content-Type":"application/json","Authorization":"Bearer "+SB_KEY,"apikey":SB_KEY},
+    body:JSON.stringify(payload)
+  });
+  var data=await resp.json();
+  return data;
+}
 async function callClaude(payload){
   var resp=await fetch(AI_PROXY_URL,{
     method:"POST",
@@ -1164,7 +1202,7 @@ function LedgerTable(rows,showPerson,canEditFn){
 /* LOGIN */
 function rLogin(){
   var root=document.getElementById("lr");root.innerHTML="";
-  var selUser="",pin="";
+  var username="",password="";
   var busy=false;
   var page=dv({minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",padding:"24px",background:"var(--bg)"});
   var box=dv({maxWidth:"400px",width:"100%"});
@@ -1179,43 +1217,64 @@ function rLogin(){
   var line=dv({height:"2px",background:"linear-gradient(90deg,var(--g3),var(--g),var(--g2))",margin:"-28px -28px 22px",borderRadius:"10px 10px 0 0"});
   card.appendChild(line);
   var lockNotice=dv({});card.appendChild(lockNotice);
-  card.appendChild(Fld("Your Name",el("select",{style:{width:"100%"},onChange:function(e){selUser=e.target.value;lockNotice.innerHTML="";}},el("option",{value:""},"— Select —"),...U.map(function(u){return el("option",{value:u.id},u.name+" — "+u.role);}))));
+
+  var userInp=el("input",{type:"text",placeholder:"Username",autocapitalize:"none",autocomplete:"username"});
+  userInp.addEventListener("input",function(e){username=e.target.value;lockNotice.innerHTML="";});
+  card.appendChild(Fld("Username",userInp));
   card.appendChild(el("div",{style:{height:"10px"}}));
-  var pinInp=el("input",{type:"password",placeholder:"4-digit PIN"});
-  pinInp.addEventListener("input",function(e){pin=e.target.value;});
-  card.appendChild(Fld("PIN",pinInp));
+
+  var passInp=el("input",{type:"password",placeholder:"Password",autocomplete:"current-password"});
+  passInp.addEventListener("input",function(e){password=e.target.value;});
+  card.appendChild(Fld("Password",passInp));
   card.appendChild(el("div",{style:{height:"16px"}}));
+
   var gb=el("button",{style:{width:"100%",padding:"13px",background:"linear-gradient(135deg,var(--g3),var(--g))",color:"#fff",border:"none",borderRadius:"7px",fontFamily:"Inter,sans-serif",fontSize:"12px",fontWeight:"700",cursor:"pointer",letterSpacing:".1em",textTransform:"uppercase",touchAction:"manipulation"},onClick:function(){go();}},"Enter System");
+
   async function go(){
     if(busy)return;
-    var u=U.find(function(x){return x.id===selUser;});
-    if(!u){toast("Please select your name",true);return;}
-    busy=true;gb.textContent="Checking…";
-    var status=await getLockoutStatus(u.id);
+    if(!username.trim()){toast("Enter your username",true);return;}
+    if(!password){toast("Enter your password",true);return;}
+    busy=true;gb.textContent="Checking\u2026";
+    lockNotice.innerHTML="";
+
+    /* First check lockout by looking up which internal user this username maps to.
+       We don't know the user_id until the Edge Function tells us, so lockout is
+       checked by username directly via the same lockout table, keyed the same way. */
+    var status=await getLockoutStatus(username.trim().toLowerCase());
     if(status.locked){
       busy=false;gb.textContent="Enter System";
-      lockNotice.innerHTML="";
-      lockNotice.appendChild(el("div",{cls:"al-r"},"This account is locked after "+MAX_LOGIN_ATTEMPTS+" incorrect PIN attempts. A director must unlock it from their Dashboard \u2192 Account Security before you can log in again."));
+      lockNotice.appendChild(el("div",{cls:"al-r"},"This account is locked after "+MAX_LOGIN_ATTEMPTS+" incorrect attempts. A director must unlock it from Security & Accounts before you can log in again."));
       return;
     }
-    if(pin!==u.pin){
-      var newCount=(status.failed_count||0)+1;
-      var nowLocked=await recordFailedLogin(u.id,newCount);
+
+    var result;
+    try{
+      result=await callAuth({action:"login",username:username.trim(),password:password});
+    }catch(e){
       busy=false;gb.textContent="Enter System";
-      pinInp.value="";pin="";pinInp.focus();
+      lockNotice.appendChild(el("div",{cls:"al-r"},"Could not reach the login server. Check your connection and try again."));
+      return;
+    }
+
+    if(!result||!result.ok){
+      var newCount=(status.failed_count||0)+1;
+      var nowLocked=await recordFailedLogin(username.trim().toLowerCase(),newCount);
+      busy=false;gb.textContent="Enter System";
+      passInp.value="";password="";passInp.focus();
       lockNotice.innerHTML="";
       if(nowLocked){
         lockNotice.appendChild(el("div",{cls:"al-r"},"Account locked after "+MAX_LOGIN_ATTEMPTS+" incorrect attempts. A director must unlock it."));
       }else{
         var remaining=MAX_LOGIN_ATTEMPTS-newCount;
-        toast("Incorrect PIN — "+remaining+" attempt"+(remaining===1?"":"s")+" remaining before lockout",true,3500);
+        toast("Incorrect username or password — "+remaining+" attempt"+(remaining===1?"":"s")+" remaining before lockout",true,3500);
       }
       return;
     }
-    /* Correct PIN — clear any prior failed attempts for this account */
-    await clearLoginAttempts(u.id);
-    S.user=selUser;
-    addAudit("LOGIN",gU(selUser).name);
+
+    /* Correct credentials — clear any prior failed attempts for this username */
+    await clearLoginAttempts(username.trim().toLowerCase());
+    S.user=result.user_id;
+    addAudit("LOGIN",gU(result.user_id).name);
     document.getElementById("lr").style.display="none";
     document.getElementById("app").style.display="flex";
     document.getElementById("bnav").style.display="block";
@@ -1223,7 +1282,7 @@ function rLogin(){
     renderShell();render();
     loadFromSupabase(false).then(function(){render();startAutoSync();});
   }
-  pinInp.addEventListener("keydown",function(e){if(e.key==="Enter")go();});
+  passInp.addEventListener("keydown",function(e){if(e.key==="Enter")go();});
   card.appendChild(gb);
   box.appendChild(card);
   page.appendChild(box);root.appendChild(page);
@@ -1390,12 +1449,23 @@ function rAttendance(){
     });
   }else{
     U.filter(function(u){return isAdmin||u.id===S.user;}).forEach(function(p){
-      var recs=S.attendance.filter(function(a){return a.empId===p.id;}).sort(function(a,b){return b.date>a.date?1:-1;}).slice(0,30);
+      var allRecs=S.attendance.filter(function(a){return a.empId===p.id;});
+      var cm=curMonth();
+      var thisMonthRecs=allRecs.filter(function(a){return (a.date||"").startsWith(cm);});
+      var presentThisMonth=thisMonthRecs.filter(function(r){return r.status==="present";}).length;
+      var absentThisMonth=thisMonthRecs.filter(function(r){return r.status==="absent";}).length;
+      var recs=allRecs.sort(function(a,b){return b.date>a.date?1:-1;}).slice(0,30);
       if(!recs.length)return;
       var pres=recs.filter(function(r){return r.status==="present";}).length;
       var abs=recs.filter(function(r){return r.status==="absent";}).length;
       var half=recs.filter(function(r){return r.status==="half";}).length;
       var pc=Card(p.name,dv({display:"flex",gap:"8px",alignItems:"center"},el("span",{cls:"badge bg"},pres+" P"),el("span",{cls:"badge br"},abs+" A"),el("span",{cls:"badge bw"},half+" H")));
+      /* Days-present summary for the current month — the number a director actually
+         wants at a glance, distinct from the raw last-30-records count above. */
+      pc.querySelector(".cb").appendChild(dv({display:"flex",gap:"14px",marginBottom:"12px",padding:"10px 12px",background:"var(--g5)",borderRadius:"6px",border:"1px solid rgba(184,151,58,.15)"},
+        dv({},el("div",{style:{fontSize:"9px",letterSpacing:".1em",textTransform:"uppercase",color:"var(--g3)"}},cm+" — Present"),el("div",{style:{fontFamily:"'Cormorant Garamond',serif",fontSize:"22px",fontWeight:"600",color:"var(--pos)"}},String(presentThisMonth))),
+        dv({},el("div",{style:{fontSize:"9px",letterSpacing:".1em",textTransform:"uppercase",color:"var(--g3)"}},cm+" — Absent"),el("div",{style:{fontFamily:"'Cormorant Garamond',serif",fontSize:"22px",fontWeight:"600",color:"var(--neg)"}},String(absentThisMonth)))
+      ));
       var tbody9=el("tbody",{});
       recs.forEach(function(r){var tr=el("tr",{});tr.appendChild(el("td",{style:{fontSize:"12px"}},r.date));tr.appendChild(el("td",{},el("span",{cls:"badge "+(r.status==="present"?"bg":r.status==="absent"?"br":"bw")},r.status)));tr.appendChild(el("td",{style:{fontSize:"12px",color:"var(--ink4)"}},gU(r.by||"").name));tbody9.appendChild(tr);});
       var tbl=el("div",{cls:"tbl-wrap"},el("table",{},el("thead",{},el("tr",{},el("th",{},"Date"),el("th",{},"Status"),el("th",{},"By"))),tbody9));
@@ -1611,12 +1681,22 @@ function rAddCB(){
     if(!partEn&&!partUr){toast(isUr?"تفصیل لکھیں":"Enter description",true);return;}
     if(!fd.debit&&!fd.credit){toast(isUr?"رقم لکھیں":"Enter amount",true);return;}
     var fph=S.photo[FID]||{};
-    var status=isDir?"posted":"pending";
+    var permanentPhotoUrl="";
+    if(fph.b64){
+      toast(isUr?"تصویر محفوظ ہو رہی ہے...":"Saving photo...",false,2500);
+      permanentPhotoUrl=await sbUploadPhoto(fph.b64,fph.mime,"cb");
+      if(!permanentPhotoUrl)toast(isUr?"تصویر محفوظ نہیں ہو سکی — بغیر تصویر کے جمع ہو رہا ہے":"Photo could not be saved — submitting without it",true,3500);
+    }
+    /* Danish is no longer part of the review chain — staff submissions go straight
+       into the director's approval queue instead of sitting in Danish's pending
+       queue first. Directors still see the entry before it posts; Danish's queue
+       simply never receives new submissions from this point on. */
+    var status=isDir?"posted":"awaiting_approval";
     var extras=[];
     if(fd.rate)extras.push((isUr?"ریٹ ":"Rate ")+Rs(fd.rate)+(fd.qty?"/"+fd.qty:""));
     if(fd.vendor)extras.push((isUr?"وینڈر: ":"Vendor: ")+fd.vendor);
     var finalPartEn=extras.length?(partEn+" ["+extras.join(", ")+"]"):partEn;
-    var row={id:fd._fix||uid(),person:S.user,date:fd.date||today(),account:fd.account,subAccount:fd.sub,area:fd.area,qty:fd.qty,billNo:fd.billNo,particulars:finalPartEn,particularsUr:partUr,debit:parseFloat(fd.debit||0)||0,credit:parseFloat(fd.credit||0)||0,status:status,bill_photo:fph.url||"",filed:isDir,rejection:"",cbNo:fixEntry?fixEntry.cbNo:nCBNo(),siteNo:fixEntry?fixEntry.siteNo:(fd.account&&CSITES.includes(fd.account)?nSNo(fd.account):""),created:now2(),approvedBy:isDir?S.user:"",editedBy:"",editedAt:""};
+    var row={id:fd._fix||uid(),person:S.user,date:fd.date||today(),account:fd.account,subAccount:fd.sub,area:fd.area,qty:fd.qty,billNo:fd.billNo,particulars:finalPartEn,particularsUr:partUr,debit:parseFloat(fd.debit||0)||0,credit:parseFloat(fd.credit||0)||0,status:status,bill_photo:permanentPhotoUrl||(fixEntry?fixEntry.bill_photo:"")||"",filed:isDir,rejection:"",cbNo:fixEntry?fixEntry.cbNo:nCBNo(),siteNo:fixEntry?fixEntry.siteNo:(fd.account&&CSITES.includes(fd.account)?nSNo(fd.account):""),created:now2(),approvedBy:isDir?S.user:"",editedBy:"",editedAt:""};
     if(fd._fix)S.cb=S.cb.map(function(e){return e.id===fd._fix?row:e;});else S.cb=[...S.cb,row];
     svRow("cb","r7_cb",row);addAudit(isDir?"DIRECT_POST":"SUBMIT","CB#"+row.cbNo);
     if(fd.vendor&&fd.vendor.trim()&&!S.vendors.find(function(v){return v.name.toLowerCase()===fd.vendor.trim().toLowerCase();})){
@@ -1923,20 +2003,22 @@ function rBank(){
       }
     }
     w.appendChild(Fld("Notes",TA(fd6.particulars,function(v){fd6.particulars=v;},2,"")));
-    w.appendChild(btn("Record Transfer",function(){
+    w.appendChild(btn("Record Transfer",async function(){
       if(!fd6.amount||!parseFloat(fd6.amount)){toast("Enter amount",true);return;}
       if(fd6.direction==="out"&&fd6.recipType==="staff"&&!fd6.recipUser){toast("Select staff member",true);return;}
       if(fd6.direction==="out"&&fd6.recipType==="others"&&(!fd6.recipName.trim()||!fd6.account)){toast("Fill recipient and account",true);return;}
       var bkName=(BANKS.find(function(b){return b.id===fd6.bid;})||{name:fd6.bid}).name;
       var xph=S.photo[FID6]||{};
+      var xferPhotoUrl="";
+      if(xph.b64){toast("Saving screenshot...",false,2500);xferPhotoUrl=await sbUploadPhoto(xph.b64,xph.mime,"xfer");if(!xferPhotoUrl)toast("Screenshot could not be saved",true,3500);}
       var xferLinkId=(fd6.direction==="out"&&fd6.recipType==="staff")?uid():null;
-      var newXfer={id:uid(),bid:fd6.bid,typ:fd6.direction,amount:parseFloat(fd6.amount),particulars:(fd6.direction==="out"?(fd6.recipType==="staff"?"Transfer to "+gU(fd6.recipUser).name:fd6.particulars+" — "+fd6.recipName):fd6.particulars||"Online transfer received")+(xph.url?" [screenshot attached]":""),chqNo:"",date:fd6.date||today(),linkId:xferLinkId,created:now2()};
+      var newXfer={id:uid(),bid:fd6.bid,typ:fd6.direction,amount:parseFloat(fd6.amount),particulars:(fd6.direction==="out"?(fd6.recipType==="staff"?"Transfer to "+gU(fd6.recipUser).name:fd6.particulars+" — "+fd6.recipName):fd6.particulars||"Online transfer received")+(xferPhotoUrl?" [screenshot attached]":""),chqNo:"",date:fd6.date||today(),linkId:xferLinkId,created:now2()};
       S.bank=[...S.bank,newXfer];svRow("bank","r7_bk",newXfer);
       if(fd6.direction==="out"&&fd6.recipType==="staff"){
-        var newCbX={id:uid(),person:fd6.recipUser,date:fd6.date||today(),account:bkName,subAccount:"Online Transfer",area:"",qty:"",billNo:"",particulars:"Online transfer from "+bkName+(fd6.particulars?" — "+fd6.particulars:""),particularsUr:"",debit:0,credit:parseFloat(fd6.amount),status:"posted",filed:true,rejection:"",cbNo:nCBNo(),siteNo:"",linkId:xferLinkId,created:now2(),approvedBy:S.user,bill_photo:xph.url||"",editedBy:"",editedAt:""};
+        var newCbX={id:uid(),person:fd6.recipUser,date:fd6.date||today(),account:bkName,subAccount:"Online Transfer",area:"",qty:"",billNo:"",particulars:"Online transfer from "+bkName+(fd6.particulars?" — "+fd6.particulars:""),particularsUr:"",debit:0,credit:parseFloat(fd6.amount),status:"posted",filed:true,rejection:"",cbNo:nCBNo(),siteNo:"",linkId:xferLinkId,created:now2(),approvedBy:S.user,bill_photo:xferPhotoUrl||"",editedBy:"",editedAt:""};
         S.cb=[...S.cb,newCbX];svRow("cb","r7_cb",newCbX);
       }else if(fd6.direction==="out"){
-        var newCbX2={id:uid(),person:S.user,date:fd6.date||today(),account:fd6.account,subAccount:fd6.sub,area:"",qty:"",billNo:"",particulars:fd6.particulars+" — Online transfer to "+fd6.recipName+" via "+bkName,particularsUr:"",debit:parseFloat(fd6.amount),credit:0,status:"posted",filed:true,rejection:"",cbNo:nCBNo(),siteNo:fd6.account&&CSITES.includes(fd6.account)?nSNo(fd6.account):"",created:now2(),approvedBy:S.user,bill_photo:xph.url||"",editedBy:"",editedAt:""};
+        var newCbX2={id:uid(),person:S.user,date:fd6.date||today(),account:fd6.account,subAccount:fd6.sub,area:"",qty:"",billNo:"",particulars:fd6.particulars+" — Online transfer to "+fd6.recipName+" via "+bkName,particularsUr:"",debit:parseFloat(fd6.amount),credit:0,status:"posted",filed:true,rejection:"",cbNo:nCBNo(),siteNo:fd6.account&&CSITES.includes(fd6.account)?nSNo(fd6.account):"",created:now2(),approvedBy:S.user,bill_photo:xferPhotoUrl||"",editedBy:"",editedAt:""};
         S.cb=[...S.cb,newCbX2];svRow("cb","r7_cb",newCbX2);
       }
       addAudit("BANK_TRANSFER",bkName+" "+fd6.direction+" Rs "+fd6.amount);
@@ -2051,7 +2133,7 @@ function rCC(){
     var ph=S.photo[FID]||{};
     if(ph.b64&&!fd._aiDone){w.appendChild(el("div",{cls:"al-b"},"Reading slip with AI\u2026"));}
     if(ph.b64&&fd._aiDone){w.appendChild(el("div",{cls:"al-g"},"\u2728 AI filled the fields below from the slip — review and save"));w.appendChild(btn("Re-run AI",runAI,"btn-o btn-sm"));}
-    var fg6=el("div",{cls:"fg"});fg6.appendChild(Fld("Card",Sel(fd.cid,function(v){fd.cid=v;},[{v:"bop",l:"BOP Credit Card"},{v:"js",l:"JS Bank CC"}])));fg6.appendChild(Fld("Account",Inp(fd.account,function(v){fd.account=v;},"text")));fg6.appendChild(Fld("Sub Account",Inp(fd.sub,function(v){fd.sub=v;},"text")));fg6.appendChild(Fld("Amount (Rs)",Inp(fd.amount,function(v){fd.amount=v;},"number")));fg6.appendChild(Fld("Date",Inp(fd.date,function(v){fd.date=v;},"date")));fg6.appendChild(Fld("Merchant",Inp(fd.merchant,function(v){fd.merchant=v;},"text")));w.appendChild(fg6);w.appendChild(Fld("Notes",TA(fd.particulars,function(v){fd.particulars=v;},2,"")));w.appendChild(btn("Add CC Expense",function(){if(!fd.amount||!parseFloat(fd.amount)){toast("Enter amount",true);return;}var newCcExp={id:uid(),cid:fd.cid,typ:"exp",account:fd.account,subAccount:fd.sub,amount:parseFloat(fd.amount),merchant:fd.merchant,particulars:fd.particulars,date:fd.date||today(),bill_photo:(S.photo[FID]||{}).url||"",by:S.user,created:now2(),reconciled:false};S.cc=[...S.cc,newCcExp];svRow("cc","r7_cc",newCcExp);S.fd[FID]={cid:"bop",account:"Office",sub:"",amount:"",date:today(),merchant:"",particulars:"",_aiDone:false};delete S.photo[FID];toast("Added");render();},"btn-g btn-full"));
+    var fg6=el("div",{cls:"fg"});fg6.appendChild(Fld("Card",Sel(fd.cid,function(v){fd.cid=v;},[{v:"bop",l:"BOP Credit Card"},{v:"js",l:"JS Bank CC"}])));fg6.appendChild(Fld("Account",Inp(fd.account,function(v){fd.account=v;},"text")));fg6.appendChild(Fld("Sub Account",Inp(fd.sub,function(v){fd.sub=v;},"text")));fg6.appendChild(Fld("Amount (Rs)",Inp(fd.amount,function(v){fd.amount=v;},"number")));fg6.appendChild(Fld("Date",Inp(fd.date,function(v){fd.date=v;},"date")));fg6.appendChild(Fld("Merchant",Inp(fd.merchant,function(v){fd.merchant=v;},"text")));w.appendChild(fg6);w.appendChild(Fld("Notes",TA(fd.particulars,function(v){fd.particulars=v;},2,"")));w.appendChild(btn("Add CC Expense",async function(){if(!fd.amount||!parseFloat(fd.amount)){toast("Enter amount",true);return;}var ccPh=S.photo[FID]||{};var ccPhotoUrl="";if(ccPh.b64){toast("Saving photo...",false,2500);ccPhotoUrl=await sbUploadPhoto(ccPh.b64,ccPh.mime,"cc");if(!ccPhotoUrl)toast("Photo could not be saved — submitting without it",true,3500);}var newCcExp={id:uid(),cid:fd.cid,typ:"exp",account:fd.account,subAccount:fd.sub,amount:parseFloat(fd.amount),merchant:fd.merchant,particulars:fd.particulars,date:fd.date||today(),bill_photo:ccPhotoUrl||"",by:S.user,created:now2(),reconciled:false};S.cc=[...S.cc,newCcExp];svRow("cc","r7_cc",newCcExp);S.fd[FID]={cid:"bop",account:"Office",sub:"",amount:"",date:today(),merchant:"",particulars:"",_aiDone:false};delete S.photo[FID];toast("Added");render();},"btn-g btn-full"));
   }
   if(tab==="pay"){var FID2="cc_pay";if(!S.fd[FID2])S.fd[FID2]={cid:"bop",amount:"",date:today(),ref:""};var fd4=S.fd[FID2];var fg7=el("div",{cls:"fg"});fg7.appendChild(Fld("Card",Sel(fd4.cid,function(v){fd4.cid=v;},[{v:"bop",l:"BOP (Balance: "+Rs(cBal("bop"))+")"},{v:"js",l:"JS Bank (Balance: "+Rs(cBal("js"))+")"}])));fg7.appendChild(Fld("Amount Paid",Inp(fd4.amount,function(v){fd4.amount=v;},"number","0")));fg7.appendChild(Fld("Date",Inp(fd4.date,function(v){fd4.date=v;},"date")));fg7.appendChild(Fld("Reference",Inp(fd4.ref,function(v){fd4.ref=v;},"text")));w.appendChild(fg7);w.appendChild(btn("Record Payment",function(){if(!fd4.amount){toast("Enter amount",true);return;}var newPay={id:uid(),cid:fd4.cid,typ:"pay",amount:parseFloat(fd4.amount),date:fd4.date||today(),ref:fd4.ref,by:S.user,created:now2()};S.cc=[...S.cc,newPay];svRow("cc","r7_cc",newPay);S.fd[FID2]={cid:"bop",amount:"",date:today(),ref:""};toast("Payment recorded");render();},"btn-g btn-full"));}
   if(tab==="recon"){
@@ -2190,7 +2272,9 @@ function rMat(){
       var notesEn=fd.notes;var notesUr=fd.notesUr;
       if(isUr&&notesUr&&!notesEn){notesEn=await translateToEnglish(notesUr);}
       var fph=S.photo[FID]||{};var isAdmin=role==="danish"||role==="director";
-      var newRcv={id:uid(),site:fd.site,item:fd.item,unit:fd.unit,qty:parseFloat(fd.qty),rate:parseFloat(fd.rate||0),total:parseFloat(fd.total),vendorId:fd.vendorId,payType:fd.payType,date:fd.date||today(),billNo:fd.billNo,notes:notesEn,notesUr:notesUr,bill_photo:fph.url||"",status:isAdmin?"approved":"pending",submittedBy:S.user,approvedBy:isAdmin?S.user:"",approvedAt:isAdmin?now2():"",created:now2()};
+      var matPhotoUrl="";
+      if(fph.b64){toast(isUr?"تصویر محفوظ ہو رہی ہے...":"Saving photo...",false,2500);matPhotoUrl=await sbUploadPhoto(fph.b64,fph.mime,"matrcv");if(!matPhotoUrl)toast(isUr?"تصویر محفوظ نہیں ہو سکی":"Photo could not be saved",true,3500);}
+      var newRcv={id:uid(),site:fd.site,item:fd.item,unit:fd.unit,qty:parseFloat(fd.qty),rate:parseFloat(fd.rate||0),total:parseFloat(fd.total),vendorId:fd.vendorId,payType:fd.payType,date:fd.date||today(),billNo:fd.billNo,notes:notesEn,notesUr:notesUr,bill_photo:matPhotoUrl||"",status:isAdmin?"approved":"pending",submittedBy:S.user,approvedBy:isAdmin?S.user:"",approvedAt:isAdmin?now2():"",created:now2()};
       S.matrcv=[...S.matrcv,newRcv];
       svRow("matrcv","r7_mr",newRcv);delete S.photo[FID];
       S.fd[FID]={site:fd.site,item:"",unit:"",qty:"",rate:"",total:"",vendorId:"",payType:"cash",date:today(),billNo:"",notes:"",notesUr:""};
@@ -2647,14 +2731,14 @@ function rSecurity(){
   }
   var byUser={};(S.lockouts||[]).forEach(function(r){byUser[r.user_id]=r;});
   U.forEach(function(u){
-    var status=byUser[u.id]||{failed_count:0,locked:false};
+    var status=byUser[(u.username||u.id).toLowerCase()]||{failed_count:0,locked:false};
     var row=el("div",{cls:"ei"});
     row.appendChild(dv({display:"flex",justifyContent:"space-between",alignItems:"center",gap:"8px",flexWrap:"wrap"},
       dv({display:"flex",alignItems:"center",gap:"10px"},Avatar(u.id,32),el("div",{},el("div",{style:{fontWeight:"700",fontSize:"13px"}},u.name),el("div",{style:{fontSize:"11px",color:"var(--ink4)"}},u.role+" \u00b7 "+(status.failed_count||0)+" failed attempt"+((status.failed_count||0)===1?"":"s")))),
       status.locked?el("span",{cls:"badge br"},"LOCKED"):el("span",{cls:"badge bg"},"OK")
     ));
     if(status.locked){
-      var uid2=u.id;
+      var uid2=(u.username||u.id).toLowerCase();
       row.appendChild(btn("Unlock "+u.name,async function(){
         await unlockUser(uid2,S.user);
         addAudit("UNLOCK_ACCOUNT",u.name);
@@ -2719,6 +2803,44 @@ function rSecurity(){
   });
   acctBody.appendChild(subList);
   w.appendChild(acctCard);
+
+  /* User login credentials — sets/resets each person's username and password via
+     the royal-auth Edge Function. Passwords are never stored or checked in the
+     browser; this just sends the new value to be hashed and saved server-side. */
+  var credCard=Card("Manage Logins",el("span",{style:{fontSize:"10px",color:"var(--ink4)"}},"Set username & password"));
+  var credBody=credCard.querySelector(".cb");
+  credBody.appendChild(el("div",{style:{fontSize:"12px",color:"var(--ink3)",marginBottom:"14px"}},"Set or reset a team member's login. This creates their username/password if they don't have one yet, or replaces it if they do."));
+  U.forEach(function(u){
+    var FID_CRED="cred_"+u.id;
+    if(!S.fd[FID_CRED])S.fd[FID_CRED]={username:u.username||u.id,password:""};
+    var row=dv({borderBottom:"1px solid var(--s2)",paddingBottom:"12px",marginBottom:"12px"});
+    row.appendChild(dv({display:"flex",alignItems:"center",gap:"8px",marginBottom:"8px"},Avatar(u.id,26),el("span",{style:{fontWeight:"700",fontSize:"13px"}},u.name)));
+    var credRow=dv({display:"flex",gap:"8px",flexWrap:"wrap"});
+    var userInp=Inp(S.fd[FID_CRED].username,function(v){S.fd[FID_CRED].username=v;},"text","Username");
+    userInp.style.flex="1";userInp.style.minWidth="100px";
+    var passInp=Inp(S.fd[FID_CRED].password,function(v){S.fd[FID_CRED].password=v;},"password","New password");
+    passInp.style.flex="1";passInp.style.minWidth="100px";
+    credRow.appendChild(userInp);credRow.appendChild(passInp);
+    var uidForSave=u.id;
+    credRow.appendChild(btn("Save",async function(){
+      var uname=S.fd[FID_CRED].username.trim();
+      var pw=S.fd[FID_CRED].password;
+      if(!uname){toast("Enter a username",true);return;}
+      if(!pw||pw.length<4){toast("Password must be at least 4 characters",true);return;}
+      var result=await callAuth({action:"set_password",username:uname,password:pw,user_id:uidForSave});
+      if(result&&result.ok){
+        toast(u.name+"'s login saved");
+        addAudit("SET_LOGIN",u.name+" \u2192 "+uname);
+        S.fd[FID_CRED].password="";
+        render();
+      }else{
+        toast("Failed to save: "+((result&&result.error)||"unknown error"),true);
+      }
+    },"btn-g btn-sm"));
+    row.appendChild(credRow);
+    credBody.appendChild(row);
+  });
+  w.appendChild(credCard);
 
   return w;
 }
