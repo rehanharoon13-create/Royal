@@ -345,7 +345,7 @@ var DOOR_STAGES=["Quotation","Approved","Production","Polishing","Packing","Disp
 var CSTAGES=["Mobilization","Foundation","Structure","Brickwork","Plaster","Plumbing","Electric","Finishing","Completion"];
 var DOOR_INV_DEF=[{id:"veneer",n:"Veneer",unit:"Sheets",reorder:50},{id:"hdf",n:"HDF Board",unit:"Sheets",reorder:30},{id:"mdf",n:"MDF Board",unit:"Sheets",reorder:30},{id:"hdx",n:"HDX Board",unit:"Sheets",reorder:20},{id:"pu",n:"PU Paint",unit:"Litre",reorder:20},{id:"hardware",n:"Hardware Sets",unit:"Nos",reorder:10},{id:"locks",n:"Locks",unit:"Nos",reorder:20},{id:"hinges",n:"Hinges",unit:"Pairs",reorder:30},{id:"polish",n:"Polish",unit:"Litre",reorder:15},{id:"glue",n:"Glue",unit:"Kg",reorder:10}];
 var SAL_LIST=[{p:"Junaid Tahir",r:"Sales",m:100000},{p:"Umair Mirza",r:"Doors Supervisor",m:105000},{p:"Muzammil Aslam",r:"Supervisor",m:45000},{p:"Abbas",r:"Peon",m:25000},{p:"Usman Ghani",r:"Supervisor J-1",m:50000},{p:"Danish",r:"Accountant",m:20000},{p:"Usman Draftsman",r:"Draftsman",m:30000},{p:"B-552 Guard",r:"Guard",m:25000},{p:"G-396 Guard",r:"Guard",m:25000},{p:"J-1 Guard",r:"Guard",m:30000},{p:"W-93 Guard",r:"Guard",m:30000},{p:"W-93 Sweepress",r:"Sweepress",m:14000},{p:"W-93 Gardener",r:"Gardener",m:13000}];
-var BILLS_DEF=[{id:"gas_w93",n:"Gas",prop:"W-93",cat:"Utility",due:null,amt:0},{id:"elec_w93",n:"Electricity",prop:"W-93",cat:"Utility",due:null,amt:0},{id:"water_w93",n:"Water DHA",prop:"W-93",cat:"Utility",due:null,amt:0},{id:"elec_off",n:"Electricity",prop:"Office",cat:"Utility",due:null,amt:0},{id:"water_off",n:"Water",prop:"Office",cat:"Utility",due:null,amt:0},{id:"elec_b552",n:"Electricity",prop:"B-552",cat:"Utility",due:null,amt:0},{id:"elec_g396",n:"Electricity",prop:"G-396",cat:"Utility",due:null,amt:0},{id:"elec_j1",n:"Electricity",prop:"J-1",cat:"Utility",due:null,amt:0},{id:"water_j1",n:"Water",prop:"J-1",cat:"Utility",due:null,amt:0},{id:"cc_js",n:"JS Bank CC",prop:"Cards",cat:"Credit Card",due:8,amt:0},{id:"cc_bop",n:"BOP CC",prop:"Cards",cat:"Credit Card",due:22,amt:0},{id:"masjid1",n:"Masjid Ismail",prop:"",cat:"Donation",due:null,amt:0},{id:"masjid2",n:"Masjid Dispensary",prop:"",cat:"Donation",due:null,amt:0},{id:"pakpattan",n:"Pakpattan Masjid",prop:"",cat:"Donation",due:null,amt:0},{id:"hana",n:"Hana Monthly",prop:"",cat:"Personal",due:null,amt:0}];
+var BILLS_DEF=[{id:"gas_w93",n:"Gas",prop:"W-93",cat:"Utility",due:null,amt:0},{id:"elec_w93",n:"Electricity",prop:"W-93",cat:"Utility",due:null,amt:0},{id:"water_w93",n:"Water DHA",prop:"W-93",cat:"Utility",due:null,amt:0},{id:"elec_off",n:"Electricity",prop:"Office",cat:"Utility",due:null,amt:0},{id:"water_off",n:"Water",prop:"Office",cat:"Utility",due:null,amt:0},{id:"rent_off",n:"Office Rent",prop:"Office",cat:"Utility",due:null,amt:0},{id:"elec_b552",n:"Electricity",prop:"B-552",cat:"Utility",due:null,amt:0},{id:"elec_g396",n:"Electricity",prop:"G-396",cat:"Utility",due:null,amt:0},{id:"elec_j1",n:"Electricity",prop:"J-1",cat:"Utility",due:null,amt:0},{id:"water_j1",n:"Water",prop:"J-1",cat:"Utility",due:null,amt:0},{id:"cc_js",n:"JS Bank CC",prop:"Cards",cat:"Credit Card",due:8,amt:0},{id:"cc_bop",n:"BOP CC",prop:"Cards",cat:"Credit Card",due:22,amt:0},{id:"masjid1",n:"Masjid Ismail",prop:"",cat:"Donation",due:null,amt:0},{id:"masjid2",n:"Masjid Dispensary",prop:"",cat:"Donation",due:null,amt:0},{id:"pakpattan",n:"Pakpattan Masjid",prop:"",cat:"Donation",due:null,amt:0},{id:"hana",n:"Hana Monthly",prop:"Rehan sb",cat:"Personal",due:null,amt:0}];
 
 var UR={
   desc:"تفصیل",account:"اکاؤنٹ",sub:"ذیلی",amount:"رقم",date:"تاریخ",
@@ -364,7 +364,7 @@ var S={
   urLang:LD("r7_urLang",{}),
   cb:LD("r7_cb",[]),expReq:LD("r7_er",[]),bank:LD("r7_bk",[]),bankRecon:LD("r7_bkr",[]),
   cc:LD("r7_cc",[]),vendors:LD("r7_vn",[]),ventry:LD("r7_ve",[]),
-  matrcv:LD("r7_mr",[]),matused:LD("r7_mu",[]),matshift:LD("r7_ms",[]),
+  matrcv:LD("r7_mr",[]),matused:LD("r7_mu",[]),matshift:LD("r7_ms",[]),dailyReports:LD("r7_dr",[]),
   contractors:LD("r7_co",[]),contrpay:LD("r7_cp",[]),
   sites:LD("r7_si",CSITES.map(function(s){return{id:s,budget:0,client:"",notes:""};})),
   doorProjects:LD("r7_dp",[]),
@@ -380,7 +380,7 @@ var S={
      — "Others" style typing still works everywhere (e.g. Ather/Zaheer auto-discovery
      on Misc Balances) — it just gives directors a way to formally register accounts
      so they suggest consistently and typos don't silently create duplicate accounts. */
-  customAccounts:LD("r7_cacc",[]),customSubs:LD("r7_csub",[]),
+  customAccounts:LD("r7_cacc",[]),customSubs:LD("r7_csub",[]),customSites:LD("r7_csite",[]),
   tab:{bank:"ov",cc:"ov",mat:"rcv",contr:"list",att:"today",vouch:"add",petty:"add",hr:"emp",bills:"bills",crm:"contacts",doors:"proj",doorInv:"stock"},
   photo:{},fd:{},
   cbf:{lv:"journal",person:"",site:"",search:"",d1:"",d2:""},
@@ -436,17 +436,18 @@ function toggleLang(){if(!canUrdu())return;S.urLang[S.user]=!isUrdu();LS("r7_urL
 /* ═══ BLOCK 2: SUPABASE TABLE MAP + SYNC ═══ */
 
 var SB_TBLS={
-  "r7_cb":{t:"cb",up:function(r){return{id:r.id,person:r.person,date:r.date||null,account:r.account||null,sub_account:r.subAccount||null,area:r.area||null,qty:r.qty||null,bill_no:r.billNo||null,particulars:r.particulars||null,particulars_ur:r.particularsUr||null,debit:r.debit||0,credit:r.credit||0,status:r.status||"pending",filed:r.filed||false,rejection:r.rejection||null,cb_no:r.cbNo||null,site_no:r.siteNo||null,approved_by:r.approvedBy||null,approved_at:r.approvedAt||null,reviewed_by:r.reviewedBy||null,reviewed_at:r.reviewedAt||null,edited_by:r.editedBy||null,edited_at:r.editedAt||null,bill_photo:r.bill_photo||null,link_id:r.linkId||null,created_at:r.created||null};}},
+  "r7_cb":{t:"cb",up:function(r){return{id:r.id,person:r.person,date:r.date||null,account:r.account||null,sub_account:r.subAccount||null,area:r.area||null,qty:r.qty||null,bill_no:r.billNo||null,particulars:r.particulars||null,particulars_ur:r.particularsUr||null,vendor:r.vendorName||null,debit:r.debit||0,credit:r.credit||0,status:r.status||"pending",filed:r.filed||false,rejection:r.rejection||null,cb_no:r.cbNo||null,site_no:r.siteNo||null,approved_by:r.approvedBy||null,approved_at:r.approvedAt||null,reviewed_by:r.reviewedBy||null,reviewed_at:r.reviewedAt||null,edited_by:r.editedBy||null,edited_at:r.editedAt||null,bill_photo:r.bill_photo||null,link_id:r.linkId||null,created_at:r.created||null};}},
   "r7_er":{t:"exp_req",up:function(r){return{id:r.id,requested_by:r.requestedBy||"",date:r.date||null,account:r.account||null,sub_account:r.subAccount||null,particulars:r.particulars||null,particulars_ur:r.particularsUr||null,amount:r.amount||0,bill_photo:r.bill_photo||null,status:r.status||"pending",approved_by:r.approvedBy||null,approved_at:r.approvedAt||null,rejection_note:r.rejectionNote||null,created_at:r.created||null};}},
-  "r7_bk":{t:"bank_txn",up:function(r){return{id:r.id,bid:r.bid,typ:r.typ,amount:r.amount||0,particulars:r.particulars||null,chq_no:r.chqNo||null,date:r.date||null,link_id:r.linkId||null,created_at:r.created||null};}},
+  "r7_bk":{t:"bank_txn",up:function(r){return{id:r.id,bid:r.bid,typ:r.typ,amount:r.amount||0,particulars:r.particulars||null,chq_no:r.chqNo||null,date:r.date||null,link_id:r.linkId||null,bill_photo:r.bill_photo||null,created_at:r.created||null};}},
   "r7_bkr":{t:"bank_recon",up:function(r){return{id:r.id,bid:r.bid,date:r.date||null,amount:r.amount||0,ref:r.ref||null,particulars:r.particulars||null,matched:r.matched||false,matched_with:r.matchedWith||null,created_at:r.created||null};}},
   "r7_cc":{t:"cc_txn",up:function(r){return{id:r.id,cid:r.cid,typ:r.typ,account:r.account||null,sub_account:r.subAccount||null,amount:r.amount||0,merchant:r.merchant||null,particulars:r.particulars||null,date:r.date||null,bill_photo:r.bill_photo||null,reconciled:r.reconciled||false,ref:r.ref||null,by_user:r.by||null,created_at:r.created||null};}},
   "r7_vn":{t:"vendors",up:function(r){return{id:r.id,name:r.name,type:r.type||"Supplier",contact:r.contact||null,ntn:r.ntn||null,created_at:r.created||null};}},
   "r7_ve":{t:"ventry",up:function(r){return{id:r.id,vid:r.vid,type:r.type,amount:r.amount||0,date:r.date||null,description:r.description||null,by_user:r.by||null,created_at:r.created||null};}},
-  "r7_mr":{t:"matrcv",up:function(r){return{id:r.id,site:r.site,item:r.item,unit:r.unit||null,qty:r.qty||0,rate:r.rate||0,total:r.total||0,vendor_id:r.vendorId||null,pay_type:r.payType||"cash",date:r.date||null,bill_no:r.billNo||null,notes:r.notes||null,notes_ur:r.notesUr||null,bill_photo:r.bill_photo||null,status:r.status||"pending",submitted_by:r.submittedBy||null,approved_by:r.approvedBy||null,approved_at:r.approvedAt||null,created_at:r.created||null};}},
-  "r7_mu":{t:"matused",up:function(r){return{id:r.id,site:r.site,item:r.item,unit:r.unit||null,qty:r.qty||0,date:r.date||null,notes:r.notes||null,by_user:r.by||null,created_at:r.created||null};}},
-  "r7_ms":{t:"matshift",up:function(r){return{id:r.id,from_site:r.from,to_site:r.to,item:r.item,unit:r.unit||null,qty:r.qty||0,date:r.date||null,notes:r.notes||null,by_user:r.by||null,created_at:r.created||null};}},
-  "r7_co":{t:"contractors",up:function(r){return{id:r.id,name:r.name,site:r.site||null,contact:r.contact||null,value:r.value||0,stage:r.stage||"Mobilization",notes:r.notes||null,created_at:r.created||null};}},
+  "r7_mr":{t:"matrcv",up:function(r){return{id:r.id,site:r.site,item:r.item,unit:r.unit||null,qty:r.qty||0,rate:r.rate||0,total:r.total||0,vendor_id:r.vendorId||null,pay_type:r.payType||"cash",date:r.date||null,bill_no:r.billNo||null,notes:r.notes||null,notes_ur:r.notesUr||null,bill_photo:r.bill_photo||null,material_photo:r.material_photo||null,status:r.status||"pending",submitted_by:r.submittedBy||null,approved_by:r.approvedBy||null,approved_at:r.approvedAt||null,ventry_id:r.ventryId||null,created_at:r.created||null};}},
+  "r7_mu":{t:"matused",up:function(r){return{id:r.id,site:r.site,item:r.item,unit:r.unit||null,qty:r.qty||0,location:r.location||null,photo:r.photo||null,date:r.date||null,notes:r.notes||null,by_user:r.by||null,created_at:r.created||null};}},
+  "r7_dr":{t:"daily_reports",up:function(r){return{id:r.id,site:r.site,date:r.date||null,progress:r.progress||null,inventory_notes:r.inventoryNotes||null,photo:r.photo||null,by_user:r.by||null,created_at:r.created||null};}},
+  "r7_ms":{t:"matshift",up:function(r){return{id:r.id,from_site:r.from,to_site:r.to,item:r.item,unit:r.unit||null,qty:r.qty||0,amount:r.amount||0,date:r.date||null,notes:r.notes||null,by_user:r.by||null,created_at:r.created||null};}},
+  "r7_co":{t:"contractors",up:function(r){return{id:r.id,name:r.name,site:r.site||null,contact:r.contact||null,value:r.value||0,stage:r.stage||"Mobilization",schedule:r.schedule?JSON.stringify(r.schedule):null,notes:r.notes||null,created_at:r.created||null};}},
   "r7_cp":{t:"contrpay",up:function(r){return{id:r.id,cid:r.cid,amount:r.amount||0,date:r.date||null,notes:r.notes||null,by_user:r.by||null,created_at:r.created||null};}},
   "r7_dp":{t:"door_projects",up:function(r){return{id:r.id,client:r.client,contact:r.contact||null,address:r.address||null,description:r.description||null,quotation:r.quotation||0,stage:r.stage||"Quotation",date:r.date||null,created_at:r.created||null};}},
   "r7_crm":{t:"crm_contacts",up:function(r){return{id:r.id,name:r.name,type:r.type||"Client",company:r.company||null,contact:r.contact||null,email:r.email||null,notes:r.notes||null,created_at:r.created||null};}},
@@ -461,17 +462,18 @@ var SB_TBLS={
   "r7_au":{t:"audit_log",up:function(r){return{id:r.id,by_user:r.user||null,action:r.action||null,detail:r.detail||null,created_at:r.at||null};}}
 };
 
-function dnCB(r){return{id:r.id,person:r.person,date:r.date||"",account:r.account||"",subAccount:r.sub_account||"",area:r.area||"",qty:r.qty||"",billNo:r.bill_no||"",particulars:r.particulars||"",particularsUr:r.particulars_ur||"",debit:parseFloat(r.debit||0),credit:parseFloat(r.credit||0),status:r.status||"pending",filed:r.filed||false,rejection:r.rejection||"",cbNo:r.cb_no||"",siteNo:r.site_no||"",approvedBy:r.approved_by||"",approvedAt:r.approved_at||"",reviewedBy:r.reviewed_by||"",reviewedAt:r.reviewed_at||"",editedBy:r.edited_by||"",editedAt:r.edited_at||"",bill_photo:r.bill_photo||"",linkId:r.link_id||"",created:r.created_at||""};}
+function dnCB(r){return{id:r.id,person:r.person,date:r.date||"",account:r.account||"",subAccount:r.sub_account||"",area:r.area||"",qty:r.qty||"",billNo:r.bill_no||"",particulars:r.particulars||"",particularsUr:r.particulars_ur||"",vendorName:r.vendor||"",debit:parseFloat(r.debit||0),credit:parseFloat(r.credit||0),status:r.status||"pending",filed:r.filed||false,rejection:r.rejection||"",cbNo:r.cb_no||"",siteNo:r.site_no||"",approvedBy:r.approved_by||"",approvedAt:r.approved_at||"",reviewedBy:r.reviewed_by||"",reviewedAt:r.reviewed_at||"",editedBy:r.edited_by||"",editedAt:r.edited_at||"",bill_photo:r.bill_photo||"",linkId:r.link_id||"",created:r.created_at||""};}
 function dnER(r){return{id:r.id,requestedBy:r.requested_by||"",date:r.date||"",account:r.account||"",subAccount:r.sub_account||"",particulars:r.particulars||"",particularsUr:r.particulars_ur||"",amount:parseFloat(r.amount||0),bill_photo:r.bill_photo||"",status:r.status||"pending",approvedBy:r.approved_by||"",approvedAt:r.approved_at||"",rejectionNote:r.rejection_note||"",created:r.created_at||""};}
-function dnBK(r){return{id:r.id,bid:r.bid,typ:r.typ,amount:parseFloat(r.amount||0),particulars:r.particulars||"",chqNo:r.chq_no||"",date:r.date||"",linkId:r.link_id||"",created:r.created_at||""};}
+function dnBK(r){return{id:r.id,bid:r.bid,typ:r.typ,amount:parseFloat(r.amount||0),particulars:r.particulars||"",chqNo:r.chq_no||"",date:r.date||"",linkId:r.link_id||"",bill_photo:r.bill_photo||"",created:r.created_at||""};}
 function dnBKR(r){return{id:r.id,bid:r.bid,date:r.date||"",amount:parseFloat(r.amount||0),ref:r.ref||"",particulars:r.particulars||"",matched:r.matched||false,matchedWith:r.matched_with||"",created:r.created_at||""};}
 function dnCC(r){return{id:r.id,cid:r.cid,typ:r.typ,account:r.account||"",subAccount:r.sub_account||"",amount:parseFloat(r.amount||0),merchant:r.merchant||"",particulars:r.particulars||"",date:r.date||"",bill_photo:r.bill_photo||"",reconciled:r.reconciled||false,ref:r.ref||"",by:r.by_user||"",created:r.created_at||""};}
 function dnVN(r){return{id:r.id,name:r.name,type:r.type||"Supplier",contact:r.contact||"",ntn:r.ntn||"",created:r.created_at||""};}
 function dnVE(r){return{id:r.id,vid:r.vid,type:r.type,amount:parseFloat(r.amount||0),date:r.date||"",description:r.description||"",by:r.by_user||"",created:r.created_at||""};}
-function dnMR(r){return{id:r.id,site:r.site,item:r.item,unit:r.unit||"",qty:parseFloat(r.qty||0),rate:parseFloat(r.rate||0),total:parseFloat(r.total||0),vendorId:r.vendor_id||"",payType:r.pay_type||"cash",date:r.date||"",billNo:r.bill_no||"",notes:r.notes||"",notesUr:r.notes_ur||"",bill_photo:r.bill_photo||"",status:r.status||"pending",submittedBy:r.submitted_by||"",approvedBy:r.approved_by||"",approvedAt:r.approved_at||"",created:r.created_at||""};}
-function dnMU(r){return{id:r.id,site:r.site,item:r.item,unit:r.unit||"",qty:parseFloat(r.qty||0),date:r.date||"",notes:r.notes||"",by:r.by_user||"",created:r.created_at||""};}
-function dnMS(r){return{id:r.id,from:r.from_site,to:r.to_site,item:r.item,unit:r.unit||"",qty:parseFloat(r.qty||0),date:r.date||"",notes:r.notes||"",by:r.by_user||"",created:r.created_at||""};}
-function dnCO(r){return{id:r.id,name:r.name,site:r.site||"",contact:r.contact||"",value:parseFloat(r.value||0),stage:r.stage||"Mobilization",notes:r.notes||"",created:r.created_at||""};}
+function dnMR(r){return{id:r.id,site:r.site,item:r.item,unit:r.unit||"",qty:parseFloat(r.qty||0),rate:parseFloat(r.rate||0),total:parseFloat(r.total||0),vendorId:r.vendor_id||"",payType:r.pay_type||"cash",date:r.date||"",billNo:r.bill_no||"",notes:r.notes||"",notesUr:r.notes_ur||"",bill_photo:r.bill_photo||"",material_photo:r.material_photo||"",status:r.status||"pending",submittedBy:r.submitted_by||"",approvedBy:r.approved_by||"",approvedAt:r.approved_at||"",ventryId:r.ventry_id||"",created:r.created_at||""};}
+function dnMU(r){return{id:r.id,site:r.site,item:r.item,unit:r.unit||"",qty:parseFloat(r.qty||0),location:r.location||"",photo:r.photo||"",date:r.date||"",notes:r.notes||"",by:r.by_user||"",created:r.created_at||""};}
+function dnDR(r){return{id:r.id,site:r.site,date:r.date||"",progress:r.progress||"",inventoryNotes:r.inventory_notes||"",photo:r.photo||"",by:r.by_user||"",created:r.created_at||""};}
+function dnMS(r){return{id:r.id,from:r.from_site,to:r.to_site,item:r.item,unit:r.unit||"",qty:parseFloat(r.qty||0),amount:parseFloat(r.amount||0),date:r.date||"",notes:r.notes||"",by:r.by_user||"",created:r.created_at||""};}
+function dnCO(r){var sched=[];try{sched=r.schedule?JSON.parse(r.schedule):[];}catch(e){sched=[];}return{id:r.id,name:r.name,site:r.site||"",contact:r.contact||"",value:parseFloat(r.value||0),stage:r.stage||"Mobilization",schedule:sched,notes:r.notes||"",created:r.created_at||""};}
 function dnCP(r){return{id:r.id,cid:r.cid,amount:parseFloat(r.amount||0),date:r.date||"",notes:r.notes||"",by:r.by_user||"",created:r.created_at||""};}
 function dnDP(r){return{id:r.id,client:r.client,contact:r.contact||"",address:r.address||"",description:r.description||"",quotation:parseFloat(r.quotation||0),stage:r.stage||"Quotation",date:r.date||"",created:r.created_at||""};}
 function dnCRM(r){return{id:r.id,name:r.name,type:r.type||"Client",company:r.company||"",contact:r.contact||"",email:r.email||"",notes:r.notes||"",created:r.created_at||""};}
@@ -558,17 +560,34 @@ async function loadFromSupabase(silent){
       {t:"leave_reqs",p:"leaveReqs",f:dnLV,k:"r7_lv"},{t:"adv_reqs",p:"advReqs",f:dnAD,k:"r7_adv"},
       {t:"salrec",p:"salrec",f:dnSAL,k:"r7_sal"},{t:"vouchers",p:"vouchers",f:dnVO,k:"r7_vo"},
       {t:"petty",p:"petty",f:dnPT,k:"r7_pt"},{t:"escalations",p:"esc",f:dnESC,k:"r7_esc"},
-      {t:"audit_log",p:"auditLog",f:dnAUD,k:"r7_au"}
+      {t:"audit_log",p:"auditLog",f:dnAUD,k:"r7_au"},{t:"daily_reports",p:"dailyReports",f:dnDR,k:"r7_dr"}
     ];
     for(var i=0;i<loads.length;i++){
       var l=loads[i];
       try{var rows=await sbGet(l.t);if(rows){var cloudRows=rows.map(l.f);S[l.p]=mergeById(S[l.p]||[],cloudRows);LS(l.k,S[l.p]);}}catch(e2){console.warn("load",l.t,e2);}
     }
     try{var bl=await sbGet("bills");if(bl){var cloudBills=bl.map(function(r){return{id:r.id,n:r.bill_name||"",prop:r.prop||"",cat:r.cat||"",due:r.due_day||null,amt:parseFloat(r.amt||0),paid:r.paid_month||null};});S.bills=mergeById(S.bills||[],cloudBills);}}catch(e3){}
+    /* One-time reconciliation against BILLS_DEF — adds any bill defined in code but
+       missing from existing saved data (e.g. Office Rent, added later), and fixes the
+       "prop" link for bills whose definition changed (Hana Monthly now tied to Rehan
+       sb specifically) without touching amounts or paid-status someone already set. */
+    var existingBillIds={};(S.bills||[]).forEach(function(b){existingBillIds[b.id]=true;});
+    var billsChanged=false;
+    BILLS_DEF.forEach(function(def){
+      if(!existingBillIds[def.id]){
+        S.bills.push({id:def.id,n:def.n,prop:def.prop,cat:def.cat,due:def.due,amt:def.amt,paid:null});
+        billsChanged=true;
+      }else if(def.id==="hana"){
+        var idx=S.bills.findIndex(function(b){return b.id==="hana";});
+        if(idx>=0&&S.bills[idx].prop!==def.prop){S.bills[idx]=Object.assign({},S.bills[idx],{prop:def.prop});billsChanged=true;}
+      }
+    });
+    if(billsChanged){LS("r7_bl",S.bills);svBills();}
     try{var di=await sbGet("door_inv");if(di){var cloudDoorInv=di.map(function(r){return{id:r.id,n:r.name,unit:r.unit||"",qty:parseFloat(r.qty||0),reorder:parseFloat(r.reorder||0),updated:r.updated_at||""};});S.doorInvStock=mergeById(S.doorInvStock||[],cloudDoorInv);}}catch(e4){}
     try{var si=await sbGet("sites");if(si){var cloudSites=si.map(function(r){return{id:r.id,name:r.name||r.id,budget:parseFloat(r.budget||0),client:r.client||"",notes:r.notes||""};});S.sites=mergeById(S.sites||[],cloudSites);}}catch(e5){}
     try{var ca=await sbGet("custom_accounts");if(ca){var cloudNames=ca.map(function(r){return r.name;}).filter(Boolean);S.customAccounts=Array.from(new Set((S.customAccounts||[]).concat(cloudNames)));LS("r7_cacc",S.customAccounts);}}catch(e6){}
     try{var cs=await sbGet("custom_subs");if(cs){var cloudSubNames=cs.map(function(r){return r.name;}).filter(Boolean);S.customSubs=Array.from(new Set((S.customSubs||[]).concat(cloudSubNames)));LS("r7_csub",S.customSubs);}}catch(e7){}
+    try{var csi=await sbGet("custom_sites");if(csi){var cloudSiteNames=csi.map(function(r){return r.name;}).filter(Boolean);S.customSites=Array.from(new Set((S.customSites||[]).concat(cloudSiteNames)));LS("r7_csite",S.customSites);}}catch(e8){}
     if(!silent)toast("Synced",false,1500);
   }catch(e){console.error("sync error",e);if(!silent)toast("Local data only",true,2000);}
   if(!silent)loader(false);
@@ -670,10 +689,37 @@ function pBalProvisional(pid){return accountLedger("person",pid,{includeAllStatu
    deduplicated and sorted. This is the ONE place that combines the two sources, same
    principle as accountLedger being the one place balances are computed. */
 function effectiveAccounts(){
-  var combined=ACCS.concat(S.customAccounts||[]);
+  var combined=ACCS.concat(S.customAccounts||[]).concat(S.customSites||[]);
   var seen={};var out=[];
   combined.forEach(function(a){var k=a.trim();if(k&&!seen[k.toLowerCase()]){seen[k.toLowerCase()]=true;out.push(k);}});
   return out.sort();
+}
+/* A "new construction site" is the one thing in this app that was genuinely
+   hardcoded with no way for a director to add one — CSITES was a fixed array.
+   This makes it extensible the same way custom accounts already are: register
+   once, appears everywhere sites are listed (New Entry, Sites Statement,
+   Material forms, P&L by-site). */
+function effectiveSites(){
+  var combined=CSITES.concat(S.customSites||[]);
+  var seen={};var out=[];
+  combined.forEach(function(s){var k=s.trim();if(k&&!seen[k.toLowerCase()]){seen[k.toLowerCase()]=true;out.push(k);}});
+  return out;
+}
+function addCustomSite(name){
+  var trimmed=(name||"").trim();
+  if(!trimmed)return false;
+  if(effectiveSites().some(function(s){return s.toLowerCase()===trimmed.toLowerCase();})){toast("That site already exists",true);return false;}
+  S.customSites=[...S.customSites,trimmed];
+  LS("r7_csite",S.customSites);
+  sbUp("custom_sites",[{id:trimmed.toLowerCase(),name:trimmed,added_by:S.user,created_at:now2()}]);
+  addAudit("ADD_SITE",trimmed);
+  return true;
+}
+function removeCustomSite(name){
+  S.customSites=S.customSites.filter(function(s){return s!==name;});
+  LS("r7_csite",S.customSites);
+  sbDel("custom_sites",name.toLowerCase());
+  addAudit("REMOVE_SITE",name);
 }
 function effectiveSubs(){
   var combined=SUBS.concat(S.customSubs||[]);
@@ -956,7 +1002,8 @@ var NAV=[
   {sep:true,l:"Cash Book",roles:["staff","danish","director"]},
   {id:"myE",l:"My Entries",icon:"📒",roles:["staff"]},
   {sep:true,l:"Accounting",roles:["danish","director"]},
-  {id:"dq",l:"Review Queue",icon:"⏳",roles:["danish"],badge:"cbPend"},
+  {id:"digest",l:"Daily Digest",icon:"\uD83D\uDCCA",roles:["director"]},
+  {id:"reviewDay",l:"Daily Review",icon:"\uD83D\uDD0D",roles:["danish"]},
   {id:"dirApp",l:"Director Approval",icon:"⚖",roles:["director"],badge:"cbAw"},
   {id:"ldg",l:"General Ledger",icon:"≡",roles:["danish","director"]},
   {id:"trial",l:"Trial Balance",icon:"⚖",roles:["danish","director"]},
@@ -967,7 +1014,8 @@ var NAV=[
   {id:"vouch",l:"Vouchers",icon:"◈",roles:["danish","director"]},
   {id:"petty",l:"Petty Cash",icon:"💵",roles:["danish","director"]},
   {sep:true,l:"Construction",roles:["staff","danish","director"]},
-  {id:"constr",l:"Sites & Budget",icon:"◫",roles:["danish","director"]},
+  {id:"dailyRep",l:"Daily Report",icon:"📋",roles:["staff","danish","director"]},
+  {id:"constr",l:"Sites Statement",icon:"◫",roles:["danish","director"]},
   {id:"mat",l:"Material",icon:"⬡",roles:["staff","danish","director"],badge:"matPend"},
   {id:"contr",l:"Contractors",icon:"◈",roles:["danish","director"]},
   {id:"vnd",l:"Vendors",icon:"⬤",roles:["danish","director"]},
@@ -986,16 +1034,15 @@ var NAV=[
   {id:"security",l:"Security & Accounts",icon:"🔒",roles:["director"]}
 ];
 
-var PAGE_TITLES={dash:"Dashboard",att:"Attendance",myE:"My Entries",dq:"Review Queue",dirApp:"Director Approval",ldg:"General Ledger",trial:"Trial Balance",pl:"Profit & Loss",cashflow:"Cash Flow",bank:"Bank",cc:"Credit Cards",vouch:"Vouchers",petty:"Petty Cash",constr:"Sites & Budget",mat:"Material",contr:"Contractors",vnd:"Vendors",misc:"Misc Balances",doors:"Door Projects",doorInv:"Doors Inventory",hr:"HR Module",bills:"Bills & Salaries",crm:"CRM",reports:"Reports",ai:"AI Analysis",audit:"Audit Log",addCB:"New Entry",dirEdit:"Edit Entry",security:"Security & Accounts"};
+var PAGE_TITLES={dash:"Dashboard",att:"Attendance",myE:"My Entries",dailyRep:"Daily Report",digest:"Daily Digest",reviewDay:"Daily Review",dq:"Review Queue",dirApp:"Director Approval",ldg:"General Ledger",trial:"Trial Balance",pl:"Profit & Loss",cashflow:"Cash Flow",bank:"Bank",cc:"Credit Cards",vouch:"Vouchers",petty:"Petty Cash",constr:"Sites Statement",mat:"Material",contr:"Contractors",vnd:"Vendors",misc:"Misc Balances",doors:"Door Projects",doorInv:"Doors Inventory",hr:"HR Module",bills:"Bills & Salaries",crm:"CRM",reports:"Reports",ai:"AI Analysis",audit:"Audit Log",addCB:"New Entry",dirEdit:"Edit Entry",security:"Security & Accounts"};
 
 var BNAV={
   staff:[{id:"dash",icon:"⌂",l:"Home"},{id:"myE",icon:"📒",l:"Entries"},{id:"mat",icon:"⬡",l:"Material"},{id:"att",icon:"✓",l:"Attend"}],
-  danish:[{id:"dash",icon:"⌂",l:"Home"},{id:"dq",icon:"⏳",l:"Queue"},{id:"mat",icon:"⬡",l:"Material"},{id:"ldg",icon:"≡",l:"Ledger"},{id:"vnd",icon:"⬤",l:"Vendors"}],
+  danish:[{id:"dash",icon:"⌂",l:"Home"},{id:"reviewDay",icon:"\uD83D\uDD0D",l:"Review"},{id:"mat",icon:"⬡",l:"Material"},{id:"ldg",icon:"≡",l:"Ledger"},{id:"vnd",icon:"⬤",l:"Vendors"}],
   director:[{id:"dash",icon:"⌂",l:"Home"},{id:"dirApp",icon:"✅",l:"Approve"},{id:"ldg",icon:"≡",l:"Ledger"},{id:"cashflow",icon:"~",l:"Flow"},{id:"ai",icon:"✦",l:"AI"}]
 };
 
 function getBadge(id){
-  if(id==="cbPend")return S.cb.filter(function(e){return e.status==="pending";}).length;
   if(id==="cbAw")return S.cb.filter(function(e){return e.status==="awaiting_approval";}).length+S.esc.length;
   if(id==="matPend")return S.matrcv.filter(function(e){return e.status==="pending";}).length;
   return 0;
@@ -1419,7 +1466,6 @@ function rStaffDash(){
 }
 
 function rDanishDash(){
-  var cbPend=S.cb.filter(function(e){return e.status==="pending";}).length;
   var cbAw=S.cb.filter(function(e){return e.status==="awaiting_approval";}).length;
   var matPend=S.matrcv.filter(function(e){return e.status==="pending";}).length;
   var w=el("div",{});
@@ -1428,12 +1474,12 @@ function rDanishDash(){
   hero.appendChild(el("div",{style:{fontFamily:"'Cormorant Garamond',serif",fontSize:"28px",fontWeight:"500",color:"#F5EFE0"}},"Danish"));
   hero.appendChild(el("div",{style:{fontSize:"11px",color:"var(--sbm)"}},"Accountant \u00b7 Royal Inc."));
   w.appendChild(hero);
-  w.appendChild(el("div",{cls:"kgrid"},KPIsm("Cash Pending",cbPend,"var(--wrn)"),KPIsm("Awaiting Director",cbAw,"var(--inf)"),KPIsm("Material Pending",matPend,"var(--inf)"),KPIsm("Posted Today",S.cb.filter(function(e){return e.status==="posted"&&(e.date||"")===today();}).length,"var(--pos)")));
+  w.appendChild(el("div",{cls:"kgrid"},KPIsm("Flagged for Director",(S.esc||[]).length,"var(--wrn)"),KPIsm("Awaiting Director",cbAw,"var(--inf)"),KPIsm("Material Pending",matPend,"var(--inf)"),KPIsm("Posted Today",S.cb.filter(function(e){return e.status==="posted"&&(e.date||"")===today();}).length,"var(--pos)")));
   var dActs=dv({display:"grid",gridTemplateColumns:"1fr 1fr",gap:"10px",marginBottom:"14px"});
   dActs.appendChild(btn("+ New Entry",function(){set({view:"addCB"});},"btn-g"));
   dActs.appendChild(btn("My Ledger",function(){set({cbf:{lv:"byP",person:S.user,site:"",search:"",d1:"",d2:""},view:"ldg"});},"btn-o"));
   w.appendChild(dActs);
-  w.appendChild(btn(cbPend>0?"Open Review Queue ("+cbPend+" pending)":"Queue — All Clear",function(){set({view:"dq"});},cbPend>0?"btn-g btn-full":"btn-o btn-full"));
+  w.appendChild(btn("Open Daily Review",function(){set({view:"reviewDay"});},"btn-g btn-full"));
   if(matPend>0){var mb=btn("Material Pending ("+matPend+")",function(){set({view:"mat"});},"btn-o btn-full");mb.style.marginTop="8px";w.appendChild(mb);}
   return w;
 }
@@ -1656,7 +1702,9 @@ function rAddCB(){
      generic construction-material list, which doesn't apply there. */
   var subOptions=fd.account==="Office Exp"?officeExpSubOptions():effectiveSubs();
   var dlSub=el("datalist",{id:"dl_cb_sub"});subOptions.forEach(function(a){dlSub.appendChild(el("option",{value:a}));});
-  var dlVnd=el("datalist",{id:"dl_cb_vnd"});S.vendors.forEach(function(v){dlVnd.appendChild(el("option",{value:v.name}));});
+  var dlVnd=el("datalist",{id:"dl_cb_vnd"});
+  var mergedDirectory=Array.from(new Set(S.vendors.map(function(v){return v.name;}).concat(S.contractors.map(function(c){return c.name;}))));
+  mergedDirectory.forEach(function(name){dlVnd.appendChild(el("option",{value:name}));});
   w.appendChild(dlAcc);w.appendChild(dlSub);w.appendChild(dlVnd);
   w.appendChild(PhotoZone(FID,isUr?UR.photoBtn:"Attach Bill Photo"));
   var ph=S.photo[FID]||{};
@@ -1665,17 +1713,18 @@ function rAddCB(){
   var previewCBNo=fixEntry?fixEntry.cbNo:nCBNo();
   w.appendChild(dv({background:"var(--g4)",border:"1px solid rgba(184,151,58,.2)",borderRadius:"6px",padding:"8px 12px",marginBottom:"12px",fontSize:"12px"},el("span",{style:{fontWeight:"700",color:"var(--g)"}},previewCBNo)));
   if(fd.account==="TDC")w.appendChild(el("div",{cls:"al-b"},isUr?"TDC اندراج: سب اکاؤنٹ میں پراجیکٹ نمبر لکھیں (مثلاً P-274)، اور وینڈر میں کام کی قسم اور شخص کا نام (مثلاً \"ترکھان — اشرف\")":"TDC entry: put the project name/number in Sub Account (e.g. P-274), and the category and person in Vendor (e.g. \"Carpenter — Ashraf\")"));
+  var matchedDoorClient=S.doorProjects.find(function(p){return p.client.toLowerCase()===(fd.account||"").toLowerCase();});
+  if(matchedDoorClient)w.appendChild(el("div",{cls:"al-b"},isUr?"دروازے کا آرڈر: سب اکاؤنٹ میں لاگت کی قسم لکھیں — Carpenter، Materials، Polish، یا Installation":"Door order: put the cost category in Sub Account — Carpenter, Materials, Polish, or Installation"));
   if(fd.account&&(fd.debit||fd.credit)){var dups=detectDups({id:"new",account:fd.account,date:fd.date||today(),debit:parseFloat(fd.debit||0),credit:parseFloat(fd.credit||0)});if(dups.length>0)w.appendChild(el("div",{cls:"al-w"},"Possible duplicate: "+dups.length+" similar entries in last 3 days"));}
   if(fd.account&&fd.sub&&!fd.part&&!fd.partUr){var suggestion=learnPattern(fd.account,fd.sub);if(suggestion){w.appendChild(dv({display:"flex",gap:"8px",alignItems:"center",padding:"9px 11px",background:"var(--g5)",border:"1px solid rgba(184,151,58,.2)",borderRadius:"6px",marginBottom:"10px"},el("span",{style:{fontSize:"11px",color:"var(--g3)",flex:"1"}},"\u2728 AI pattern match: "+suggestion.slice(0,55)),btn("Use",function(){fd.part=suggestion;render();},"btn-o btn-sm")));}}
   var fg=el("div",{cls:"fg"});
   fg.appendChild(Fld(isUr?"تاریخ":"Date",Inp(fd.date,function(v){fd.date=v;},"date")));
   fg.appendChild(Fld(isUr?"اکاؤنٹ":"Account",InpLive(fd.account,function(v){fd.account=v;},function(){render();},"text",isUr?"لکھیں یا فہرست سے چنیں":"Type or pick from list","dl_cb_acc")));
   fg.appendChild(Fld(isUr?"ذیلی اکاؤنٹ":"Sub Account",InpLive(fd.sub,function(v){fd.sub=v;},function(){render();},"text",fd.account==="TDC"?(isUr?"پراجیکٹ نمبر، مثلاً P-274":"Project name/number, e.g. P-274"):(isUr?"لکھیں یا فہرست سے چنیں":"Type or pick from list"),"dl_cb_sub")));
+  fg.appendChild(Fld(isUr?"وینڈر/کنٹریکٹر":"Vendor/Contractor",Inp(fd.vendor,function(v){fd.vendor=v;},"text",fd.account==="TDC"?(isUr?"مثلاً: ترکھان — اشرف":"e.g. Carpenter — Ashraf"):(isUr?"لکھیں یا فہرست سے چنیں":"Type or pick from list"),"dl_cb_vnd")));
   fg.appendChild(Fld(isUr?"علاقہ":"Area",Inp(fd.area,function(v){fd.area=v;},"text")));
   fg.appendChild(Fld(isUr?"مقدار":"Qty",InpLive(fd.qty,function(v){fd.qty=v;if(v&&fd.rate)fd.debit=String((parseFloat(v)*parseFloat(fd.rate||0))||"");},function(){render();},"number")));
   fg.appendChild(Fld(isUr?"ریٹ":"Rate (per unit)",InpLive(fd.rate,function(v){fd.rate=v;if(v&&fd.qty)fd.debit=String((parseFloat(fd.qty)*parseFloat(v||0))||"");},function(){render();},"number","0")));
-  fg.appendChild(Fld(isUr?"وینڈر":"Vendor",Inp(fd.vendor,function(v){fd.vendor=v;},"text",fd.account==="TDC"?(isUr?"مثلاً: ترکھان — اشرف":"e.g. Carpenter — Ashraf"):(isUr?"لکھیں یا فہرست سے چنیں":"Type or pick from list"),"dl_cb_vnd")));
-  fg.appendChild(Fld(isUr?"بل نمبر":"Bill #",Inp(fd.billNo,function(v){fd.billNo=v;},"text")));
   w.appendChild(fg);
   w.appendChild(Fld(isUr?"تفصیل (اردو)":"Particulars / Description",TA(isUr?fd.partUr:fd.part,function(v){if(isUr)fd.partUr=v;else fd.part=v;},3,isUr?"اردو میں تفصیل...":"Describe the transaction...",isUr)));
   var amtRow=el("div",{cls:"fg2"});
@@ -1705,13 +1754,25 @@ function rAddCB(){
     if(fd.rate)extras.push((isUr?"ریٹ ":"Rate ")+Rs(fd.rate)+(fd.qty?"/"+fd.qty:""));
     if(fd.vendor)extras.push((isUr?"وینڈر: ":"Vendor: ")+fd.vendor);
     var finalPartEn=extras.length?(partEn+" ["+extras.join(", ")+"]"):partEn;
-    var row={id:fd._fix||uid(),person:S.user,date:fd.date||today(),account:fd.account,subAccount:fd.sub,area:fd.area,qty:fd.qty,billNo:fd.billNo,particulars:finalPartEn,particularsUr:partUr,debit:parseFloat(fd.debit||0)||0,credit:parseFloat(fd.credit||0)||0,status:status,bill_photo:permanentPhotoUrl||(fixEntry?fixEntry.bill_photo:"")||"",filed:isDir,rejection:"",cbNo:fixEntry?fixEntry.cbNo:nCBNo(),siteNo:fixEntry?fixEntry.siteNo:(fd.account&&CSITES.includes(fd.account)?nSNo(fd.account):""),created:now2(),approvedBy:isDir?S.user:"",editedBy:"",editedAt:""};
+    var autoCbNo=fixEntry?fixEntry.cbNo:nCBNo();
+    var row={id:fd._fix||uid(),person:S.user,date:fd.date||today(),account:fd.account,subAccount:fd.sub,area:fd.area,qty:fd.qty,billNo:autoCbNo,particulars:finalPartEn,particularsUr:partUr,vendorName:fd.vendor||"",debit:parseFloat(fd.debit||0)||0,credit:parseFloat(fd.credit||0)||0,status:status,bill_photo:permanentPhotoUrl||(fixEntry?fixEntry.bill_photo:"")||"",filed:isDir,rejection:"",cbNo:autoCbNo,siteNo:fixEntry?fixEntry.siteNo:(fd.account&&CSITES.includes(fd.account)?nSNo(fd.account):""),created:now2(),approvedBy:isDir?S.user:"",editedBy:"",editedAt:""};
     if(fd._fix)S.cb=S.cb.map(function(e){return e.id===fd._fix?row:e;});else S.cb=[...S.cb,row];
     svRow("cb","r7_cb",row);addAudit(isDir?"DIRECT_POST":"SUBMIT","CB#"+row.cbNo);
-    if(fd.vendor&&fd.vendor.trim()&&!S.vendors.find(function(v){return v.name.toLowerCase()===fd.vendor.trim().toLowerCase();})){
-      var newVendor={id:uid(),name:fd.vendor.trim(),type:"Supplier",contact:"",ntn:"",created:now2()};
-      S.vendors=[...S.vendors,newVendor];
-      svRow("vendors","r7_vn",newVendor);
+    if(fd.vendor&&fd.vendor.trim()){
+      var vendorTrimmed=fd.vendor.trim();
+      if(!S.vendors.find(function(v){return v.name.toLowerCase()===vendorTrimmed.toLowerCase();})){
+        var newVendor={id:uid(),name:vendorTrimmed,type:"Supplier",contact:"",ntn:"",created:now2()};
+        S.vendors=[...S.vendors,newVendor];
+        svRow("vendors","r7_vn",newVendor);
+      }
+      /* Vendor/Contractor is one merged directory now — a name typed here that isn't
+         already a known contractor gets added there too, so it's visible from both
+         the Vendors list and the Contractors list without a second manual entry. */
+      if(!S.contractors.find(function(c){return c.name.toLowerCase()===vendorTrimmed.toLowerCase();})){
+        var newContrAuto={id:uid(),name:vendorTrimmed,site:fd.account&&CSITES.includes(fd.account)?fd.account:CSITES[0],contact:"",value:0,stage:"Mobilization",schedule:[],notes:"Auto-added from a cash entry",created:now2()};
+        S.contractors=[...S.contractors,newContrAuto];
+        svRow("contractors","r7_co",newContrAuto);
+      }
     }
     S.fd[FID]={mode:"expense",date:today(),account:"",sub:"",area:"",qty:"",rate:"",vendor:"",billNo:"",part:"",partUr:"",debit:"",credit:"",giveTo:"",_fix:null};delete S.photo[FID];
     toast(isDir?"Posted":(isUr?"ڈینش کو بھیج دیا":"Submitted to Danish"));
@@ -1725,27 +1786,12 @@ function rAddCB(){
 }
 
 function rDanishQueue(){
-  var pending=S.cb.filter(function(e){return e.status==="pending";}).sort(function(a,b){return a.created>b.created?1:-1;});
-  var w=el("div",{});
-  if(!pending.length){w.appendChild(el("div",{cls:"al-g",style:{textAlign:"center",padding:"20px",fontWeight:"600"}},"All clear — no entries pending"));return w;}
-  pending.forEach(function(r){
-    var u=gU(r.person);var isCr=parseFloat(r.credit||0)>0&&!parseFloat(r.debit||0);var reason="";var editPart=r.particulars||"";
-    var vc=el("div",{cls:"vc"});
-    vc.appendChild(dv({display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:"10px",paddingBottom:"9px",borderBottom:"1px solid var(--bd)",gap:"8px",flexWrap:"wrap"},dv({display:"flex",gap:"9px",alignItems:"center"},Avatar(r.person,30),el("div",{},el("div",{style:{fontWeight:"700",fontSize:"13px"}},(r.account||"")+(r.subAccount?" / "+r.subAccount:"")),dv({display:"flex",gap:"7px",marginTop:"3px",alignItems:"center",flexWrap:"wrap"},r.cbNo?el("span",{style:{fontSize:"10px",fontWeight:"700",color:"var(--g)",background:"var(--g4)",borderRadius:"3px",padding:"1px 6px"}},r.cbNo):null,el("span",{style:{fontSize:"11px",color:"var(--ink4)"}},u.name+" \u00b7 "+(r.date||""))))),el("div",{style:{fontFamily:"'Cormorant Garamond',serif",fontSize:"22px",fontWeight:"600",color:isCr?"var(--pos)":"var(--neg)"}},(isCr?"+":"-")+Rs(isCr?r.credit:r.debit))));
-    if(r.particularsUr){var urBox=el("div",{cls:"ur",style:{padding:"8px 10px",background:"rgba(74,127,165,.08)",border:"1px solid rgba(74,127,165,.15)",borderRadius:"6px",marginBottom:"8px",fontSize:"13px"}});urBox.appendChild(el("div",{style:{fontSize:"9px",letterSpacing:".1em",textTransform:"uppercase",color:"var(--inf)",marginBottom:"4px",direction:"ltr",textAlign:"left"}},"Original (Urdu)"));urBox.appendChild(document.createTextNode(r.particularsUr));vc.appendChild(urBox);}
-    vc.appendChild(Lbl("Description (editable)"));var dta=TA(editPart,function(v){editPart=v;},2,"");vc.appendChild(dta);
-    if(r.bill_photo){var iw=dv({marginBottom:"10px",borderRadius:"7px",overflow:"hidden",border:"1px solid var(--bd)",cursor:"pointer"});iw.appendChild(el("img",{src:r.bill_photo,style:{width:"100%",maxHeight:"180px",objectFit:"cover",display:"block"}}));iw.addEventListener("click",function(){window.open(r.bill_photo,"_blank");});vc.appendChild(iw);}
-    else vc.appendChild(el("div",{cls:"al-w"},"No bill photo attached"));
-    var flab=el("label",{cls:"filed"});var fcb=el("input",{type:"checkbox"});fcb.checked=r.filed||false;var rid=r.id;fcb.addEventListener("change",function(){S.cb=S.cb.map(function(e){return e.id===rid?Object.assign({},e,{filed:fcb.checked}):e;});var updated=S.cb.find(function(e){return e.id===rid;});svRow("cb","r7_cb",updated);});flab.appendChild(fcb);flab.appendChild(el("span",{style:{fontSize:"12px",fontWeight:"500"}},fcb.checked?"Bill filed":"Mark as filed"));vc.appendChild(flab);
-    vc.appendChild(Sep());
-    var rta=TA("",function(v){reason=v;},1,"Escalation / rejection note...");rta.style.marginBottom="8px";vc.appendChild(rta);
-    var btns5=dv({display:"flex",gap:"7px",flexWrap:"wrap"});
-    btns5.appendChild(btn("Approve",function(){S.cb=S.cb.map(function(e){return e.id===rid?Object.assign({},e,{particulars:editPart,status:"awaiting_approval",reviewedBy:"danish",reviewedAt:now2()}):e;});var updated=S.cb.find(function(e){return e.id===rid;});svRow("cb","r7_cb",updated);addAudit("DANISH_APPROVE","CB#"+r.cbNo);toast("Sent for Director approval");render();},"btn-pos btn-sm"));
-    btns5.appendChild(btn("Escalate",function(){if(!reason.trim()){toast("Enter escalation note",true);return;}var newEsc={id:uid(),type:"cb",entryId:rid,note:reason,by:"danish",at:now2()};S.esc=[...S.esc,newEsc];svRow("esc","r7_esc",newEsc);S.cb=S.cb.map(function(e){return e.id===rid?Object.assign({},e,{status:"escalated",rejection:"[Escalated] "+reason}):e;});var updated=S.cb.find(function(e){return e.id===rid;});svRow("cb","r7_cb",updated);toast("Escalated to Director");render();},"btn-wrn btn-sm"));
-    btns5.appendChild(btn("Reject",function(){if(!reason.trim()){toast("Enter reason",true);return;}S.cb=S.cb.map(function(e){return e.id===rid?Object.assign({},e,{status:"rejected",rejection:reason}):e;});var updated=S.cb.find(function(e){return e.id===rid;});svRow("cb","r7_cb",updated);addAudit("DANISH_REJECT","CB#"+r.cbNo);toast("Returned");render();},"btn-neg btn-sm"));
-    vc.appendChild(btns5);w.appendChild(vc);
-  });
-  return w;
+  /* This used to be a separate "pending approval" queue, back when entries went
+     staff -> Danish -> director in two stages. That workflow no longer exists —
+     everyone posts directly and Danish reviews after the fact instead (see Daily
+     Review). Redirect there instead of showing a second, overlapping tool. */
+  set({view:"reviewDay"});
+  return el("div",{});
 }
 
 function rDirApp(){
@@ -1965,14 +2011,15 @@ function rBank(){
   if(tab==="chq"){
     var FID="bank_chq";if(!S.fd[FID])S.fd[FID]={bid:"hs",recipType:"staff",recipUser:"",recipName:"",account:"",sub:"",particulars:"",amount:"",date:today()};var fd=S.fd[FID];var chqNo=nCHQNo();
     w.appendChild(dv({background:"var(--g4)",border:"1px solid rgba(184,151,58,.2)",borderRadius:"6px",padding:"8px 13px",marginBottom:"12px",fontSize:"12px",fontWeight:"700",color:"var(--g)"},"Cheque # "+chqNo));
+    w.appendChild(PhotoZone(FID,"Attach Cheque Photo (optional)"));
     var fg2=el("div",{cls:"fg"});fg2.appendChild(Fld("Bank",Sel(fd.bid,function(v){fd.bid=v;},[{v:"hs",l:"HS Meezan (Cheque)"},{v:"ra",l:"Rehan Alfalah (Cheque)"}])));fg2.appendChild(Fld("Date",Inp(fd.date,function(v){fd.date=v;},"date")));fg2.appendChild(Fld("Amount (Rs)",Inp(fd.amount,function(v){fd.amount=v;},"number","0")));w.appendChild(fg2);
     w.appendChild(Fld("Payable To",Sel(fd.recipType,function(v){fd.recipType=v;fd.recipUser="";fd.recipName="";render();},[{v:"staff",l:"Staff Member"},{v:"others",l:"Others / Vendor / External"}])));
     w.appendChild(el("div",{style:{height:"8px"}}));
     if(fd.recipType==="staff"){w.appendChild(Fld("Staff Member",Sel(fd.recipUser,function(v){fd.recipUser=v;},U.filter(function(u){return ROLE_MAP[u.id]==="staff";}).map(function(u){return{v:u.id,l:u.name+" — "+u.role};}))));w.appendChild(el("div",{cls:"al-b",style:{marginTop:"8px"}},"Cheque credits to staff member's cash balance"));}
     else{w.appendChild(el("div",{cls:"al-w"},"Cheque posts as direct expense in general journal."));var dlCA=el("datalist",{id:"dl_chq_a"});effectiveAccounts().forEach(function(a){dlCA.appendChild(el("option",{value:a}));});w.appendChild(dlCA);var fg3=el("div",{cls:"fg",style:{marginTop:"8px"}});fg3.appendChild(Fld("Recipient Name",Inp(fd.recipName,function(v){fd.recipName=v;},"text","Full name / company")));fg3.appendChild(Fld("Account",Inp(fd.account,function(v){fd.account=v;},"text","Account","dl_chq_a")));w.appendChild(fg3);w.appendChild(Fld("Description",TA(fd.particulars,function(v){fd.particulars=v;},2,"Purpose...")));}
-    w.appendChild(btn("Issue Cheque",function(){if(!fd.amount||!parseFloat(fd.amount)){toast("Enter amount",true);return;}if(fd.recipType==="staff"&&!fd.recipUser){toast("Select staff member",true);return;}if(fd.recipType==="others"&&(!fd.recipName.trim()||!fd.account||!fd.particulars.trim())){toast("Fill all fields",true);return;}var bkName=(BANKS.find(function(b){return b.id===fd.bid;})||{name:fd.bid}).name;var chqLinkId=fd.recipType==="staff"?uid():null;var newBankTxn={id:uid(),bid:fd.bid,typ:"out",amount:parseFloat(fd.amount),particulars:fd.recipType==="staff"?"Cheque to "+gU(fd.recipUser).name:fd.particulars+" — "+fd.recipName,chqNo:chqNo,date:fd.date||today(),linkId:chqLinkId,created:now2()};S.bank=[...S.bank,newBankTxn];svRow("bank","r7_bk",newBankTxn);if(fd.recipType==="staff"){var newCb={id:uid(),person:fd.recipUser,date:fd.date||today(),account:bkName,subAccount:"Cheque #"+chqNo,area:"",qty:"",billNo:chqNo,particulars:"Cheque #"+chqNo+" from "+bkName,particularsUr:"",debit:0,credit:parseFloat(fd.amount),status:"posted",filed:true,rejection:"",cbNo:nCBNo(),siteNo:"",linkId:chqLinkId,created:now2(),approvedBy:S.user,editedBy:"",editedAt:""};S.cb=[...S.cb,newCb];svRow("cb","r7_cb",newCb);}else{var newCb2={id:uid(),person:S.user,date:fd.date||today(),account:fd.account,subAccount:fd.sub,area:"",qty:"",billNo:chqNo,particulars:fd.particulars+" — Cheque #"+chqNo+" to "+fd.recipName+" via "+bkName,particularsUr:"",debit:parseFloat(fd.amount),credit:0,status:"posted",filed:true,rejection:"",cbNo:nCBNo(),siteNo:fd.account&&CSITES.includes(fd.account)?nSNo(fd.account):"",created:now2(),approvedBy:S.user,editedBy:"",editedAt:""};S.cb=[...S.cb,newCb2];svRow("cb","r7_cb",newCb2);}addAudit("CHEQUE","CHQ#"+chqNo+" Rs "+Rs(fd.amount));S.fd[FID]={bid:"hs",recipType:"staff",recipUser:"",recipName:"",account:"",sub:"",particulars:"",amount:"",date:today()};toast("Cheque #"+chqNo+" issued");render();},"btn-g btn-full"));
+    w.appendChild(btn("Issue Cheque",async function(){if(!fd.amount||!parseFloat(fd.amount)){toast("Enter amount",true);return;}if(fd.recipType==="staff"&&!fd.recipUser){toast("Select staff member",true);return;}if(fd.recipType==="others"&&(!fd.recipName.trim()||!fd.account||!fd.particulars.trim())){toast("Fill all fields",true);return;}var bkName=(BANKS.find(function(b){return b.id===fd.bid;})||{name:fd.bid}).name;var chqLinkId=fd.recipType==="staff"?uid():null;var chqPh=S.photo[FID]||{};var chqPhotoUrl="";if(chqPh.b64){toast("Saving photo...",false,2500);chqPhotoUrl=await sbUploadPhoto(chqPh.b64,chqPh.mime,"cheque");if(!chqPhotoUrl)toast("Photo could not be saved — issuing without it",true,3500);}var newBankTxn={id:uid(),bid:fd.bid,typ:"out",amount:parseFloat(fd.amount),particulars:fd.recipType==="staff"?"Cheque to "+gU(fd.recipUser).name:fd.particulars+" — "+fd.recipName,chqNo:chqNo,date:fd.date||today(),linkId:chqLinkId,bill_photo:chqPhotoUrl||"",created:now2()};S.bank=[...S.bank,newBankTxn];svRow("bank","r7_bk",newBankTxn);if(fd.recipType==="staff"){var newCb={id:uid(),person:fd.recipUser,date:fd.date||today(),account:bkName,subAccount:"Cheque #"+chqNo,area:"",qty:"",billNo:chqNo,particulars:"Cheque #"+chqNo+" from "+bkName,particularsUr:"",debit:0,credit:parseFloat(fd.amount),status:"posted",filed:true,rejection:"",cbNo:nCBNo(),siteNo:"",linkId:chqLinkId,bill_photo:chqPhotoUrl||"",created:now2(),approvedBy:S.user,editedBy:"",editedAt:""};S.cb=[...S.cb,newCb];svRow("cb","r7_cb",newCb);}else{var newCb2={id:uid(),person:S.user,date:fd.date||today(),account:fd.account,subAccount:fd.sub,area:"",qty:"",billNo:chqNo,particulars:fd.particulars+" — Cheque #"+chqNo+" to "+fd.recipName+" via "+bkName,particularsUr:"",debit:parseFloat(fd.amount),credit:0,status:"posted",filed:true,rejection:"",cbNo:nCBNo(),siteNo:fd.account&&CSITES.includes(fd.account)?nSNo(fd.account):"",bill_photo:chqPhotoUrl||"",created:now2(),approvedBy:S.user,editedBy:"",editedAt:""};S.cb=[...S.cb,newCb2];svRow("cb","r7_cb",newCb2);}addAudit("CHEQUE","CHQ#"+chqNo+" Rs "+Rs(fd.amount));S.fd[FID]={bid:"hs",recipType:"staff",recipUser:"",recipName:"",account:"",sub:"",particulars:"",amount:"",date:today()};delete S.photo[FID];toast("Cheque #"+chqNo+" issued");render();},"btn-g btn-full"));
   }
-  if(tab==="dep"){var FID2="bank_dep";if(!S.fd[FID2])S.fd[FID2]={bid:"hs",amount:"",date:today(),particulars:""};var fd2=S.fd[FID2];var fg4=el("div",{cls:"fg"});fg4.appendChild(Fld("Bank",Sel(fd2.bid,function(v){fd2.bid=v;},[{v:"hs",l:"HS Meezan"},{v:"am",l:"Ahmad Meezan"},{v:"ra",l:"Rehan Alfalah"}])));fg4.appendChild(Fld("Amount (Rs)",Inp(fd2.amount,function(v){fd2.amount=v;},"number")));fg4.appendChild(Fld("Date",Inp(fd2.date,function(v){fd2.date=v;},"date")));w.appendChild(fg4);w.appendChild(Fld("Details",TA(fd2.particulars,function(v){fd2.particulars=v;},2,"")));w.appendChild(btn("Record Deposit",function(){if(!fd2.amount){toast("Enter amount",true);return;}var newDep={id:uid(),bid:fd2.bid,typ:"in",amount:parseFloat(fd2.amount),particulars:fd2.particulars||"Deposit",date:fd2.date||today(),created:now2()};S.bank=[...S.bank,newDep];svRow("bank","r7_bk",newDep);S.fd[FID2]={bid:"hs",amount:"",date:today(),particulars:""};toast("Deposit recorded");render();},"btn-g btn-full"));}
+  if(tab==="dep"){var FID2="bank_dep";if(!S.fd[FID2])S.fd[FID2]={bid:"hs",amount:"",date:today(),particulars:""};var fd2=S.fd[FID2];w.appendChild(PhotoZone(FID2,"Attach Deposit Slip (optional)"));var fg4=el("div",{cls:"fg"});fg4.appendChild(Fld("Bank",Sel(fd2.bid,function(v){fd2.bid=v;},[{v:"hs",l:"HS Meezan"},{v:"am",l:"Ahmad Meezan"},{v:"ra",l:"Rehan Alfalah"}])));fg4.appendChild(Fld("Amount (Rs)",Inp(fd2.amount,function(v){fd2.amount=v;},"number")));fg4.appendChild(Fld("Date",Inp(fd2.date,function(v){fd2.date=v;},"date")));w.appendChild(fg4);w.appendChild(Fld("Details",TA(fd2.particulars,function(v){fd2.particulars=v;},2,"")));w.appendChild(btn("Record Deposit",async function(){if(!fd2.amount){toast("Enter amount",true);return;}var depPh=S.photo[FID2]||{};var depPhotoUrl="";if(depPh.b64){toast("Saving photo...",false,2500);depPhotoUrl=await sbUploadPhoto(depPh.b64,depPh.mime,"deposit");if(!depPhotoUrl)toast("Photo could not be saved — recording without it",true,3500);}var newDep={id:uid(),bid:fd2.bid,typ:"in",amount:parseFloat(fd2.amount),particulars:fd2.particulars||"Deposit",date:fd2.date||today(),bill_photo:depPhotoUrl||"",created:now2()};S.bank=[...S.bank,newDep];svRow("bank","r7_bk",newDep);S.fd[FID2]={bid:"hs",amount:"",date:today(),particulars:""};delete S.photo[FID2];toast("Deposit recorded");render();},"btn-g btn-full"));}
   if(tab==="xfer"){
     var FID6="bank_xfer";if(!S.fd[FID6])S.fd[FID6]={bid:"hs",direction:"out",recipType:"staff",recipUser:"",recipName:"",account:"",sub:"",amount:"",date:today(),particulars:"",_aiDone:false};
     var fd6=S.fd[FID6];
@@ -2040,7 +2087,7 @@ function rBank(){
     if(!rows3.length){w.appendChild(el("div",{style:{textAlign:"center",padding:"24px",color:"var(--ink4)"}},"No bank transactions yet"));return w;}
     var isDirBank=ROLE_MAP[S.user]==="director";
     w.appendChild(expBtn(rows3,"bank.csv"));
-    var theadB=el("thead",{},el("tr",{},el("th",{},"Date"),el("th",{},"Bank"),el("th",{},"Type"),el("th",{},"CHQ#"),el("th",{},"Details"),el("th",{style:{textAlign:"right"}},"Amount"),isDirBank?el("th",{},""):null));
+    var theadB=el("thead",{},el("tr",{},el("th",{},"Date"),el("th",{},"Bank"),el("th",{},"Type"),el("th",{},"CHQ#"),el("th",{},"Details"),el("th",{style:{textAlign:"right"}},"Amount"),el("th",{},"Bill"),isDirBank?el("th",{},""):null));
     var tbodyB=el("tbody",{});
     rows3.forEach(function(r){
       var editing=S.fd["_bkEdit"]===r.id;
@@ -2048,7 +2095,7 @@ function rBank(){
         var efd=S.fd["_bkEditData"]||{particulars:r.particulars,amount:r.amount,date:r.date,chqNo:r.chqNo};
         S.fd["_bkEditData"]=efd;
         var tr=el("tr",{});
-        var td1=el("td",{colSpan:isDirBank?7:6});
+        var td1=el("td",{colSpan:isDirBank?8:7});
         var ef=dv({display:"flex",gap:"8px",flexWrap:"wrap",padding:"8px 0",alignItems:"center"});
         var di=Inp(efd.date,function(v){efd.date=v;},"date");di.style.width="130px";ef.appendChild(di);
         var ai=Inp(String(efd.amount),function(v){efd.amount=v;},"number");ai.style.width="100px";ef.appendChild(ai);
@@ -2065,6 +2112,7 @@ function rBank(){
       tr.appendChild(el("td",{style:{fontSize:"11px",color:"var(--ink4)"}},r.chqNo||"—"));
       tr.appendChild(el("td",{style:{fontSize:"12px",maxWidth:"180px"}},r.particulars||""));
       tr.appendChild(el("td",{style:{textAlign:"right",fontWeight:"700",color:r.typ==="in"?"var(--pos)":"var(--neg)",whiteSpace:"nowrap"}},(r.typ==="in"?"+":"-")+Rs(r.amount)));
+      var photoTd=el("td",{});if(r.bill_photo){photoTd.appendChild(el("a",{href:r.bill_photo,target:"_blank",style:{fontSize:"11px",color:"var(--g)",fontWeight:"600"}},"View"));}else{photoTd.style.color="var(--ink4)";photoTd.textContent="—";}tr.appendChild(photoTd);
       if(isDirBank){
         var rid2=r.id;
         var actTd=el("td",{style:{whiteSpace:"nowrap"}});
@@ -2186,8 +2234,18 @@ function rCC(){
     }
   }
   if(tab==="reg"){
-    var rows4=S.cc.sort(function(a,b){return b.created>a.created?1:-1;});
-    if(!rows4.length){w.appendChild(el("div",{style:{textAlign:"center",padding:"24px",color:"var(--ink4)"}},"No CC entries"));return w;}
+    var cardFilter=S.tab.ccCard||"";
+    var allRows=S.cc.sort(function(a,b){return b.created>a.created?1:-1;});
+    var rows4=cardFilter?allRows.filter(function(r){return r.cid===cardFilter;}):allRows;
+    var filterRow=dv({display:"flex",gap:"8px",marginBottom:"12px",flexWrap:"wrap",alignItems:"center"});
+    filterRow.appendChild(Sel(cardFilter,function(v){set({tab:Object.assign({},S.tab,{ccCard:v})});},[{v:"",l:"All Cards"}].concat(CARDS.map(function(c){return{v:c.id,l:c.name};}))));
+    if(cardFilter){
+      var selCard=CARDS.find(function(c){return c.id===cardFilter;});
+      var selBal=cBal(cardFilter);
+      filterRow.appendChild(el("span",{cls:"badge "+(selBal>0?"br":"bg")},(selCard?selCard.name:cardFilter)+" — "+(selBal>0?"Rs "+commaFmt(selBal)+" owed":"Rs "+commaFmt(Math.abs(selBal))+" credit")));
+    }
+    w.appendChild(filterRow);
+    if(!rows4.length){w.appendChild(el("div",{style:{textAlign:"center",padding:"24px",color:"var(--ink4)"}},cardFilter?"No entries for this card":"No CC entries"));return w;}
     var isDirCC=ROLE_MAP[S.user]==="director";
     w.appendChild(expBtn(rows4,"cc.csv"));
     var theadC=el("thead",{},el("tr",{},el("th",{},"Date"),el("th",{},"Card"),el("th",{},"Type"),el("th",{},"Merchant"),el("th",{},"Account"),el("th",{style:{textAlign:"right"}},"Amount"),isDirCC?el("th",{},""):null));
@@ -2258,66 +2316,128 @@ function rMat(){
   var w=el("div",{});
   w.appendChild(Tabs([{id:"rcv",l:isUr?"وصولی":"Receive"},{id:"used",l:isUr?"استعمال":"Used"},{id:"shift",l:isUr?"منتقلی":"Shift"},{id:"inv",l:"Inventory"},{id:"pend",l:"Pending"}],tab,function(id){set({tab:Object.assign({},S.tab,{mat:id})});}));
   if(tab==="rcv"){
-    var FID="mat_rcv";if(!S.fd[FID])S.fd[FID]={site:CSITES[0],item:"",unit:"",qty:"",rate:"",total:"",vendorId:"",payType:"cash",date:today(),billNo:"",notes:"",notesUr:""};
+    var FID="mat_rcv";if(!S.fd[FID])S.fd[FID]={site:CSITES[0],item:"",unit:"",qty:"",rate:"",total:"",vendorId:"",payType:"cash",date:today(),notes:"",notesUr:""};
     var fd=S.fd[FID];
-    w.appendChild(PhotoZone(FID,isUr?UR.photoBtn:"Bill Photo"));
+    w.appendChild(PhotoZone(FID,isUr?UR.photoBtn:"1. Bill Photo"));
     var ph=S.photo[FID]||{};
     if(ph.b64){w.appendChild(el("button",{cls:"btn-ai",onClick:async function(){var ar=await aiReadBill(FID,fd.site,"");if(ar){if(ar.vendor){var v=S.vendors.find(function(x){return x.name.toLowerCase().includes(ar.vendor.toLowerCase());});if(v)fd.vendorId=v.id;}if(ar.amount&&!fd.total)fd.total=String(ar.amount);render();}}},isUr?UR.readBill:"AI Read Bill"));}
+    w.appendChild(PhotoZone(FID+"_material",isUr?"2. مٹیریل کی تصویر":"2. Physical Material Photo"));
     var fg=el("div",{cls:"fg"});
-    fg.appendChild(Fld(isUr?"سائٹ":"Site",Sel(fd.site,function(v){fd.site=v;},CSITES.map(function(s){return{v:s,l:s};}))));
+    fg.appendChild(Fld(isUr?"سائٹ":"Site",Sel(fd.site,function(v){fd.site=v;},effectiveSites().map(function(s){return{v:s,l:s};}))));
     fg.appendChild(Fld(isUr?"مٹیریل":"Item",Inp(fd.item,function(v){fd.item=v;},"text",isUr?"مثال: سیمنٹ":"e.g. Cement")));
     fg.appendChild(Fld(isUr?"یونٹ":"Unit",Sel(fd.unit,function(v){fd.unit=v;},UNITS.map(function(u){return{v:u,l:u};}))));
     fg.appendChild(Fld(isUr?"مقدار":"Qty",Inp(fd.qty,function(v){fd.qty=v;if(v&&fd.rate)fd.total=String(parseFloat(v)*parseFloat(fd.rate||0));},"number")));
     fg.appendChild(Fld(isUr?"ریٹ":"Rate",Inp(fd.rate,function(v){fd.rate=v;if(v&&fd.qty)fd.total=String(parseFloat(v)*parseFloat(fd.qty||0));},"number")));
     fg.appendChild(Fld(isUr?"کل رقم":"Total (Rs)",Inp(fd.total,function(v){fd.total=v;},"number")));
     fg.appendChild(Fld(isUr?"وینڈر":"Vendor",Sel(fd.vendorId,function(v){fd.vendorId=v;},[{v:"",l:"Cash / Unknown"},...S.vendors.map(function(v){return{v:v.id,l:v.name};})])));
-    fg.appendChild(Fld(isUr?"ادائیگی":"Pay Type",Sel(fd.payType,function(v){fd.payType=v;},[{v:"cash",l:"Cash"},{v:"credit",l:"Credit"},{v:"bank",l:"Bank Transfer"}])));
+    fg.appendChild(Fld(isUr?"ادائیگی":"Pay Type",Sel(fd.payType,function(v){fd.payType=v;render();},[{v:"cash",l:"Cash"},{v:"credit",l:"Credit"},{v:"bank",l:"Bank Transfer"}])));
     fg.appendChild(Fld(isUr?"تاریخ":"Date",Inp(fd.date,function(v){fd.date=v;},"date")));
-    fg.appendChild(Fld(isUr?"بل نمبر":"Bill #",Inp(fd.billNo,function(v){fd.billNo=v;},"text")));
     w.appendChild(fg);
+    if(fd.payType==="credit"&&fd.vendorId){w.appendChild(el("div",{cls:"al-b"},isUr?"کریڈٹ پر — یہ رقم وینڈر کے قابل ادائیگی بیلنس میں خودکار شامل ہوگی":"On credit — this amount will automatically add to the vendor's payable balance"));}
     w.appendChild(Fld(isUr?"نوٹ (اردو)":"Notes",TA(isUr?fd.notesUr:fd.notes,function(v){if(isUr)fd.notesUr=v;else fd.notes=v;},2,isUr?"اردو میں...":"Any notes...",isUr)));
     w.appendChild(btn(isUr?"جمع کریں":"Submit for Approval",async function(){
       if(!fd.item||!fd.qty||!fd.total){toast(isUr?"تمام فیلڈ بھریں":"Fill all fields",true);return;}
+      if(fd.payType==="credit"&&!fd.vendorId){toast(isUr?"کریڈٹ کے لیے وینڈر منتخب کریں":"Select a vendor for credit purchases",true);return;}
       var notesEn=fd.notes;var notesUr=fd.notesUr;
       if(isUr&&notesUr&&!notesEn){notesEn=await translateToEnglish(notesUr);}
       var fph=S.photo[FID]||{};var isAdmin=role==="danish"||role==="director";
       var matPhotoUrl="";
-      if(fph.b64){toast(isUr?"تصویر محفوظ ہو رہی ہے...":"Saving photo...",false,2500);matPhotoUrl=await sbUploadPhoto(fph.b64,fph.mime,"matrcv");if(!matPhotoUrl)toast(isUr?"تصویر محفوظ نہیں ہو سکی":"Photo could not be saved",true,3500);}
-      var newRcv={id:uid(),site:fd.site,item:fd.item,unit:fd.unit,qty:parseFloat(fd.qty),rate:parseFloat(fd.rate||0),total:parseFloat(fd.total),vendorId:fd.vendorId,payType:fd.payType,date:fd.date||today(),billNo:fd.billNo,notes:notesEn,notesUr:notesUr,bill_photo:matPhotoUrl||"",status:isAdmin?"approved":"pending",submittedBy:S.user,approvedBy:isAdmin?S.user:"",approvedAt:isAdmin?now2():"",created:now2()};
+      if(fph.b64){toast(isUr?"بل کی تصویر محفوظ ہو رہی ہے...":"Saving bill photo...",false,2500);matPhotoUrl=await sbUploadPhoto(fph.b64,fph.mime,"matrcv_bill");if(!matPhotoUrl)toast(isUr?"بل کی تصویر محفوظ نہیں ہو سکی":"Bill photo could not be saved",true,3500);}
+      var mph=S.photo[FID+"_material"]||{};
+      var materialPhotoUrl="";
+      if(mph.b64){toast(isUr?"مٹیریل کی تصویر محفوظ ہو رہی ہے...":"Saving material photo...",false,2500);materialPhotoUrl=await sbUploadPhoto(mph.b64,mph.mime,"matrcv_physical");if(!materialPhotoUrl)toast(isUr?"مٹیریل کی تصویر محفوظ نہیں ہو سکی":"Material photo could not be saved",true,3500);}
+      var newRcvId=uid();
+      var linkedVentryId=null;
+      /* Credit purchases automatically create a vendor payable entry, so the vendor's
+         balance reflects material received on credit without a second manual entry —
+         this is the actual link your accounts payable is supposed to run through. */
+      if(fd.payType==="credit"&&fd.vendorId){
+        linkedVentryId=uid();
+        var newVEntry={id:linkedVentryId,vid:fd.vendorId,type:"bill",amount:parseFloat(fd.total),date:fd.date||today(),description:"Material: "+fd.item+" ("+fd.qty+" "+fd.unit+") for "+fd.site,by:S.user,created:now2()};
+        S.ventry=[...S.ventry,newVEntry];
+        svRow("ventry","r7_ve",newVEntry);
+      }
+      var newRcv={id:newRcvId,site:fd.site,item:fd.item,unit:fd.unit,qty:parseFloat(fd.qty),rate:parseFloat(fd.rate||0),total:parseFloat(fd.total),vendorId:fd.vendorId,payType:fd.payType,date:fd.date||today(),notes:notesEn,notesUr:notesUr,bill_photo:matPhotoUrl||"",material_photo:materialPhotoUrl||"",status:isAdmin?"approved":"pending",submittedBy:S.user,approvedBy:isAdmin?S.user:"",approvedAt:isAdmin?now2():"",ventryId:linkedVentryId,created:now2()};
       S.matrcv=[...S.matrcv,newRcv];
-      svRow("matrcv","r7_mr",newRcv);delete S.photo[FID];
-      S.fd[FID]={site:fd.site,item:"",unit:"",qty:"",rate:"",total:"",vendorId:"",payType:"cash",date:today(),billNo:"",notes:"",notesUr:""};
+      svRow("matrcv","r7_mr",newRcv);delete S.photo[FID];delete S.photo[FID+"_material"];
+      S.fd[FID]={site:fd.site,item:"",unit:"",qty:"",rate:"",total:"",vendorId:"",payType:"cash",date:today(),notes:"",notesUr:""};
       toast(isAdmin?(isUr?"منظور":"Approved"):(isUr?"جمع":"Submitted"));render();
     },"btn-g btn-full"));
   }
   if(tab==="used"){
-    var FID2="mat_used";if(!S.fd[FID2])S.fd[FID2]={site:CSITES[0],item:"",unit:"",qty:"",date:today(),notes:""};var fd2=S.fd[FID2];
+    var FID2="mat_used";if(!S.fd[FID2])S.fd[FID2]={site:CSITES[0],item:"",unit:"",qty:"",location:"",date:today(),notes:""};var fd2=S.fd[FID2];
     var fg2=el("div",{cls:"fg"});
-    fg2.appendChild(Fld(isUr?"سائٹ":"Site",Sel(fd2.site,function(v){fd2.site=v;},CSITES.map(function(s){return{v:s,l:s};}))));
+    fg2.appendChild(Fld(isUr?"سائٹ":"Site",Sel(fd2.site,function(v){fd2.site=v;},effectiveSites().map(function(s){return{v:s,l:s};}))));
     fg2.appendChild(Fld(isUr?"مٹیریل":"Item",Inp(fd2.item,function(v){fd2.item=v;},"text")));
     fg2.appendChild(Fld(isUr?"یونٹ":"Unit",Sel(fd2.unit,function(v){fd2.unit=v;},UNITS.map(function(u){return{v:u,l:u};}))));
     fg2.appendChild(Fld(isUr?"مقدار":"Qty Used",Inp(fd2.qty,function(v){fd2.qty=v;},"number")));
+    fg2.appendChild(Fld(isUr?"کہاں استعمال ہوا":"Used Where (location)",Inp(fd2.location,function(v){fd2.location=v;},"text",isUr?"مثال: تیسری منزل، بنیاد":"e.g. 3rd floor, foundation")));
     fg2.appendChild(Fld(isUr?"تاریخ":"Date",Inp(fd2.date,function(v){fd2.date=v;},"date")));
-    w.appendChild(fg2);w.appendChild(Fld(isUr?"نوٹ":"Notes",TA(fd2.notes,function(v){fd2.notes=v;},2,"")));
-    w.appendChild(btn(isUr?"جمع":"Submit",function(){if(!fd2.item||!fd2.qty){toast("Fill fields",true);return;}var newUsed={id:uid(),site:fd2.site,item:fd2.item,unit:fd2.unit,qty:parseFloat(fd2.qty),date:fd2.date||today(),notes:fd2.notes,by:S.user,created:now2()};S.matused=[...S.matused,newUsed];svRow("matused","r7_mu",newUsed);S.fd[FID2]={site:fd2.site,item:"",unit:"",qty:"",date:today(),notes:""};toast(isUr?"جمع":"Submitted");render();},"btn-g btn-full"));
+    w.appendChild(fg2);
+    w.appendChild(PhotoZone(FID2,isUr?"استعمال کی تصویر":"Photo of Usage"));
+    w.appendChild(Fld(isUr?"نوٹ":"Notes",TA(fd2.notes,function(v){fd2.notes=v;},2,"")));
+    w.appendChild(btn(isUr?"جمع":"Submit",async function(){
+      if(!fd2.item||!fd2.qty){toast("Fill fields",true);return;}
+      var uph=S.photo[FID2]||{};
+      var usedPhotoUrl="";
+      if(uph.b64){toast(isUr?"تصویر محفوظ ہو رہی ہے...":"Saving photo...",false,2500);usedPhotoUrl=await sbUploadPhoto(uph.b64,uph.mime,"matused");if(!usedPhotoUrl)toast(isUr?"تصویر محفوظ نہیں ہو سکی":"Photo could not be saved",true,3500);}
+      var newUsed={id:uid(),site:fd2.site,item:fd2.item,unit:fd2.unit,qty:parseFloat(fd2.qty),location:fd2.location,photo:usedPhotoUrl||"",date:fd2.date||today(),notes:fd2.notes,by:S.user,created:now2()};
+      S.matused=[...S.matused,newUsed];svRow("matused","r7_mu",newUsed);delete S.photo[FID2];
+      S.fd[FID2]={site:fd2.site,item:"",unit:"",qty:"",location:"",date:today(),notes:""};toast(isUr?"جمع":"Submitted");render();
+    },"btn-g btn-full"));
   }
   if(tab==="shift"){
-    var FID3="mat_shift";if(!S.fd[FID3])S.fd[FID3]={from:CSITES[0],to:CSITES[1],item:"",unit:"",qty:"",date:today(),notes:""};var fd3=S.fd[FID3];
+    var FID3="mat_shift";if(!S.fd[FID3])S.fd[FID3]={from:CSITES[0],to:CSITES[1],item:"",unit:"",qty:"",amount:"",date:today(),notes:""};var fd3=S.fd[FID3];
     var fg3=el("div",{cls:"fg"});
-    fg3.appendChild(Fld(isUr?"سے":"From",Sel(fd3.from,function(v){fd3.from=v;},CSITES.map(function(s){return{v:s,l:s};}))));
-    fg3.appendChild(Fld(isUr?"کو":"To",Sel(fd3.to,function(v){fd3.to=v;},CSITES.map(function(s){return{v:s,l:s};}))));
+    fg3.appendChild(Fld(isUr?"سے":"From",Sel(fd3.from,function(v){fd3.from=v;},effectiveSites().map(function(s){return{v:s,l:s};}))));
+    fg3.appendChild(Fld(isUr?"کو":"To",Sel(fd3.to,function(v){fd3.to=v;},effectiveSites().map(function(s){return{v:s,l:s};}))));
     fg3.appendChild(Fld(isUr?"مٹیریل":"Item",Inp(fd3.item,function(v){fd3.item=v;},"text")));
     fg3.appendChild(Fld(isUr?"یونٹ":"Unit",Sel(fd3.unit,function(v){fd3.unit=v;},UNITS.map(function(u){return{v:u,l:u};}))));
     fg3.appendChild(Fld(isUr?"مقدار":"Qty",Inp(fd3.qty,function(v){fd3.qty=v;},"number")));
+    fg3.appendChild(Fld(isUr?"رقم (روپے)":"Amount (Rs)",Inp(fd3.amount,function(v){fd3.amount=v;},"number","0")));
     fg3.appendChild(Fld(isUr?"تاریخ":"Date",Inp(fd3.date,function(v){fd3.date=v;},"date")));
     w.appendChild(fg3);w.appendChild(Fld(isUr?"نوٹ":"Notes",TA(fd3.notes,function(v){fd3.notes=v;},2,"")));
-    w.appendChild(btn(isUr?"منتقل کریں":"Transfer Material",function(){if(!fd3.item||!fd3.qty||fd3.from===fd3.to){toast(isUr?"معلومات چیک کریں":"Check fields",true);return;}var newShift={id:uid(),from:fd3.from,to:fd3.to,item:fd3.item,unit:fd3.unit,qty:parseFloat(fd3.qty),date:fd3.date||today(),notes:fd3.notes,by:S.user,created:now2()};S.matshift=[...S.matshift,newShift];svRow("matshift","r7_ms",newShift);S.fd[FID3]={from:fd3.from,to:fd3.to,item:"",unit:"",qty:"",date:today(),notes:""};toast(isUr?"منتقل":"Transferred");render();},"btn-g btn-full"));
+    if(fd3.amount&&parseFloat(fd3.amount))w.appendChild(el("div",{cls:"al-b"},isUr?"یہ رقم "+fd3.to+" کے کھاتے میں لاگت کے طور پر ظاہر ہوگی":"This amount will show as a cost in "+fd3.to+"'s ledger"));
+    w.appendChild(btn(isUr?"منتقل کریں":"Transfer Material",function(){
+      if(!fd3.item||!fd3.qty||fd3.from===fd3.to){toast(isUr?"معلومات چیک کریں":"Check fields",true);return;}
+      var newShift={id:uid(),from:fd3.from,to:fd3.to,item:fd3.item,unit:fd3.unit,qty:parseFloat(fd3.qty),amount:parseFloat(fd3.amount||0),date:fd3.date||today(),notes:fd3.notes,by:S.user,created:now2()};
+      S.matshift=[...S.matshift,newShift];svRow("matshift","r7_ms",newShift);
+      /* If a monetary amount was given, reflect the material transfer as an actual cost
+         entry in the destination site's ledger, same as accountLedger reads for any
+         other site cost — otherwise materials moving between sites would be invisible
+         to a site's real spend total even though the value genuinely moved there. */
+      if(fd3.amount&&parseFloat(fd3.amount)){
+        var shiftCbNo=nCBNo();
+        var shiftRow={id:uid(),person:S.user,date:fd3.date||today(),account:fd3.to,subAccount:fd3.item,area:"",qty:fd3.qty,billNo:shiftCbNo,particulars:"Material shifted from "+fd3.from+": "+fd3.item+" ("+fd3.qty+" "+fd3.unit+")"+(fd3.notes?" — "+fd3.notes:""),particularsUr:"",debit:parseFloat(fd3.amount),credit:0,status:"posted",bill_photo:"",filed:true,rejection:"",cbNo:shiftCbNo,siteNo:nSNo(fd3.to),created:now2(),approvedBy:S.user,editedBy:"",editedAt:""};
+        S.cb=[...S.cb,shiftRow];svRow("cb","r7_cb",shiftRow);
+      }
+      S.fd[FID3]={from:fd3.from,to:fd3.to,item:"",unit:"",qty:"",amount:"",date:today(),notes:""};toast(isUr?"منتقل":"Transferred");render();
+    },"btn-g btn-full"));
   }
   if(tab==="inv"){
-    var items={};S.matrcv.filter(function(r){return r.status==="approved";}).forEach(function(r){if(!items[r.item])items[r.item]={item:r.item,unit:r.unit,received:0,used:0};items[r.item].received+=parseFloat(r.qty||0);});
-    S.matused.forEach(function(r){if(!items[r.item])items[r.item]={item:r.item,unit:r.unit,received:0,used:0};items[r.item].used+=parseFloat(r.qty||0);});
+    var invSite=S.tab.invSite||"";var invD1=S.tab.invD1||"";var invD2=S.tab.invD2||"";
+    var filterRow2=dv({display:"flex",gap:"8px",marginBottom:"14px",flexWrap:"wrap"});
+    filterRow2.appendChild(Sel(invSite,function(v){set({tab:Object.assign({},S.tab,{invSite:v})});},[{v:"",l:"All Sites"}].concat(effectiveSites().map(function(s){return{v:s,l:s};}))));
+    var invD1i=Inp(invD1,function(v){set({tab:Object.assign({},S.tab,{invD1:v})});},"date");invD1i.style.maxWidth="140px";filterRow2.appendChild(invD1i);
+    var invD2i=Inp(invD2,function(v){set({tab:Object.assign({},S.tab,{invD2:v})});},"date");invD2i.style.maxWidth="140px";filterRow2.appendChild(invD2i);
+    if(invSite||invD1||invD2)filterRow2.appendChild(btn("Clear",function(){set({tab:Object.assign({},S.tab,{invSite:"",invD1:"",invD2:""})});},"btn-o btn-sm"));
+    w.appendChild(filterRow2);
+    var items={};
+    S.matrcv.filter(function(r){
+      if(r.status!=="approved")return false;
+      if(invSite&&r.site!==invSite)return false;
+      if(invD1&&(r.date||"")<invD1)return false;
+      if(invD2&&(r.date||"")>invD2)return false;
+      return true;
+    }).forEach(function(r){if(!items[r.item])items[r.item]={item:r.item,unit:r.unit,received:0,used:0};items[r.item].received+=parseFloat(r.qty||0);});
+    S.matused.filter(function(r){
+      if(invSite&&r.site!==invSite)return false;
+      if(invD1&&(r.date||"")<invD1)return false;
+      if(invD2&&(r.date||"")>invD2)return false;
+      return true;
+    }).forEach(function(r){if(!items[r.item])items[r.item]={item:r.item,unit:r.unit,received:0,used:0};items[r.item].used+=parseFloat(r.qty||0);});
     var rows=Object.values(items).map(function(r){return Object.assign({},r,{balance:r.received-r.used});}).sort(function(a,b){return a.item.localeCompare(b.item);});
-    if(!rows.length){w.appendChild(el("div",{style:{textAlign:"center",padding:"24px",color:"var(--ink4)"}},"No material records"));return w;}
+    if(!rows.length){w.appendChild(el("div",{style:{textAlign:"center",padding:"24px",color:"var(--ink4)"}},"No material records"+(invSite||invD1||invD2?" for this filter":"")));return w;}
     var tbody10=el("tbody",{});rows.forEach(function(r){var tr=el("tr",{cls:r.balance<0?"drow":""});tr.appendChild(el("td",{style:{fontWeight:"500"}},r.item));tr.appendChild(el("td",{style:{textAlign:"right"}},String(r.received)));tr.appendChild(el("td",{style:{textAlign:"right"}},String(r.used)));tr.appendChild(el("td",{style:{textAlign:"right",fontWeight:"700",color:r.balance>=0?"var(--pos)":"var(--neg)"}},String(r.balance)));tr.appendChild(el("td",{style:{color:"var(--ink4)"}},r.unit||""));tbody10.appendChild(tr);});
     w.appendChild(el("div",{cls:"tbl-wrap"},el("table",{},el("thead",{},el("tr",{},el("th",{},"Item"),el("th",{style:{textAlign:"right"}},"Received"),el("th",{style:{textAlign:"right"}},"Used"),el("th",{style:{textAlign:"right"}},"Balance"),el("th",{},"Unit"))),tbody10)));
   }
@@ -2327,7 +2447,10 @@ function rMat(){
       pending.forEach(function(r){
         var vc=el("div",{cls:"vc"});
         vc.appendChild(dv({display:"flex",justifyContent:"space-between",flexWrap:"wrap",gap:"8px",marginBottom:"10px",paddingBottom:"9px",borderBottom:"1px solid var(--bd)"},dv({},el("div",{style:{fontWeight:"700",fontSize:"14px"}},r.item+" — "+r.site),el("div",{style:{fontSize:"12px",color:"var(--ink4)",marginTop:"3px"}},gU(r.submittedBy).name+" \u00b7 "+r.date),r.notesUr?el("div",{cls:"ur",style:{fontSize:"13px",marginTop:"5px"}},r.notesUr):null,r.notes?el("div",{style:{fontSize:"12px",color:"var(--ink3)",marginTop:"3px"}},r.notes):null),el("div",{style:{textAlign:"right"}},el("div",{style:{fontFamily:"'Cormorant Garamond',serif",fontSize:"20px",fontWeight:"600",color:"var(--neg)"}},Rs(r.total)),el("div",{style:{fontSize:"11px",color:"var(--ink4)",marginTop:"2px"}},r.qty+" "+r.unit+(r.rate?" @ "+Rs(r.rate):"")))));
-        if(r.bill_photo){var iw=dv({marginBottom:"10px",borderRadius:"7px",overflow:"hidden",border:"1px solid var(--bd)",cursor:"pointer"});iw.appendChild(el("img",{src:r.bill_photo,style:{width:"100%",maxHeight:"160px",objectFit:"cover",display:"block"}}));iw.addEventListener("click",function(){window.open(r.bill_photo,"_blank");});vc.appendChild(iw);}
+        var photoRow=dv({display:"flex",gap:"8px",marginBottom:"10px"});
+        if(r.bill_photo){var iw=dv({flex:"1",borderRadius:"7px",overflow:"hidden",border:"1px solid var(--bd)",cursor:"pointer"});iw.appendChild(el("div",{style:{fontSize:"9px",textAlign:"center",padding:"3px",background:"var(--s2)",color:"var(--ink4)"}},"BILL"));iw.appendChild(el("img",{src:r.bill_photo,style:{width:"100%",maxHeight:"140px",objectFit:"cover",display:"block"}}));iw.addEventListener("click",function(){window.open(r.bill_photo,"_blank");});photoRow.appendChild(iw);}
+        if(r.material_photo){var iw2=dv({flex:"1",borderRadius:"7px",overflow:"hidden",border:"1px solid var(--bd)",cursor:"pointer"});iw2.appendChild(el("div",{style:{fontSize:"9px",textAlign:"center",padding:"3px",background:"var(--s2)",color:"var(--ink4)"}},"MATERIAL"));iw2.appendChild(el("img",{src:r.material_photo,style:{width:"100%",maxHeight:"140px",objectFit:"cover",display:"block"}}));iw2.addEventListener("click",function(){window.open(r.material_photo,"_blank");});photoRow.appendChild(iw2);}
+        if(r.bill_photo||r.material_photo)vc.appendChild(photoRow);
         var rid=r.id;var btns7=dv({display:"flex",gap:"7px"});
         btns7.appendChild(btn("Approve",function(){S.matrcv=S.matrcv.map(function(e){return e.id===rid?Object.assign({},e,{status:"approved",approvedBy:S.user,approvedAt:now2()}):e;});var updated=S.matrcv.find(function(e){return e.id===rid;});svRow("matrcv","r7_mr",updated);toast("Approved");render();},"btn-pos btn-sm"));
         btns7.appendChild(btn("Reject",function(){var note=window.prompt("Reason:");if(!note)return;S.matrcv=S.matrcv.map(function(e){return e.id===rid?Object.assign({},e,{status:"rejected",notes:(e.notes||"")+" [Rejected: "+note+"]"}):e;});var updated=S.matrcv.find(function(e){return e.id===rid;});svRow("matrcv","r7_mr",updated);toast("Rejected");render();},"btn-neg btn-sm"));
@@ -2362,6 +2485,19 @@ function rVendors(){
   var fg=el("div",{cls:"fg"});fg.appendChild(Fld("Name",Inp(fd.name,function(v){fd.name=v;},"text","Company or person name")));fg.appendChild(Fld("Type",Sel(fd.type,function(v){fd.type=v;},[{v:"Supplier",l:"Supplier"},{v:"Subcontractor",l:"Subcontractor"},{v:"Service",l:"Service"}])));fg.appendChild(Fld("Contact",Inp(fd.contact,function(v){fd.contact=v;},"text","Phone number")));fg.appendChild(Fld("NTN",Inp(fd.ntn,function(v){fd.ntn=v;},"text","Optional")));fc.querySelector(".cb").appendChild(fg);
   fc.querySelector(".cb").appendChild(btn("Save Vendor",function(){if(!fd.name.trim()){toast("Enter name",true);return;}var newVendor={id:uid(),name:fd.name,type:fd.type,contact:fd.contact,ntn:fd.ntn,created:now2()};S.vendors=[...S.vendors,newVendor];svRow("vendors","r7_vn",newVendor);S.fd[FID]={name:"",type:"Supplier",contact:"",ntn:""};toast("Saved");render();},"btn-g btn-full"));
   w.appendChild(fc);
+  var vendorsWithPayable=S.vendors.filter(function(v){return vBal(v.id)>0;}).sort(function(a,b){return vBal(b.id)-vBal(a.id);});
+  if(vendorsWithPayable.length){
+    var payCard=Card("Payables Summary",el("span",{cls:"badge br"},Rs(vendorsWithPayable.reduce(function(s,v){return s+vBal(v.id);},0))));
+    var payBody=payCard.querySelector(".cb");
+    vendorsWithPayable.forEach(function(v){
+      var row=dv({display:"flex",justifyContent:"space-between",alignItems:"center",padding:"9px 0",borderBottom:"1px solid var(--s2)"},
+        el("span",{style:{fontSize:"13px",fontWeight:"600"}},v.name),
+        el("span",{style:{fontFamily:"'Cormorant Garamond',serif",fontSize:"16px",fontWeight:"600",color:"var(--neg)"}},Rs(vBal(v.id)))
+      );
+      payBody.appendChild(row);
+    });
+    w.appendChild(payCard);
+  }
   if(!S.vendors.length){w.appendChild(el("div",{style:{textAlign:"center",padding:"24px",color:"var(--ink4)"}},"No vendors yet"));return w;}
   S.vendors.forEach(function(v){
     var bal=vBal(v.id);var vc=el("div",{cls:"vc"});
@@ -2385,26 +2521,82 @@ function rContr(){
   var tab=S.tab.contr||"list";var w=el("div",{});
   w.appendChild(Tabs([{id:"list",l:"Contractors"},{id:"add",l:"Add New"}],tab,function(id){set({tab:Object.assign({},S.tab,{contr:id})});}));
   if(tab==="add"){
-    var FID="contr_add";if(!S.fd[FID])S.fd[FID]={name:"",site:CSITES[0],contact:"",value:"",stage:"Mobilization",notes:""};var fd=S.fd[FID];
-    var fg=el("div",{cls:"fg"});fg.appendChild(Fld("Name",Inp(fd.name,function(v){fd.name=v;},"text")));fg.appendChild(Fld("Site",Sel(fd.site,function(v){fd.site=v;},CSITES.map(function(s){return{v:s,l:s};}))));fg.appendChild(Fld("Contact",Inp(fd.contact,function(v){fd.contact=v;},"text")));fg.appendChild(Fld("Contract Value (Rs)",Inp(fd.value,function(v){fd.value=v;},"number")));fg.appendChild(Fld("Stage",Sel(fd.stage,function(v){fd.stage=v;},CSTAGES.map(function(s){return{v:s,l:s};}))));w.appendChild(fg);
+    var FID="contr_add";if(!S.fd[FID])S.fd[FID]={name:"",site:CSITES[0],contact:"",value:"",notes:""};var fd=S.fd[FID];
+    var fg=el("div",{cls:"fg"});fg.appendChild(Fld("Name",Inp(fd.name,function(v){fd.name=v;},"text")));fg.appendChild(Fld("Site",Sel(fd.site,function(v){fd.site=v;},effectiveSites().map(function(s){return{v:s,l:s};}))));fg.appendChild(Fld("Contact",Inp(fd.contact,function(v){fd.contact=v;},"text")));fg.appendChild(Fld("Contract Value (Rs)",Inp(fd.value,function(v){fd.value=v;},"number")));w.appendChild(fg);
     w.appendChild(Fld("Notes",TA(fd.notes,function(v){fd.notes=v;},2,"")));
-    w.appendChild(btn("Save Contractor",function(){if(!fd.name.trim()){toast("Enter name",true);return;}var newContr={id:uid(),name:fd.name,site:fd.site,contact:fd.contact,value:parseFloat(fd.value||0),stage:fd.stage,notes:fd.notes,created:now2()};S.contractors=[...S.contractors,newContr];svRow("contractors","r7_co",newContr);S.fd[FID]={name:"",site:CSITES[0],contact:"",value:"",stage:"Mobilization",notes:""};toast("Saved");render();},"btn-g btn-full"));
+    w.appendChild(el("div",{cls:"al-b"},"Set up the payment schedule (stages) after saving — you'll be able to add each stage and its planned amount from the contractor's card."));
+    w.appendChild(btn("Save Contractor",function(){if(!fd.name.trim()){toast("Enter name",true);return;}var newContr={id:uid(),name:fd.name,site:fd.site,contact:fd.contact,value:parseFloat(fd.value||0),stage:"Mobilization",schedule:[],notes:fd.notes,created:now2()};S.contractors=[...S.contractors,newContr];svRow("contractors","r7_co",newContr);
+      /* Adding a contractor here also registers them as a vendor — one merged directory,
+         same as the reverse direction (typing a new name in a cash entry's Vendor/
+         Contractor field registers them as a contractor too). */
+      if(!S.vendors.find(function(v){return v.name.toLowerCase()===fd.name.trim().toLowerCase();})){
+        var newVendorFromContr={id:uid(),name:fd.name.trim(),type:"Subcontractor",contact:fd.contact,ntn:"",created:now2()};
+        S.vendors=[...S.vendors,newVendorFromContr];svRow("vendors","r7_vn",newVendorFromContr);
+      }
+      S.fd[FID]={name:"",site:CSITES[0],contact:"",value:"",notes:""};toast("Saved");set({tab:Object.assign({},S.tab,{contr:"list"})});},"btn-g btn-full"));
   }else{
     if(!S.contractors.length){w.appendChild(el("div",{style:{textAlign:"center",padding:"24px",color:"var(--ink4)"}},"No contractors yet"));return w;}
     S.contractors.forEach(function(c){
-      var totalPaid=S.contrpay.filter(function(p){return p.cid===c.id;}).reduce(function(s,p){return s+parseFloat(p.amount||0);},0);
+      /* Every cash entry posted with this contractor's name in the Vendor/Contractor
+         field is automatically counted as a payment to them — this is the real link:
+         a director posts a normal cash entry, no separate "record payment" step needed,
+         and it shows here immediately labeled with whichever schedule stage it's for. */
+      var matchedPayments=S.cb.filter(function(e){return e.status==="posted"&&e.vendorName&&e.vendorName.toLowerCase()===c.name.toLowerCase()&&e.debit>0;}).sort(function(a,b){return b.created>a.created?1:-1;});
+      var totalPaid=matchedPayments.reduce(function(s,p){return s+parseFloat(p.debit||0);},0);
       var remaining=parseFloat(c.value||0)-totalPaid;
       var pct=c.value>0?Math.round((totalPaid/c.value)*100):0;
       var vc=el("div",{cls:"vc"});
-      vc.appendChild(dv({display:"flex",justifyContent:"space-between",flexWrap:"wrap",gap:"8px",marginBottom:"10px",paddingBottom:"9px",borderBottom:"1px solid var(--bd)"},dv({},el("div",{style:{fontWeight:"700",fontSize:"14px"}},c.name),el("div",{style:{fontSize:"11px",color:"var(--ink4)",marginTop:"3px"}},c.site+" \u00b7 "+c.stage)),el("div",{style:{textAlign:"right"}},el("div",{style:{fontFamily:"'Cormorant Garamond',serif",fontSize:"17px",fontWeight:"600",color:"var(--neg)"}},Rs(remaining)+" remaining"),el("div",{style:{fontSize:"10px",color:"var(--ink4)"}},Rs(totalPaid)+" paid of "+Rs(c.value)))));
+      vc.appendChild(dv({display:"flex",justifyContent:"space-between",flexWrap:"wrap",gap:"8px",marginBottom:"10px",paddingBottom:"9px",borderBottom:"1px solid var(--bd)"},dv({},el("div",{style:{fontWeight:"700",fontSize:"14px"}},c.name),el("div",{style:{fontSize:"11px",color:"var(--ink4)",marginTop:"3px"}},c.site)),el("div",{style:{textAlign:"right"}},el("div",{style:{fontFamily:"'Cormorant Garamond',serif",fontSize:"17px",fontWeight:"600",color:"var(--neg)"}},Rs(remaining)+" remaining"),el("div",{style:{fontSize:"10px",color:"var(--ink4)"}},Rs(totalPaid)+" paid of "+Rs(c.value)))));
       vc.appendChild(ProgBar(pct,pct>=100?"linear-gradient(90deg,var(--pos),#3A6B4A)":undefined));
       if(ROLE_MAP[S.user]==="director"){
         var cidDel=c.id;
         vc.appendChild(btn("Delete Contractor",function(){if(!confirm("Delete this contractor? Their payment history stays but will no longer be linked to a named contractor."))return;addAudit("DELETE_CONTRACTOR",c.name);removeRow("contractors","r7_co",cidDel);toast("Contractor deleted");render();},"btn-neg btn-sm"));
       }
-      var FID2="cp_"+c.id;if(!S.fd[FID2])S.fd[FID2]={amount:"",date:today(),notes:""};var fp=S.fd[FID2];
-      var fg2=el("div",{cls:"fg",style:{marginTop:"10px"}});fg2.appendChild(Fld("Payment (Rs)",Inp(fp.amount,function(v){fp.amount=v;},"number","0")));fg2.appendChild(Fld("Date",Inp(fp.date,function(v){fp.date=v;},"date")));fg2.appendChild(Fld("Notes",Inp(fp.notes,function(v){fp.notes=v;},"text")));vc.appendChild(fg2);
-      var cid=c.id;vc.appendChild(btn("Record Payment",function(){if(!fp.amount){toast("Enter amount",true);return;}var newCPay={id:uid(),cid:cid,amount:parseFloat(fp.amount),date:fp.date||today(),notes:fp.notes,by:S.user,created:now2()};S.contrpay=[...S.contrpay,newCPay];svRow("contrpay","r7_cp",newCPay);S.fd[FID2]={amount:"",date:today(),notes:""};toast("Payment recorded");render();},"btn-o btn-sm"));
+
+      /* Payment schedule (stages) */
+      var schedule=c.schedule||[];
+      var schedCard=dv({marginTop:"12px",padding:"10px",background:"var(--s2)",borderRadius:"6px"});
+      schedCard.appendChild(el("div",{style:{fontSize:"10px",fontWeight:"700",letterSpacing:".1em",textTransform:"uppercase",color:"var(--ink4)",marginBottom:"8px"}},"Payment Schedule"));
+      if(schedule.length){
+        schedule.forEach(function(s,idx){
+          var stagePaid=matchedPayments.filter(function(p){return (p.subAccount||"").toLowerCase()===s.name.toLowerCase();}).reduce(function(sum,p){return sum+parseFloat(p.debit||0);},0);
+          var srow=dv({display:"flex",justifyContent:"space-between",padding:"6px 0",borderBottom:idx<schedule.length-1?"1px solid var(--bd)":"none",fontSize:"12px"});
+          srow.appendChild(el("span",{},s.name));
+          srow.appendChild(el("span",{style:{color:stagePaid>=s.amount?"var(--pos)":"var(--ink3)"}},Rs(stagePaid)+" / "+Rs(s.amount)));
+          schedCard.appendChild(srow);
+        });
+      }else{
+        schedCard.appendChild(el("div",{style:{fontSize:"11px",color:"var(--ink4)"}},"No stages set yet"));
+      }
+      var FIDsch="contr_sched_"+c.id;if(!S.fd[FIDsch])S.fd[FIDsch]={stageName:"",stageAmt:""};var fsc=S.fd[FIDsch];
+      var addSchedRow=dv({display:"flex",gap:"6px",marginTop:"8px",flexWrap:"wrap"});
+      var stageInp=Inp(fsc.stageName,function(v){fsc.stageName=v;},"text","Stage name");stageInp.style.flex="1";stageInp.style.minWidth="90px";
+      var stageAmtInp=Inp(fsc.stageAmt,function(v){fsc.stageAmt=v;},"number","Amount");stageAmtInp.style.width="90px";
+      addSchedRow.appendChild(stageInp);addSchedRow.appendChild(stageAmtInp);
+      var cidForSched=c.id;
+      addSchedRow.appendChild(btn("Add Stage",function(){
+        if(!fsc.stageName.trim()||!fsc.stageAmt){toast("Enter stage name and amount",true);return;}
+        var idx=S.contractors.findIndex(function(x){return x.id===cidForSched;});
+        var newSchedule=(S.contractors[idx].schedule||[]).concat([{name:fsc.stageName.trim(),amount:parseFloat(fsc.stageAmt)}]);
+        S.contractors[idx]=Object.assign({},S.contractors[idx],{schedule:newSchedule});
+        svRow("contractors","r7_co",S.contractors[idx]);
+        S.fd[FIDsch]={stageName:"",stageAmt:""};toast("Stage added");render();
+      },"btn-o btn-sm"));
+      schedCard.appendChild(addSchedRow);
+      vc.appendChild(schedCard);
+
+      /* Matched payments list — the actual cash entries counted toward this contractor */
+      if(matchedPayments.length){
+        var payListCard=dv({marginTop:"10px"});
+        payListCard.appendChild(el("div",{style:{fontSize:"10px",fontWeight:"700",letterSpacing:".1em",textTransform:"uppercase",color:"var(--ink4)",marginBottom:"6px"}},"Payments (from Cash Entries)"));
+        matchedPayments.slice(0,10).forEach(function(p){
+          var prow=dv({display:"flex",justifyContent:"space-between",padding:"5px 0",fontSize:"12px",borderBottom:"1px solid var(--s2)"});
+          prow.appendChild(el("span",{style:{color:"var(--ink3)"}},p.date+(p.subAccount?" \u00b7 "+p.subAccount:"")));
+          prow.appendChild(el("span",{style:{fontWeight:"600",color:"var(--neg)"}},Rs(p.debit)));
+          payListCard.appendChild(prow);
+        });
+        vc.appendChild(payListCard);
+      }
       w.appendChild(vc);
     });
   }
@@ -2417,21 +2609,29 @@ function rContr(){
 
 function rConstr(){
   var w=el("div",{});
-  CSITES.forEach(function(siteId){
-    var site=S.sites.find(function(x){return x.id===siteId;})||{id:siteId,budget:0,client:"",notes:""};
-    var spent=siteSpent(siteId);var budget=site.budget||0;var pct=budget>0?Math.round((spent/budget)*100):0;
-    var vc=el("div",{cls:"vc"});
-    var hdr=dv({display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:"12px",paddingBottom:"10px",borderBottom:"1px solid var(--bd)",flexWrap:"wrap",gap:"8px"});
-    hdr.appendChild(el("div",{style:{fontWeight:"700",fontSize:"15px"}},siteId+(site.client?" — "+site.client:"")));
-    hdr.appendChild(el("div",{style:{fontFamily:"'Cormorant Garamond',serif",fontSize:"18px",fontWeight:"600",color:pct>100?"var(--neg)":"var(--pos)"}},Rs(spent)+(budget?" / "+Rs(budget):"")));
-    vc.appendChild(hdr);
-    vc.appendChild(ProgBar(pct,pct>100?"linear-gradient(90deg,var(--neg),#8B2020)":pct>80?"linear-gradient(90deg,var(--wrn),#8B5A1A)":undefined));
-    var budgetInp=Inp(String(budget||""),function(v){var idx=S.sites.findIndex(function(x){return x.id===siteId;});if(idx<0){S.sites.push({id:siteId,budget:parseFloat(v||0),client:site.client||"",notes:site.notes||""});}else{S.sites[idx]=Object.assign({},S.sites[idx],{budget:parseFloat(v||0)});}svSites();},"number","0");
-    vc.appendChild(Fld("Budget (Rs)",budgetInp));
-    vc.appendChild(Sep());
-    vc.appendChild(Fld("Client",Inp(site.client||"",function(v){var idx=S.sites.findIndex(function(x){return x.id===siteId;});if(idx<0)S.sites.push({id:siteId,budget:budget,client:v,notes:site.notes||""});else S.sites[idx]=Object.assign({},S.sites[idx],{client:v});svSites();},"text","Client name")));
-    w.appendChild(vc);
-  });
+  var selectedSite=S.tab.constrSite||"";
+  if(!selectedSite){
+    w.appendChild(el("div",{cls:"al-b"},"Tap a site to view its full statement."));
+    effectiveSites().filter(function(s){return s!=="W-93";}).forEach(function(siteId){
+      var acct=accountLedger("site",siteId);
+      var row=dv({display:"flex",justifyContent:"space-between",alignItems:"center",padding:"12px 0",borderBottom:"1px solid var(--s2)",cursor:"pointer"},
+        el("span",{style:{fontWeight:"600",fontSize:"14px"}},siteId),
+        el("span",{style:{fontFamily:"'Cormorant Garamond',serif",fontSize:"17px",fontWeight:"600",color:"var(--neg)"}},Rs(acct.debit))
+      );
+      row.addEventListener("click",function(){set({tab:Object.assign({},S.tab,{constrSite:siteId})});});
+      w.appendChild(row);
+    });
+    return w;
+  }
+  var backRow=dv({display:"flex",alignItems:"center",gap:"8px",marginBottom:"14px",cursor:"pointer"});
+  backRow.appendChild(el("span",{style:{fontSize:"18px"}},"\u2190"));
+  backRow.appendChild(el("span",{style:{fontSize:"13px",fontWeight:"600"}},"All Sites"));
+  backRow.addEventListener("click",function(){set({tab:Object.assign({},S.tab,{constrSite:""})});});
+  w.appendChild(backRow);
+  w.appendChild(el("div",{style:{fontFamily:"'Cormorant Garamond',serif",fontSize:"22px",fontWeight:"600",marginBottom:"14px"}},selectedSite+" — Statement"));
+  var siteAcct=accountLedger("site",selectedSite);
+  var isDirConstr=ROLE_MAP[S.user]==="director";
+  w.appendChild(LedgerTable(siteAcct.rows,true,isDirConstr));
   return w;
 }
 
@@ -2439,17 +2639,29 @@ function rDoors(){
   var tab=S.tab.doors||"proj";var w=el("div",{});
   w.appendChild(Tabs([{id:"proj",l:"Projects"},{id:"bal",l:"Balances"},{id:"add",l:"Add New"}],tab,function(id){set({tab:Object.assign({},S.tab,{doors:id})});}));
   if(tab==="bal"){
-    w.appendChild(el("div",{cls:"al-b"},"Balance per door project — matched to cash entries where the account or sub-account equals the project's client name. Tap to view full statement."));
+    w.appendChild(el("div",{cls:"al-b"},"Balance per door project — matched to cash entries where the account or sub-account equals the project's client name. When posting a cost for a door order, put the client name in Account and the cost category (Carpenter, Materials, Polish, Installation) in Sub Account, so it breaks down correctly here. Tap the client name to view the full statement."));
     if(!S.doorProjects.length){w.appendChild(el("div",{style:{textAlign:"center",padding:"20px",color:"var(--ink4)"}},"No door projects yet"));return w;}
+    var doorCats=["Carpenter","Materials","Polish","Installation","Other"];
     S.doorProjects.forEach(function(p){
       var acct=accountLedger("door",p.client);
-      var row=dv({display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 0",borderBottom:"1px solid var(--s2)",cursor:"pointer"},
+      var row=dv({display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 0",cursor:"pointer"},
         dv({},el("div",{style:{fontWeight:"600",fontSize:"13px"}},p.client),el("div",{style:{fontSize:"10px",color:"var(--ink4)",textTransform:"uppercase",letterSpacing:".06em"}},p.stage)),
         el("div",{style:{fontFamily:"'Cormorant Garamond',serif",fontSize:"16px",fontWeight:"600",color:acct.balance>=0?"var(--pos)":"var(--neg)"}},Rs(Math.abs(acct.balance))+(acct.balance<0?" Spent":""))
       );
       var clientName=p.client;
       row.addEventListener("click",function(){set({cbf:{lv:"journal",person:"",site:clientName,search:"",d1:"",d2:""},view:"ldg"});});
       w.appendChild(row);
+      /* Cost breakdown by category, if the project has any posted entries at all */
+      if(acct.rows.length){
+        var catTotals={};
+        acct.rows.forEach(function(r){var cat=doorCats.indexOf(r.subAccount)!==-1?r.subAccount:"Other";catTotals[cat]=(catTotals[cat]||0)+parseFloat(r.debit||0);});
+        var catRow=dv({display:"flex",gap:"10px",flexWrap:"wrap",padding:"0 0 12px 0",borderBottom:"1px solid var(--s2)",marginBottom:"6px"});
+        doorCats.forEach(function(cat){
+          if(!catTotals[cat])return;
+          catRow.appendChild(dv({fontSize:"11px",color:"var(--ink4)"},cat+": ",el("span",{style:{color:"var(--neg)",fontWeight:"600"}},Rs(catTotals[cat]))));
+        });
+        w.appendChild(catRow);
+      }
     });
     return w;
   }
@@ -2512,6 +2724,46 @@ function rDoorInv(){
     var fg=el("div",{cls:"fg"});fg.appendChild(Fld("Item",Sel(fd.itemId,function(v){fd.itemId=v;},S.doorInvStock.map(function(i){return{v:i.id,l:i.n+" ("+i.qty+" "+i.unit+")"};}))));fg.appendChild(Fld("New Qty",Inp(fd.qty,function(v){fd.qty=v;},"number")));w.appendChild(fg);
     w.appendChild(Fld("Reason",TA(fd.note,function(v){fd.note=v;},1,"")));
     w.appendChild(btn("Update Stock",function(){if(!fd.itemId||fd.qty===""){toast("Select item and quantity",true);return;}var idx=S.doorInvStock.findIndex(function(x){return x.id===fd.itemId;});if(idx>=0){S.doorInvStock[idx]=Object.assign({},S.doorInvStock[idx],{qty:parseFloat(fd.qty),updated:today()});}svDoorInv();S.fd[FID]={itemId:"",qty:"",note:""};toast("Updated");render();},"btn-g btn-full"));
+  }
+  return w;
+}
+
+function rDailyReport(){
+  var w=el("div",{});
+  var FID="daily_rep";if(!S.fd[FID])S.fd[FID]={site:CSITES[0],progress:"",inventoryNotes:"",date:today()};var fd=S.fd[FID];
+  var isDirDR=ROLE_MAP[S.user]==="director"||ROLE_MAP[S.user]==="danish";
+  w.appendChild(el("div",{cls:"al-b"},"One report per site, per day — site progress, physical inventory check, and a photo. This is what a director or Danish sees in the Daily Digest / Daily Review."));
+  var fg=el("div",{cls:"fg"});
+  fg.appendChild(Fld("Site",Sel(fd.site,function(v){fd.site=v;},effectiveSites().map(function(s){return{v:s,l:s};}))));
+  fg.appendChild(Fld("Date",Inp(fd.date,function(v){fd.date=v;},"date")));
+  w.appendChild(fg);
+  w.appendChild(Fld("Today's Progress / Work Done",TA(fd.progress,function(v){fd.progress=v;},3,"e.g. Foundation poured on north wing, 40 bags cement used")));
+  w.appendChild(Fld("Physical Inventory Notes",TA(fd.inventoryNotes,function(v){fd.inventoryNotes=v;},3,"e.g. Counted 60 bags cement in store, matches system")));
+  w.appendChild(PhotoZone(FID,"Site Photo (optional)"));
+  w.appendChild(btn("Submit Daily Report",async function(){
+    if(!fd.progress.trim()){toast("Enter today's progress",true);return;}
+    var drph=S.photo[FID]||{};
+    var drPhotoUrl="";
+    if(drph.b64){toast("Saving photo...",false,2500);drPhotoUrl=await sbUploadPhoto(drph.b64,drph.mime,"dailyreport");if(!drPhotoUrl)toast("Photo could not be saved",true,3500);}
+    var newReport={id:uid(),site:fd.site,date:fd.date||today(),progress:fd.progress,inventoryNotes:fd.inventoryNotes,photo:drPhotoUrl||"",by:S.user,created:now2()};
+    S.dailyReports=[...S.dailyReports,newReport];svRow("dailyReports","r7_dr",newReport);delete S.photo[FID];
+    S.fd[FID]={site:fd.site,progress:"",inventoryNotes:"",date:today()};
+    toast("Report submitted");render();
+  },"btn-g btn-full"));
+
+  /* Recent reports — everyone can see their own site's history; Danish/directors see all */
+  var myReports=S.dailyReports.filter(function(r){return isDirDR||r.by===S.user;}).sort(function(a,b){return b.created>a.created?1:-1;}).slice(0,15);
+  if(myReports.length){
+    var histCard=Card("Recent Reports");
+    myReports.forEach(function(r){
+      var item=el("div",{cls:"ei"});
+      item.appendChild(dv({display:"flex",justifyContent:"space-between",marginBottom:"5px"},el("span",{style:{fontWeight:"600",fontSize:"13px"}},r.site),el("span",{style:{fontSize:"11px",color:"var(--ink4)"}},r.date+" \u00b7 "+gU(r.by).name)));
+      item.appendChild(el("div",{style:{fontSize:"12px",color:"var(--ink2)",marginBottom:"4px"}},r.progress));
+      if(r.inventoryNotes)item.appendChild(el("div",{style:{fontSize:"11px",color:"var(--ink4)"}},"Inventory: "+r.inventoryNotes));
+      if(r.photo)item.appendChild(el("a",{href:r.photo,target:"_blank",style:{fontSize:"11px",color:"var(--g)",fontWeight:"600"}},"View Photo"));
+      histCard.querySelector(".cb").appendChild(item);
+    });
+    w.appendChild(histCard);
   }
   return w;
 }
@@ -2672,6 +2924,114 @@ function rMisc(){
   return w;
 }
 
+function rDigest(){
+  var w=el("div",{});
+  var today2=today();
+  var todaysCB=S.cb.filter(function(e){return (e.created||"").startsWith(today2)||e.date===today2;});
+  var postedToday=todaysCB.filter(function(e){return e.status==="posted";});
+  var awaitingToday=S.cb.filter(function(e){return e.status==="awaiting_approval";});
+  var totalSpentToday=postedToday.reduce(function(s,e){return s+parseFloat(e.debit||0);},0);
+  var totalReceivedToday=postedToday.reduce(function(s,e){return s+parseFloat(e.credit||0);},0);
+  var reportsToday=S.dailyReports.filter(function(r){return r.date===today2;});
+  var sitesReported={};reportsToday.forEach(function(r){sitesReported[r.site]=true;});
+  var sitesNotReported=effectiveSites().filter(function(s){return s!=="W-93"&&!sitesReported[s];});
+  var matPendCount=S.matrcv.filter(function(m){return m.status==="pending";}).length;
+  var lockedAccounts=(S.lockouts||[]).filter(function(l){return l.locked;}).length;
+
+  w.appendChild(el("div",{style:{fontFamily:"'Cormorant Garamond',serif",fontSize:"22px",fontWeight:"600",marginBottom:"4px"}},"Today's Digest"));
+  w.appendChild(el("div",{style:{fontSize:"11px",color:"var(--ink4)",marginBottom:"16px"}},today2));
+
+  w.appendChild(el("div",{cls:"kgrid",style:{gridTemplateColumns:"repeat(2,1fr)",marginBottom:"16px"}},
+    KPI("Spent Today",totalSpentToday,"var(--neg)"),
+    KPI("Received Today",totalReceivedToday,"var(--pos)"),
+    KPI("Awaiting Approval",awaitingToday.length,"var(--wrn)"),
+    KPI("Entries Posted Today",postedToday.length,"var(--g)")
+  ));
+
+  var attnItems=[];
+  if(awaitingToday.length)attnItems.push({icon:"\u23f3",text:awaitingToday.length+" entries awaiting your approval",view:"dirApp"});
+  if(matPendCount)attnItems.push({icon:"\ud83d\udce6",text:matPendCount+" material receipt(s) pending review",view:"mat"});
+  if(lockedAccounts)attnItems.push({icon:"\ud83d\udd12",text:lockedAccounts+" account(s) locked out",view:"security"});
+  if(sitesNotReported.length)attnItems.push({icon:"\ud83d\udccb",text:sitesNotReported.join(", ")+" — no daily report submitted today",view:"dailyRep"});
+
+  if(attnItems.length){
+    var attnCard=Card("Needs Attention",el("span",{cls:"badge br"},attnItems.length));
+    attnItems.forEach(function(item){
+      var row=dv({display:"flex",justifyContent:"space-between",alignItems:"center",padding:"9px 0",borderBottom:"1px solid var(--s2)",cursor:"pointer"},dv({display:"flex",alignItems:"center",gap:"7px",fontSize:"12px"},el("span",{},item.icon),el("span",{style:{color:"var(--ink2)"}},item.text)),el("span",{style:{fontSize:"10px",color:"var(--ink4)",textTransform:"uppercase",letterSpacing:".08em"}},"Review \u2192"));
+      row.addEventListener("click",function(){set({view:item.view});});
+      attnCard.querySelector(".cb").appendChild(row);
+    });
+    w.appendChild(attnCard);
+  }else{
+    w.appendChild(el("div",{cls:"al-g",style:{textAlign:"center",padding:"18px",fontWeight:"600"}},"Nothing needs your attention right now"));
+  }
+
+  if(reportsToday.length){
+    var repCard=Card("Site Reports Today",el("span",{cls:"badge bg"},reportsToday.length));
+    reportsToday.forEach(function(r){
+      var item=el("div",{cls:"ei"});
+      item.appendChild(dv({display:"flex",justifyContent:"space-between",marginBottom:"4px"},el("span",{style:{fontWeight:"600",fontSize:"13px"}},r.site),el("span",{style:{fontSize:"11px",color:"var(--ink4)"}},gU(r.by).name)));
+      item.appendChild(el("div",{style:{fontSize:"12px",color:"var(--ink2)"}},r.progress));
+      repCard.querySelector(".cb").appendChild(item);
+    });
+    w.appendChild(repCard);
+  }
+
+  var byPerson={};postedToday.forEach(function(e){byPerson[e.person]=(byPerson[e.person]||0)+parseFloat(e.debit||0)-parseFloat(e.credit||0);});
+  var activePeople=Object.keys(byPerson).filter(function(p){return byPerson[p]!==0;});
+  if(activePeople.length){
+    var actCard=Card("Activity By Person Today");
+    activePeople.sort(function(a,b){return Math.abs(byPerson[b])-Math.abs(byPerson[a]);}).forEach(function(p){
+      var amt=byPerson[p];
+      var row=dv({display:"flex",justifyContent:"space-between",padding:"7px 0",borderBottom:"1px solid var(--s2)"},el("span",{style:{fontSize:"12px"}},gU(p).name),el("span",{style:{fontWeight:"600",color:amt<0?"var(--neg)":"var(--pos)"}},Rs(Math.abs(amt))));
+      actCard.querySelector(".cb").appendChild(row);
+    });
+    w.appendChild(actCard);
+  }
+  return w;
+}
+
+/* Danish no longer enters cash data — this is the actual "checks and balances" role:
+   review what supervisors posted, and flag anything that looks wrong for a director
+   to act on (Danish can't unilaterally undo a posted entry — that stays with
+   directors, per the existing escalation design). */
+function rReviewDay(){
+  var w=el("div",{});
+  var today2=today();
+  var d1=S.tab.reviewD1||today2;var d2=S.tab.reviewD2||today2;
+  var filterRow=dv({display:"flex",gap:"8px",marginBottom:"14px",flexWrap:"wrap"});
+  var d1i=Inp(d1,function(v){set({tab:Object.assign({},S.tab,{reviewD1:v})});},"date");d1i.style.maxWidth="140px";filterRow.appendChild(d1i);
+  var d2i=Inp(d2,function(v){set({tab:Object.assign({},S.tab,{reviewD2:v})});},"date");d2i.style.maxWidth="140px";filterRow.appendChild(d2i);
+  w.appendChild(filterRow);
+
+  var rangeEntries=S.cb.filter(function(e){return e.status==="posted"&&(e.date||"")>=d1&&(e.date||"")<=d2;}).sort(function(a,b){return b.created>a.created?1:-1;});
+  if(!rangeEntries.length){w.appendChild(el("div",{style:{textAlign:"center",padding:"20px",color:"var(--ink4)"}},"No posted entries in this range"));return w;}
+
+  w.appendChild(el("div",{cls:"al-b"},rangeEntries.length+" entries posted in this range. Flag anything that needs a director's attention — Danish can raise a concern, but only a director can edit or reverse a posted entry."));
+
+  rangeEntries.forEach(function(e){
+    var item=el("div",{cls:"ei"});
+    item.appendChild(dv({display:"flex",justifyContent:"space-between",marginBottom:"5px",flexWrap:"wrap",gap:"6px"},dv({},el("span",{style:{fontWeight:"600",fontSize:"13px"}},e.account+(e.subAccount?" / "+e.subAccount:"")),el("div",{style:{fontSize:"10px",color:"var(--ink4)"}},e.date+" \u00b7 "+gU(e.person).name)),el("span",{style:{fontFamily:"'Cormorant Garamond',serif",fontSize:"16px",fontWeight:"600",color:e.debit>0?"var(--neg)":"var(--pos)"}},Rs(e.debit>0?e.debit:e.credit))));
+    if(e.particulars)item.appendChild(el("div",{style:{fontSize:"12px",color:"var(--ink3)",marginBottom:"6px"}},e.particulars));
+    var alreadyFlagged=(S.esc||[]).some(function(x){return x.entryId===e.id&&x.type==="cb";});
+    if(alreadyFlagged){
+      item.appendChild(el("span",{cls:"badge br"},"Flagged for director"));
+    }else{
+      var eid=e.id;
+      item.appendChild(btn("Flag for Director",function(){
+        var note=prompt("What should the director look at?");
+        if(!note)return;
+        var newEsc={id:uid(),type:"cb",entryId:eid,note:note,by:S.user,at:now2()};
+        S.esc=[...S.esc,newEsc];svRow("esc","r7_esc",newEsc);
+        addAudit("FLAG_ENTRY","CB#"+e.cbNo);
+        toast("Flagged");render();
+      },"btn-o btn-sm"));
+    }
+    w.appendChild(item);
+  });
+  return w;
+}
+
 function rReports(){
   var posted=S.cb.filter(function(e){return e.status==="posted";});
   var m=curMonth();var yr=new Date().getFullYear().toString();
@@ -2813,6 +3173,37 @@ function rSecurity(){
   acctBody.appendChild(subList);
   w.appendChild(acctCard);
 
+  /* New construction site registration — this IS the answer to "how do I add a new
+     project": a construction site just needs to be registered once here, and it then
+     appears everywhere sites are listed (New Entry, Sites Statement, Material forms).
+     A Doors client or a TDC sub-project don't need this at all — Doors already has its
+     own "Add New" form, and TDC sub-projects are free-text by design (see the TDC
+     guidance banner on New Entry) — this is specifically for a new construction site. */
+  var siteCard=Card("Manage Construction Sites",el("span",{style:{fontSize:"10px",color:"var(--ink4)"}},"Add a new project/site"));
+  var siteBody=siteCard.querySelector(".cb");
+  siteBody.appendChild(el("div",{style:{fontSize:"12px",color:"var(--ink3)",marginBottom:"12px"}},"Register a new construction site here — it will then be available to select everywhere a site is chosen. A Doors client has its own \"Add New\" form under Doors. A TDC sub-project doesn't need registering at all — just type the project name/number directly in the Sub Account field when posting a TDC entry."));
+  var FID_SITE="new_custom_site";if(!S.fd[FID_SITE])S.fd[FID_SITE]="";
+  var siteRow=dv({display:"flex",gap:"8px",marginBottom:"14px"});
+  var siteInp=Inp(S.fd[FID_SITE],function(v){S.fd[FID_SITE]=v;},"text","New site name, e.g. K-410");
+  siteInp.style.flex="1";
+  siteRow.appendChild(siteInp);
+  siteRow.appendChild(btn("Add",function(){if(addCustomSite(S.fd[FID_SITE])){S.fd[FID_SITE]="";toast("Site added");render();}},"btn-g btn-sm"));
+  siteBody.appendChild(siteRow);
+  var siteList=dv({display:"flex",flexWrap:"wrap",gap:"6px"});
+  effectiveSites().forEach(function(s){
+    var isCustom=(S.customSites||[]).indexOf(s)!==-1;
+    var chip=dv({display:"flex",alignItems:"center",gap:"5px",background:isCustom?"var(--g4)":"var(--s2)",border:"1px solid "+(isCustom?"rgba(184,151,58,.25)":"var(--bd)"),borderRadius:"5px",padding:"4px 8px",fontSize:"11px"});
+    chip.appendChild(sp({},s));
+    if(isCustom){
+      var xBtnSite=el("span",{style:{cursor:"pointer",color:"var(--neg)",fontWeight:"700",marginLeft:"2px"}},"\u2715");
+      xBtnSite.addEventListener("click",function(){if(!confirm("Remove \""+s+"\" from the site list?"))return;removeCustomSite(s);toast("Removed");render();});
+      chip.appendChild(xBtnSite);
+    }
+    siteList.appendChild(chip);
+  });
+  siteBody.appendChild(siteList);
+  w.appendChild(siteCard);
+
   /* User login credentials — sets/resets each person's username and password via
      the royal-auth Edge Function. Passwords are never stored or checked in the
      browser; this just sends the new value to be hashed and saved server-side. */
@@ -2867,7 +3258,7 @@ function rAudit(){
 function rPage(view){
   var vm={
     dash:rDash,att:rAttendance,
-    myE:rMyEntries,
+    myE:rMyEntries,dailyRep:rDailyReport,digest:rDigest,reviewDay:rReviewDay,
     addCB:rAddCB,dq:rDanishQueue,dirApp:rDirApp,dirEdit:rDirEdit,
     ldg:rLedger,trial:rTrial,pl:rPL,cashflow:rCashFlow,
     bank:rBank,cc:rCC,vouch:rVouchers,petty:rPetty,
