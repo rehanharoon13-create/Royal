@@ -310,12 +310,13 @@ var U=[
   {id:"junaid",username:"junaid",name:"Junaid Tahir",role:"Sales",pin:"2231",init:"JN",clr:"#4A7FA5",lang:"en",email:"junaid@royalinc.local"},
   {id:"umair",username:"umair",name:"Umair Mirza",role:"Doors Supervisor",pin:"3341",init:"UM",clr:"#7B6E5A",lang:"ur",email:"umair@royalinc.local"},
   {id:"usman",username:"usman",name:"Usman Ghani",role:"Supervisor J-1",pin:"4451",init:"UG",clr:"#5E8C6A",lang:"ur",email:"usman@royalinc.local"},
+  {id:"usman_draft",username:"usmandraft",name:"Usman Draftsman",role:"Draftsman",pin:"4452",init:"UD",clr:"#5E7A8C",lang:"ur",email:"usmandraft@royalinc.local"},
   {id:"danish",username:"danish",name:"Danish",role:"Accountant",pin:"5561",init:"DN",clr:"#C08B35",lang:"en",email:"danish@royalinc.local"},
   {id:"haroon",username:"haroon",name:"Haroon sb",role:"Director",pin:"6671",init:"HS",clr:"#B85C4A",lang:"en",email:"royalcrownhomes@gmail.com"},
   {id:"ahmad",username:"ahmad",name:"Ahmad sb",role:"Director",pin:"7781",init:"AS",clr:"#B8973A",lang:"en",email:"112ahmadharoon@gmail.com"},
   {id:"rehan",username:"rehan",name:"Rehan sb",role:"Director",pin:"8891",init:"RS",clr:"#6B6358",lang:"en",email:"rehanharoon13@gmail.com"}
 ];
-var ROLE_MAP={muzammil:"staff",junaid:"staff",umair:"staff",usman:"staff",danish:"danish",haroon:"director",ahmad:"director",rehan:"director"};
+var ROLE_MAP={muzammil:"staff",junaid:"staff",umair:"staff",usman:"staff",usman_draft:"staff",danish:"danish",haroon:"director",ahmad:"director",rehan:"director"};
 var MAX_LOGIN_ATTEMPTS=10;
 var CSITES=["B-552","G-396","G-139","J-1","W-93"];
 var SITES=["B-552","G-396","G-139","J-1","Doors","W-93","Office"];
@@ -342,6 +343,18 @@ function officeExpSubOptions(){
 var SUBS=["Cement","Bricks","Steel","Steel Wire","Crush","Bajjar","Filling","Waterstopper","Plastic","Bore","Water Motor","Electric","Hardware","Carriage","Freight","Guard","Guard-Salary","Paint","Glass","Grass","Carpenter","Gardner","Marble Polish","Entertainment","Printing","Stationery","Marketing","Groceries","Bank Charges","Salary","Fuel","Advance","Labour","Travel","Other"];
 var UNITS=["Bags","Nos","Kg","Ton","Sqft","Rft","Cubic ft","Litre","Set","Sheets","Truck","Other"];
 var DOOR_STAGES=["Quotation","Approved","Production","Polishing","Packing","Dispatch","Installed","Completed"];
+/* Doors sales pipeline stages, in order — matching the 4 lists Junaid actually
+   reviews day to day, plus the final promotion step:
+   New Clients (Leads) -> first contact, Junaid's own work
+   Visited Clients -> showroom visit done, waiting on drawings/quote (this used to be
+     mislabeled "Quotation Sent" — that implied the quote had already gone out, when
+     really this stage means it's still pending, which is the actual gap this list
+     was built to close)
+   Quotation Pending -> drawings received, quote is being built / awaiting client review
+   Prospect Clients -> quoted and genuinely interested — the active pipeline directors
+     also watch, and where a director can personally claim a client as their own
+   Order Finalized -> promotes the lead into a real ongoing project */
+var LEAD_STAGES=["New Clients","Visited Clients","Quotation Pending","Prospect Clients","Order Finalized"];
 var CSTAGES=["Mobilization","Foundation","Structure","Brickwork","Plaster","Plumbing","Electric","Finishing","Completion"];
 var DOOR_INV_DEF=[{id:"veneer",n:"Veneer",unit:"Sheets",reorder:50},{id:"hdf",n:"HDF Board",unit:"Sheets",reorder:30},{id:"mdf",n:"MDF Board",unit:"Sheets",reorder:30},{id:"hdx",n:"HDX Board",unit:"Sheets",reorder:20},{id:"pu",n:"PU Paint",unit:"Litre",reorder:20},{id:"hardware",n:"Hardware Sets",unit:"Nos",reorder:10},{id:"locks",n:"Locks",unit:"Nos",reorder:20},{id:"hinges",n:"Hinges",unit:"Pairs",reorder:30},{id:"polish",n:"Polish",unit:"Litre",reorder:15},{id:"glue",n:"Glue",unit:"Kg",reorder:10}];
 var SAL_LIST=[{p:"Junaid Tahir",r:"Sales",m:100000},{p:"Umair Mirza",r:"Doors Supervisor",m:105000},{p:"Muzammil Aslam",r:"Supervisor",m:45000},{p:"Abbas",r:"Peon",m:25000},{p:"Usman Ghani",r:"Supervisor J-1",m:50000},{p:"Danish",r:"Accountant",m:20000},{p:"Usman Draftsman",r:"Draftsman",m:30000},{p:"B-552 Guard",r:"Guard",m:25000},{p:"G-396 Guard",r:"Guard",m:25000},{p:"J-1 Guard",r:"Guard",m:30000},{p:"W-93 Guard",r:"Guard",m:30000},{p:"W-93 Sweepress",r:"Sweepress",m:14000},{p:"W-93 Gardener",r:"Gardener",m:13000}];
@@ -369,7 +382,27 @@ var S={
   sites:LD("r7_si",CSITES.map(function(s){return{id:s,budget:0,client:"",notes:""};})),
   doorProjects:LD("r7_dp",[]),
   doorInvStock:LD("r7_di",DOOR_INV_DEF.map(function(i){return{id:i.id,n:i.n,unit:i.unit,reorder:i.reorder,qty:0,updated:""};})),
+  doorInvAdj:LD("r7_dia",[]),
   crmContacts:LD("r7_crm",[]),employees:LD("r7_emp",[]),attendance:LD("r7_att",[]),
+  /* Doors sales pipeline — a lead moves through fixed stages: Initial Calling and
+     Showroom Visit are Junaid's alone; Quotation Sent happens once drawings come in;
+     Follow Up is the active pipeline directors also watch; Order Finalized promotes
+     the lead into an ongoing project (a real S.doorProjects entry gets created at
+     that point, same as one added manually under Doors > Add New). */
+  leads:LD("r7_leads",[]),
+  /* Per-client document vault — layout plan (with marked door positions), quotation,
+     door sizes from site, drawings (Usman's restricted upload), site handover doc,
+     and any other approved/related document. One row per file, linked to a lead id
+     or an order id once finalized. */
+  clientDocs:LD("r7_cdocs",[]),
+  /* Complaints — any director or salesperson can log a client complaint; Umair (Doors
+     Supervisor) is responsible for resolving it with photo evidence before it closes. */
+  /* Quotation builder — Junaid builds a quotation directly in the system instead of
+     a separate document, seeded from the real Wardrobe/Kitchen/Doors formats already
+     in use. Each quotation has a category-specific set of line items and a computed
+     total, linked to a lead once one exists. */
+  quotations:LD("r7_quo",[]),
+  complaints:LD("r7_cmp",[]),
   leaveReqs:LD("r7_lv",[]),advReqs:LD("r7_adv",[]),salrec:LD("r7_sal",[]),
   vouchers:LD("r7_vo",[]),petty:LD("r7_pt",[]),
   bills:LD("r7_bl",BILLS_DEF.map(function(b){return{id:b.id,n:b.n,prop:b.prop,cat:b.cat,due:b.due,amt:b.amt,paid:null};})),
@@ -382,7 +415,7 @@ var S={
      so they suggest consistently and typos don't silently create duplicate accounts. */
   customAccounts:LD("r7_cacc",[]),customSubs:LD("r7_csub",[]),customSites:LD("r7_csite",[]),
   tab:{bank:"ov",cc:"ov",mat:"rcv",contr:"list",att:"today",vouch:"add",petty:"add",hr:"emp",bills:"bills",crm:"contacts",doors:"proj",doorInv:"stock"},
-  photo:{},fd:{},
+  photo:{},video:{},fd:{},
   cbf:{lv:"journal",person:"",site:"",search:"",d1:"",d2:""},
   aiResult:null,selSite:"B-552",doorFilter:"All",plTab:"monthly",repTab:"daily",notifOpen:false,crmFilter:"All"
 };
@@ -443,7 +476,7 @@ var SB_TBLS={
   "r7_cc":{t:"cc_txn",up:function(r){return{id:r.id,cid:r.cid,typ:r.typ,account:r.account||null,sub_account:r.subAccount||null,amount:r.amount||0,merchant:r.merchant||null,particulars:r.particulars||null,date:r.date||null,bill_photo:r.bill_photo||null,reconciled:r.reconciled||false,ref:r.ref||null,by_user:r.by||null,created_at:r.created||null};}},
   "r7_vn":{t:"vendors",up:function(r){return{id:r.id,name:r.name,type:r.type||"Supplier",contact:r.contact||null,ntn:r.ntn||null,created_at:r.created||null};}},
   "r7_ve":{t:"ventry",up:function(r){return{id:r.id,vid:r.vid,type:r.type,amount:r.amount||0,date:r.date||null,description:r.description||null,by_user:r.by||null,created_at:r.created||null};}},
-  "r7_mr":{t:"matrcv",up:function(r){return{id:r.id,site:r.site,item:r.item,unit:r.unit||null,qty:r.qty||0,rate:r.rate||0,total:r.total||0,vendor_id:r.vendorId||null,pay_type:r.payType||"cash",date:r.date||null,bill_no:r.billNo||null,notes:r.notes||null,notes_ur:r.notesUr||null,bill_photo:r.bill_photo||null,material_photo:r.material_photo||null,status:r.status||"pending",submitted_by:r.submittedBy||null,approved_by:r.approvedBy||null,approved_at:r.approvedAt||null,ventry_id:r.ventryId||null,created_at:r.created||null};}},
+  "r7_mr":{t:"matrcv",up:function(r){return{id:r.id,site:r.site,category:r.category||"Construction",item:r.item,unit:r.unit||null,qty:r.qty||0,rate:r.rate||0,total:r.total||0,vendor_id:r.vendorId||null,vendor_name:r.vendorName||null,pay_type:r.payType||"cash",date:r.date||null,bill_no:r.billNo||null,notes:r.notes||null,notes_ur:r.notesUr||null,bill_photo:r.bill_photo||null,material_photo:r.material_photo||null,material_video:r.material_video||null,status:r.status||"pending",submitted_by:r.submittedBy||null,approved_by:r.approvedBy||null,approved_at:r.approvedAt||null,ventry_id:r.ventryId||null,created_at:r.created||null};}},
   "r7_mu":{t:"matused",up:function(r){return{id:r.id,site:r.site,item:r.item,unit:r.unit||null,qty:r.qty||0,location:r.location||null,photo:r.photo||null,date:r.date||null,notes:r.notes||null,by_user:r.by||null,created_at:r.created||null};}},
   "r7_dr":{t:"daily_reports",up:function(r){return{id:r.id,site:r.site,date:r.date||null,progress:r.progress||null,inventory_notes:r.inventoryNotes||null,photo:r.photo||null,by_user:r.by||null,created_at:r.created||null};}},
   "r7_ms":{t:"matshift",up:function(r){return{id:r.id,from_site:r.from,to_site:r.to,item:r.item,unit:r.unit||null,qty:r.qty||0,amount:r.amount||0,date:r.date||null,notes:r.notes||null,by_user:r.by||null,created_at:r.created||null};}},
@@ -451,6 +484,11 @@ var SB_TBLS={
   "r7_cp":{t:"contrpay",up:function(r){return{id:r.id,cid:r.cid,amount:r.amount||0,date:r.date||null,notes:r.notes||null,by_user:r.by||null,created_at:r.created||null};}},
   "r7_dp":{t:"door_projects",up:function(r){return{id:r.id,client:r.client,contact:r.contact||null,address:r.address||null,description:r.description||null,quotation:r.quotation||0,stage:r.stage||"Quotation",date:r.date||null,created_at:r.created||null};}},
   "r7_crm":{t:"crm_contacts",up:function(r){return{id:r.id,name:r.name,type:r.type||"Client",company:r.company||null,contact:r.contact||null,email:r.email||null,notes:r.notes||null,created_at:r.created||null};}},
+  "r7_leads":{t:"leads",up:function(r){return{id:r.id,client_name:r.clientName,phone:r.phone||null,source:r.source||null,stage:r.stage||"New Clients",address:r.address||null,notes:r.notes||null,quotation_amount:r.quotationAmount||null,order_project_id:r.orderProjectId||null,assigned_to:r.assignedTo||null,created_by:r.createdBy||null,created_at:r.created||null,updated_at:r.updated||null};}},
+  "r7_cdocs":{t:"client_docs",up:function(r){return{id:r.id,lead_id:r.leadId||null,project_id:r.projectId||null,doc_type:r.docType,file_url:r.fileUrl||null,notes:r.notes||null,uploaded_by:r.uploadedBy||null,created_at:r.created||null};}},
+  "r7_cmp":{t:"complaints",up:function(r){return{id:r.id,client_name:r.clientName,project_id:r.projectId||null,description:r.description,status:r.status||"open",resolution_notes:r.resolutionNotes||null,resolution_photo:r.resolutionPhoto||null,raised_by:r.raisedBy||null,assigned_to:r.assignedTo||"umair",created_at:r.created||null,resolved_at:r.resolvedAt||null};}},
+  "r7_dia":{t:"door_inv_adj",up:function(r){return{id:r.id,item_id:r.itemId,item_name:r.itemName,change_type:r.changeType,qty:r.qty||0,project:r.project||null,note:r.note||null,by_user:r.by||null,date:r.date||null,created_at:r.created||null};}},
+  "r7_quo":{t:"quotations",up:function(r){return{id:r.id,lead_id:r.leadId||null,client_name:r.clientName,category:r.category,ref_no:r.refNo,sections:r.sections?JSON.stringify(r.sections):"[]",grand_total:r.grandTotal||0,date:r.date||null,created_by:r.createdBy||null,created_at:r.created||null};}},
   "r7_emp":{t:"employees",up:function(r){return{id:r.id,name:r.name,role:r.role||null,salary:r.salary||0,join_date:r.joinDate||null,status:r.status||"active",created_at:r.created||null};}},
   "r7_att":{t:"attendance",up:function(r){return{id:r.id,emp_id:r.empId,emp_name:r.empName||null,date:r.date,status:r.status,by_user:r.by||null,created_at:r.created||null};}},
   "r7_lv":{t:"leave_reqs",up:function(r){return{id:r.id,name:r.name,reason:r.reason||null,date:r.date||null,status:r.status||"pending",created_at:r.created||null};}},
@@ -469,7 +507,7 @@ function dnBKR(r){return{id:r.id,bid:r.bid,date:r.date||"",amount:parseFloat(r.a
 function dnCC(r){return{id:r.id,cid:r.cid,typ:r.typ,account:r.account||"",subAccount:r.sub_account||"",amount:parseFloat(r.amount||0),merchant:r.merchant||"",particulars:r.particulars||"",date:r.date||"",bill_photo:r.bill_photo||"",reconciled:r.reconciled||false,ref:r.ref||"",by:r.by_user||"",created:r.created_at||""};}
 function dnVN(r){return{id:r.id,name:r.name,type:r.type||"Supplier",contact:r.contact||"",ntn:r.ntn||"",created:r.created_at||""};}
 function dnVE(r){return{id:r.id,vid:r.vid,type:r.type,amount:parseFloat(r.amount||0),date:r.date||"",description:r.description||"",by:r.by_user||"",created:r.created_at||""};}
-function dnMR(r){return{id:r.id,site:r.site,item:r.item,unit:r.unit||"",qty:parseFloat(r.qty||0),rate:parseFloat(r.rate||0),total:parseFloat(r.total||0),vendorId:r.vendor_id||"",payType:r.pay_type||"cash",date:r.date||"",billNo:r.bill_no||"",notes:r.notes||"",notesUr:r.notes_ur||"",bill_photo:r.bill_photo||"",material_photo:r.material_photo||"",status:r.status||"pending",submittedBy:r.submitted_by||"",approvedBy:r.approved_by||"",approvedAt:r.approved_at||"",ventryId:r.ventry_id||"",created:r.created_at||""};}
+function dnMR(r){return{id:r.id,site:r.site,category:r.category||"Construction",item:r.item,unit:r.unit||"",qty:parseFloat(r.qty||0),rate:parseFloat(r.rate||0),total:parseFloat(r.total||0),vendorId:r.vendor_id||"",vendorName:r.vendor_name||"",payType:r.pay_type||"cash",date:r.date||"",billNo:r.bill_no||"",notes:r.notes||"",notesUr:r.notes_ur||"",bill_photo:r.bill_photo||"",material_photo:r.material_photo||"",material_video:r.material_video||"",status:r.status||"pending",submittedBy:r.submitted_by||"",approvedBy:r.approved_by||"",approvedAt:r.approved_at||"",ventryId:r.ventry_id||"",created:r.created_at||""};}
 function dnMU(r){return{id:r.id,site:r.site,item:r.item,unit:r.unit||"",qty:parseFloat(r.qty||0),location:r.location||"",photo:r.photo||"",date:r.date||"",notes:r.notes||"",by:r.by_user||"",created:r.created_at||""};}
 function dnDR(r){return{id:r.id,site:r.site,date:r.date||"",progress:r.progress||"",inventoryNotes:r.inventory_notes||"",photo:r.photo||"",by:r.by_user||"",created:r.created_at||""};}
 function dnMS(r){return{id:r.id,from:r.from_site,to:r.to_site,item:r.item,unit:r.unit||"",qty:parseFloat(r.qty||0),amount:parseFloat(r.amount||0),date:r.date||"",notes:r.notes||"",by:r.by_user||"",created:r.created_at||""};}
@@ -477,6 +515,11 @@ function dnCO(r){var sched=[];try{sched=r.schedule?JSON.parse(r.schedule):[];}ca
 function dnCP(r){return{id:r.id,cid:r.cid,amount:parseFloat(r.amount||0),date:r.date||"",notes:r.notes||"",by:r.by_user||"",created:r.created_at||""};}
 function dnDP(r){return{id:r.id,client:r.client,contact:r.contact||"",address:r.address||"",description:r.description||"",quotation:parseFloat(r.quotation||0),stage:r.stage||"Quotation",date:r.date||"",created:r.created_at||""};}
 function dnCRM(r){return{id:r.id,name:r.name,type:r.type||"Client",company:r.company||"",contact:r.contact||"",email:r.email||"",notes:r.notes||"",created:r.created_at||""};}
+function dnLead(r){return{id:r.id,clientName:r.client_name,phone:r.phone||"",source:r.source||"",stage:r.stage||"New Clients",address:r.address||"",notes:r.notes||"",quotationAmount:r.quotation_amount?parseFloat(r.quotation_amount):null,orderProjectId:r.order_project_id||"",assignedTo:r.assigned_to||"",createdBy:r.created_by||"",created:r.created_at||"",updated:r.updated_at||""};}
+function dnCDoc(r){return{id:r.id,leadId:r.lead_id||"",projectId:r.project_id||"",docType:r.doc_type,fileUrl:r.file_url||"",notes:r.notes||"",uploadedBy:r.uploaded_by||"",created:r.created_at||""};}
+function dnCmp(r){return{id:r.id,clientName:r.client_name,projectId:r.project_id||"",description:r.description,status:r.status||"open",resolutionNotes:r.resolution_notes||"",resolutionPhoto:r.resolution_photo||"",raisedBy:r.raised_by||"",assignedTo:r.assigned_to||"umair",created:r.created_at||"",resolvedAt:r.resolved_at||""};}
+function dnDIA(r){return{id:r.id,itemId:r.item_id,itemName:r.item_name,changeType:r.change_type,qty:parseFloat(r.qty||0),project:r.project||"",note:r.note||"",by:r.by_user||"",date:r.date||"",created:r.created_at||""};}
+function dnQuo(r){var sect=[];try{sect=r.sections?JSON.parse(r.sections):[];}catch(e){sect=[];}return{id:r.id,leadId:r.lead_id||"",clientName:r.client_name,category:r.category,refNo:r.ref_no,sections:sect,grandTotal:parseFloat(r.grand_total||0),date:r.date||"",createdBy:r.created_by||"",created:r.created_at||""};}
 function dnEMP(r){return{id:r.id,name:r.name,role:r.role||"",salary:parseFloat(r.salary||0),joinDate:r.join_date||"",status:r.status||"active",created:r.created_at||""};}
 function dnATT(r){return{id:r.id,empId:r.emp_id,empName:r.emp_name||"",date:r.date||"",status:r.status,by:r.by_user||"",created:r.created_at||""};}
 function dnLV(r){return{id:r.id,name:r.name,reason:r.reason||"",date:r.date||"",status:r.status||"pending",created:r.created_at||""};}
@@ -556,6 +599,9 @@ async function loadFromSupabase(silent){
       {t:"matused",p:"matused",f:dnMU,k:"r7_mu"},{t:"matshift",p:"matshift",f:dnMS,k:"r7_ms"},
       {t:"contractors",p:"contractors",f:dnCO,k:"r7_co"},{t:"contrpay",p:"contrpay",f:dnCP,k:"r7_cp"},
       {t:"door_projects",p:"doorProjects",f:dnDP,k:"r7_dp"},{t:"crm_contacts",p:"crmContacts",f:dnCRM,k:"r7_crm"},
+      {t:"leads",p:"leads",f:dnLead,k:"r7_leads"},{t:"client_docs",p:"clientDocs",f:dnCDoc,k:"r7_cdocs"},{t:"complaints",p:"complaints",f:dnCmp,k:"r7_cmp"},
+      {t:"door_inv_adj",p:"doorInvAdj",f:dnDIA,k:"r7_dia"},
+      {t:"quotations",p:"quotations",f:dnQuo,k:"r7_quo"},
       {t:"employees",p:"employees",f:dnEMP,k:"r7_emp"},{t:"attendance",p:"attendance",f:dnATT,k:"r7_att"},
       {t:"leave_reqs",p:"leaveReqs",f:dnLV,k:"r7_lv"},{t:"adv_reqs",p:"advReqs",f:dnAD,k:"r7_adv"},
       {t:"salrec",p:"salrec",f:dnSAL,k:"r7_sal"},{t:"vouchers",p:"vouchers",f:dnVO,k:"r7_vo"},
@@ -909,6 +955,33 @@ function PhotoZone(fid,label,onPhotoSet){
   return z;
 }
 
+/* Same pattern as PhotoZone, for a video instead — used where a photo alone doesn't
+   capture what's needed (e.g. material that was filmed before an engineered door is
+   pressed, since that step can't be verified from a still image). Stored in
+   S.video[fid] (separate from S.photo so a field can hold both at once), uploaded
+   through the same sbUploadPhoto function since it just needs binary data + a
+   filename hint, not anything photo-specific. */
+function VideoZone(fid,label){
+  if(!S.video)S.video={};
+  var vd=S.video[fid]||{};
+  if(vd.url){var wv=el("div",{cls:"pzone-prev"});var vidEl=el("video",{src:vd.url,controls:true,style:{width:"100%",maxHeight:"200px",display:"block"}});wv.appendChild(vidEl);var rbv=el("button",{cls:"pzone-rtk",onClick:function(ev){ev.stopPropagation();delete S.video[fid];render();}});rbv.textContent="Remove";wv.appendChild(rbv);return wv;}
+  var zv=el("div",{cls:"pzone"});
+  var fiv=el("input",{type:"file",accept:"video/*",style:{display:"none",position:"absolute",opacity:"0",width:"1px",height:"1px"}});
+  document.body.appendChild(fiv);
+  fiv.addEventListener("change",function(ev){
+    var f=ev.target.files&&ev.target.files[0];if(!f)return;
+    if(f.size>50*1024*1024){toast(isUrdu()?"ویڈیو 50MB سے کم ہونی چاہیے":"Video must be under 50MB",true);return;}
+    var reader=new FileReader();
+    reader.onload=function(re){var b64=re.target.result.split(",")[1];S.video[fid]={b64:b64,mime:f.type||"video/mp4",url:URL.createObjectURL(f)};render();};
+    reader.readAsDataURL(f);
+  });
+  zv.appendChild(el("div",{style:{fontSize:"26px",marginBottom:"6px"}},"\uD83C\uDFA5"));
+  zv.appendChild(el("div",{style:{fontSize:"11px",fontWeight:"600",color:"var(--g3)",letterSpacing:".1em",textTransform:"uppercase"}},label||(isUrdu()?"ویڈیو منسلک کریں":"Attach Video")));
+  zv.appendChild(el("div",{style:{fontSize:"11px",color:"var(--ink4)",marginTop:"3px"}},isUrdu()?"اختیاری — زیادہ سے زیادہ 50MB":"Optional — max 50MB"));
+  zv.addEventListener("click",function(ev){ev.preventDefault();fiv.value="";fiv.click();});
+  return zv;
+}
+
 /* AI BILL READER — passes pattern context so it learns Royal Inc.'s style */
 /* All AI calls go through this Supabase Edge Function proxy instead of hitting Anthropic
    directly from the browser — a public HTML page can never safely hold an API key.
@@ -1034,10 +1107,12 @@ var NAV=[
   {sep:true,l:"Doors",roles:["umair","danish","director"]},
   {id:"doors",l:"Door Projects",icon:"▭",roles:["umair","danish","director"]},
   {id:"doorInv",l:"Doors Inventory",icon:"📦",roles:["umair","danish","director"]},
+  {id:"complaints",l:"Complaints",icon:"⚠",roles:["umair","junaid","director"]},
+  {id:"quotations",l:"Quotations",icon:"📄",roles:["junaid","director"]},
   {sep:true,l:"HR & CRM",roles:["danish","director"]},
   {id:"hr",l:"HR Module",icon:"👷",roles:["danish","director"]},
   {id:"bills",l:"Bills & Salaries",icon:"🔔",roles:["danish","director"]},
-  {id:"crm",l:"CRM",icon:"🤝",roles:["junaid","director"]},
+  {id:"crm",l:"Doors Pipeline",icon:"🤝",roles:["junaid","director"]},
   {sep:true,l:"Reports & AI",roles:["danish","director"]},
   {id:"reports",l:"Reports",icon:"📄",roles:["danish","director"]},
   {id:"ai",l:"AI Analysis",icon:"✦",roles:["director"]},
@@ -1073,6 +1148,9 @@ function renderShell(){
   }});tog.textContent="☰";logo.appendChild(tog);sb.appendChild(logo);
   var nav=el("div",{style:{paddingTop:"8px"}});
   NAV.forEach(function(item){
+    /* Usman Draftsman gets drawing accessibility only — not the full staff nav
+       (cash entries, material, etc.) that every other "staff" role user sees. */
+    if(S.user==="usman_draft"&&item.id!=="dash"&&item.id!=="att"&&!item.sep)return;
     if(item.sep){var ok2=item.roles.some(function(r){return r===role||(role==="staff"&&item.roles.includes(S.user));});if(!ok2)return;nav.appendChild(el("div",{cls:"sbl"},item.l));return;}
     var ok=item.roles.includes(role)||(role==="staff"&&item.roles.includes(S.user));
     if(!ok)return;
@@ -1115,7 +1193,7 @@ function renderBnav(){
   var bn=document.getElementById("bnav");if(!S.user){bn.style.display="none";return;}
   bn.innerHTML="";bn.style.display="block";
   var role=ROLE_MAP[S.user]||"staff";
-  var items=BNAV[role]||BNAV.staff;
+  var items=S.user==="usman_draft"?[{id:"dash",icon:"⌂",l:"Home"},{id:"att",icon:"✓",l:"Attend"}]:(BNAV[role]||BNAV.staff);
   var row=el("div",{cls:"bnitems"});
   items.forEach(function(item){
     var cnt=getBadge(item.id);
@@ -1363,6 +1441,7 @@ function rDash(){
   var role=ROLE_MAP[S.user]||"staff";
   if(role==="director")return rExecDash();
   if(role==="danish")return rDanishDash();
+  if(S.user==="usman_draft")return rDrawingsQueue();
   return rStaffDash();
 }
 
@@ -1629,7 +1708,10 @@ function rAddCB(){
   if(canUrdu())w.appendChild(LangToggle());
   if(isDir)w.appendChild(el("div",{cls:"al-b"},"Director entry — posts directly to ledger"));
 
-  w.appendChild(Fld(isUr?"قسم":"Entry Type",Sel(fd.mode,function(v){fd.mode=v;render();},[{v:"expense",l:isUr?"خرچہ / اکاؤنٹ اندراج":"Expense / Account Entry"},{v:"give",l:isUr?"نقد رقم کسی کو دیں":"Give Cash to Team Member"},{v:"transfer",l:isUr?"دو اکاؤنٹس کے درمیان منتقلی":"Transfer Between Accounts"}])));
+  w.appendChild(Fld(isUr?"قسم":"Entry Type",Sel(fd.mode,function(v){
+    if(v==="chq"||v==="dep"||v==="bankxfer"){set({view:"bank",tab:Object.assign({},S.tab,{bank:v==="chq"?"chq":v==="dep"?"dep":"xfer"})});return;}
+    fd.mode=v;render();
+  },[{v:"expense",l:isUr?"خرچہ / اکاؤنٹ اندراج":"Expense / Account Entry"},{v:"give",l:isUr?"نقد رقم کسی کو دیں":"Give Cash to Team Member"},{v:"transfer",l:isUr?"دو اکاؤنٹس کے درمیان منتقلی":"Transfer Between Accounts"},{v:"chq",l:isUr?"چیک جاری کریں":"Issue Cheque"},{v:"dep",l:isUr?"جمع کروائیں":"Bank Deposit"},{v:"bankxfer",l:isUr?"بینک آن لائن منتقلی":"Bank Online Transfer"}])));
 
   if(fd.mode==="transfer"){
     if(!isDir){
@@ -2029,7 +2111,61 @@ function rCashFlow(){
 function rBank(){
   var tab=S.tab.bank||"ov";var w=el("div",{});
   w.appendChild(Tabs([{id:"ov",l:"Overview"},{id:"chq",l:"Issue Cheque"},{id:"dep",l:"Deposit"},{id:"xfer",l:"Transfer"},{id:"recon",l:"Reconciliation"},{id:"reg",l:"Register"}],tab,function(id){set({tab:Object.assign({},S.tab,{bank:id})});}));
-  if(tab==="ov"){w.appendChild(el("div",{cls:"kgrid"},...BANKS.map(function(bk){var bal=bBal(bk.id);return KPI(bk.name,bal,bal>=0?"var(--pos)":"var(--neg)",bk.modes);}),KPI("Total Bank",BANKS.reduce(function(s,b){return s+bBal(b.id);},0),"var(--inf)","All banks")));}
+  if(tab==="ov"){
+    var selectedBank=S.tab.bankOvSel||"";
+    if(selectedBank){
+      var bkInfo=BANKS.find(function(b){return b.id===selectedBank;})||{name:selectedBank};
+      var backRowBk=dv({display:"flex",alignItems:"center",gap:"8px",marginBottom:"14px",cursor:"pointer"});
+      backRowBk.appendChild(el("span",{style:{fontSize:"18px"}},"\u2190"));
+      backRowBk.appendChild(el("span",{style:{fontSize:"13px",fontWeight:"600"}},"All Banks"));
+      backRowBk.addEventListener("click",function(){set({tab:Object.assign({},S.tab,{bankOvSel:""})});});
+      w.appendChild(backRowBk);
+      w.appendChild(el("div",{style:{fontFamily:"'Cormorant Garamond',serif",fontSize:"22px",fontWeight:"600",marginBottom:"14px"}},bkInfo.name+" — Statement"));
+      var bankRows=S.bank.filter(function(r){return r.bid===selectedBank;}).sort(function(a,b){var av=a.created||a.date||"";var bv=b.created||b.date||"";return av>bv?1:-1;});
+      if(!bankRows.length){w.appendChild(el("div",{style:{textAlign:"center",padding:"24px",color:"var(--ink4)"}},"No transactions for this bank yet"));return w;}
+      var bTotDr=bankRows.reduce(function(s,r){return s+(r.typ!=="in"?parseFloat(r.amount||0):0);},0);
+      var bTotCr=bankRows.reduce(function(s,r){return s+(r.typ==="in"?parseFloat(r.amount||0):0);},0);
+      w.appendChild(el("div",{cls:"kgrid",style:{gridTemplateColumns:"repeat(3,1fr)",marginBottom:"14px"}},KPI("Total In",bTotCr,"var(--pos)"),KPI("Total Out",bTotDr,"var(--neg)"),KPI("Balance",Math.abs(bTotCr-bTotDr),bTotCr>=bTotDr?"var(--pos)":"var(--neg)")));
+      var stmtThead=el("thead",{},el("tr",{},el("th",{},"Date"),el("th",{},"Type"),el("th",{},"Details"),el("th",{style:{textAlign:"right"}},"Debit"),el("th",{style:{textAlign:"right"}},"Credit"),el("th",{style:{textAlign:"right"}},"Balance")));
+      var stmtTbody=el("tbody",{});
+      var runBal=0;
+      /* Build running balance oldest-first, then render newest-first to match how the
+         rest of the app displays statements, without breaking the actual running math. */
+      var chronological=bankRows.slice().reverse();
+      var balances=[];
+      chronological.forEach(function(r){runBal+=(r.typ==="in"?parseFloat(r.amount||0):-parseFloat(r.amount||0));balances.push(runBal);});
+      for(var bi=chronological.length-1;bi>=0;bi--){
+        var r=chronological[bi];var rb=balances[bi];
+        var tr=el("tr",{});
+        tr.appendChild(el("td",{style:{fontSize:"12px",whiteSpace:"nowrap"}},r.date||""));
+        tr.appendChild(el("td",{},el("span",{cls:"badge "+(r.typ==="in"?"bg":"br")},r.typ==="in"?"In":"Out")));
+        var detTd=el("td",{style:{fontSize:"12px"}},r.particulars||"");
+        tr.appendChild(detTd);
+        tr.appendChild(el("td",{style:{textAlign:"right",color:"var(--neg)",fontWeight:"600"}},r.typ!=="in"?Rs(r.amount):""));
+        tr.appendChild(el("td",{style:{textAlign:"right",color:"var(--pos)",fontWeight:"600"}},r.typ==="in"?Rs(r.amount):""));
+        tr.appendChild(el("td",{style:{textAlign:"right",fontFamily:"'Cormorant Garamond',serif",fontWeight:"600",color:rb>=0?"var(--pos)":"var(--neg)"}},Rs(Math.abs(rb))+(rb<0?" Dr":"")));
+        stmtTbody.appendChild(tr);
+      }
+      w.appendChild(el("div",{cls:"tbl-wrap"},el("table",{},stmtThead,stmtTbody)));
+      return w;
+    }
+    /* Prominent total banner — clearly larger and visually distinct from the
+       individual bank cards below it, not just another equally-sized KPI box. */
+    var grandTotal=BANKS.reduce(function(s,b){return s+bBal(b.id);},0);
+    var totalBanner=dv({background:"linear-gradient(135deg,var(--g3),var(--g))",borderRadius:"10px",padding:"20px",marginBottom:"16px",textAlign:"center"});
+    totalBanner.appendChild(el("div",{style:{fontSize:"10px",fontWeight:"700",letterSpacing:".16em",textTransform:"uppercase",color:"rgba(255,255,255,.75)",marginBottom:"6px"}},"Total Across All Banks"));
+    totalBanner.appendChild(el("div",{style:{fontFamily:"'Cormorant Garamond',serif",fontSize:"36px",fontWeight:"600",color:"#fff"}},Rs(Math.abs(grandTotal))+(grandTotal<0?" Dr":"")));
+    w.appendChild(totalBanner);
+    BANKS.forEach(function(bk){
+      var bal=bBal(bk.id);
+      var bkRow=dv({display:"flex",justifyContent:"space-between",alignItems:"center",padding:"14px",marginBottom:"8px",background:"var(--s1)",border:"1px solid var(--bd)",borderRadius:"8px",cursor:"pointer"},
+        dv({},el("div",{style:{fontWeight:"700",fontSize:"14px"}},bk.name),el("div",{style:{fontSize:"10px",color:"var(--ink4)",marginTop:"2px"}},bk.modes||"")),
+        el("div",{style:{fontFamily:"'Cormorant Garamond',serif",fontSize:"19px",fontWeight:"600",color:bal>=0?"var(--pos)":"var(--neg)"}},Rs(Math.abs(bal))+(bal<0?" Dr":""))
+      );
+      bkRow.addEventListener("click",function(){var bid=bk.id;set({tab:Object.assign({},S.tab,{bankOvSel:bid})});});
+      w.appendChild(bkRow);
+    });
+  }
   if(tab==="chq"){
     var FID="bank_chq";if(!S.fd[FID])S.fd[FID]={bid:"hs",recipType:"staff",recipUser:"",recipName:"",account:"",sub:"",particulars:"",amount:"",date:today()};var fd=S.fd[FID];var chqNo=nCHQNo();
     w.appendChild(dv({background:"var(--g4)",border:"1px solid rgba(184,151,58,.2)",borderRadius:"6px",padding:"8px 13px",marginBottom:"12px",fontSize:"12px",fontWeight:"700",color:"var(--g)"},"Cheque # "+chqNo));
@@ -2126,10 +2262,14 @@ function rBank(){
     },"btn-g btn-full"));
   }
   if(tab==="reg"){
-    var rows3=S.bank.sort(function(a,b){return b.created>a.created?1:-1;});
+    var bankSortDir=S.tab.bankRegSort||"newest";
+    var rows3=S.bank.sort(function(a,b){var av=a.created||"";var bv=b.created||"";return bankSortDir==="oldest"?(av>bv?1:-1):(av<bv?1:-1);});
     if(!rows3.length){w.appendChild(el("div",{style:{textAlign:"center",padding:"24px",color:"var(--ink4)"}},"No bank transactions yet"));return w;}
     var isDirBank=ROLE_MAP[S.user]==="director";
-    w.appendChild(expBtn(rows3,"bank.csv"));
+    var regActRow=dv({display:"flex",gap:"8px",marginBottom:"8px",flexWrap:"wrap"});
+    regActRow.appendChild(expBtn(rows3,"bank.csv"));
+    regActRow.appendChild(btn(bankSortDir==="oldest"?"\u2191 Oldest First":"\u2193 Newest First",function(){set({tab:Object.assign({},S.tab,{bankRegSort:bankSortDir==="oldest"?"newest":"oldest"})});},"btn-o btn-sm"));
+    w.appendChild(regActRow);
     var theadB=el("thead",{},el("tr",{},el("th",{},"Date"),el("th",{},"Bank"),el("th",{},"Type"),el("th",{},"CHQ#"),el("th",{},"Details"),el("th",{style:{textAlign:"right"}},"Amount"),el("th",{},"Bill"),isDirBank?el("th",{},""):null));
     var tbodyB=el("tbody",{});
     rows3.forEach(function(r){
@@ -2359,28 +2499,34 @@ function rMat(){
   var w=el("div",{});
   w.appendChild(Tabs([{id:"rcv",l:isUr?"وصولی":"Receive"},{id:"used",l:isUr?"استعمال":"Used"},{id:"shift",l:isUr?"منتقلی":"Shift"},{id:"inv",l:"Inventory"},{id:"pend",l:"Pending"}],tab,function(id){set({tab:Object.assign({},S.tab,{mat:id})});}));
   if(tab==="rcv"){
-    var FID="mat_rcv";if(!S.fd[FID])S.fd[FID]={site:CSITES[0],item:"",unit:"",qty:"",rate:"",total:"",vendorId:"",payType:"cash",date:today(),notes:"",notesUr:""};
+    var FID="mat_rcv";if(!S.fd[FID])S.fd[FID]={site:CSITES[0],category:S.user==="umair"?"Doors":"Construction",item:"",unit:"",qty:"",rate:"",total:"",vendorName:"",payType:"cash",date:today(),notes:"",notesUr:""};
     var fd=S.fd[FID];
     w.appendChild(PhotoZone(FID,isUr?UR.photoBtn:"1. Bill Photo"));
     var ph=S.photo[FID]||{};
-    if(ph.b64){w.appendChild(el("button",{cls:"btn-ai",onClick:async function(){var ar=await aiReadBill(FID,fd.site,"");if(ar){if(ar.vendor){var v=S.vendors.find(function(x){return x.name.toLowerCase().includes(ar.vendor.toLowerCase());});if(v)fd.vendorId=v.id;}if(ar.amount&&!fd.total)fd.total=String(ar.amount);render();}}},isUr?UR.readBill:"AI Read Bill"));}
+    if(ph.b64){w.appendChild(el("button",{cls:"btn-ai",onClick:async function(){var ar=await aiReadBill(FID,fd.site,"");if(ar){if(ar.vendor)fd.vendorName=ar.vendor;if(ar.amount&&!fd.total)fd.total=String(ar.amount);render();}}},isUr?UR.readBill:"AI Read Bill"));}
     w.appendChild(PhotoZone(FID+"_material",isUr?"2. مٹیریل کی تصویر":"2. Physical Material Photo"));
+    w.appendChild(VideoZone(FID+"_material",isUr?"3. مٹیریل کی ویڈیو":"3. Physical Material Video"));
+    var dlMrVnd=el("datalist",{id:"dl_mr_vnd"});
+    var mrVendorNames=Array.from(new Set(S.vendors.map(function(v){return v.name;}).concat(S.contractors.map(function(c){return c.name;}))));
+    mrVendorNames.forEach(function(n){dlMrVnd.appendChild(el("option",{value:n}));});
+    w.appendChild(dlMrVnd);
     var fg=el("div",{cls:"fg"});
+    fg.appendChild(Fld(isUr?"قسم":"Category",Sel(fd.category,function(v){fd.category=v;},[{v:"Construction",l:"Construction"},{v:"Doors",l:"Doors"}])));
     fg.appendChild(Fld(isUr?"سائٹ":"Site",Sel(fd.site,function(v){fd.site=v;},effectiveSites().map(function(s){return{v:s,l:s};}))));
     fg.appendChild(Fld(isUr?"مٹیریل":"Item",Inp(fd.item,function(v){fd.item=v;},"text",isUr?"مثال: سیمنٹ":"e.g. Cement")));
     fg.appendChild(Fld(isUr?"یونٹ":"Unit",Sel(fd.unit,function(v){fd.unit=v;},UNITS.map(function(u){return{v:u,l:u};}))));
     fg.appendChild(Fld(isUr?"مقدار":"Qty",Inp(fd.qty,function(v){fd.qty=v;if(v&&fd.rate)fd.total=String(parseFloat(v)*parseFloat(fd.rate||0));},"number")));
     fg.appendChild(Fld(isUr?"ریٹ":"Rate",Inp(fd.rate,function(v){fd.rate=v;if(v&&fd.qty)fd.total=String(parseFloat(v)*parseFloat(fd.qty||0));},"number")));
     fg.appendChild(Fld(isUr?"کل رقم":"Total (Rs)",Inp(fd.total,function(v){fd.total=v;},"number")));
-    fg.appendChild(Fld(isUr?"وینڈر":"Vendor",Sel(fd.vendorId,function(v){fd.vendorId=v;},[{v:"",l:"Cash / Unknown"},...S.vendors.map(function(v){return{v:v.id,l:v.name};})])));
+    fg.appendChild(Fld(isUr?"وینڈر":"Vendor",Inp(fd.vendorName,function(v){fd.vendorName=v;},"text",isUr?"لکھیں یا فہرست سے چنیں":"Type or pick from list","dl_mr_vnd")));
     fg.appendChild(Fld(isUr?"ادائیگی":"Pay Type",Sel(fd.payType,function(v){fd.payType=v;render();},[{v:"cash",l:"Cash"},{v:"credit",l:"Credit"},{v:"bank",l:"Bank Transfer"}])));
     fg.appendChild(Fld(isUr?"تاریخ":"Date",Inp(fd.date,function(v){fd.date=v;},"date")));
     w.appendChild(fg);
-    if(fd.payType==="credit"&&fd.vendorId){w.appendChild(el("div",{cls:"al-b"},isUr?"کریڈٹ پر — یہ رقم وینڈر کے قابل ادائیگی بیلنس میں خودکار شامل ہوگی":"On credit — this amount will automatically add to the vendor's payable balance"));}
+    if(fd.payType==="credit"&&fd.vendorName.trim()){w.appendChild(el("div",{cls:"al-b"},isUr?"کریڈٹ پر — یہ رقم وینڈر کے قابل ادائیگی بیلنس میں خودکار شامل ہوگی":"On credit — this amount will automatically add to the vendor's payable balance"));}
     w.appendChild(Fld(isUr?"نوٹ (اردو)":"Notes",TA(isUr?fd.notesUr:fd.notes,function(v){if(isUr)fd.notesUr=v;else fd.notes=v;},2,isUr?"اردو میں...":"Any notes...",isUr)));
     w.appendChild(btn(isUr?"جمع کریں":"Submit for Approval",async function(){
       if(!fd.item||!fd.qty||!fd.total){toast(isUr?"تمام فیلڈ بھریں":"Fill all fields",true);return;}
-      if(fd.payType==="credit"&&!fd.vendorId){toast(isUr?"کریڈٹ کے لیے وینڈر منتخب کریں":"Select a vendor for credit purchases",true);return;}
+      if(fd.payType==="credit"&&!fd.vendorName.trim()){toast(isUr?"کریڈٹ کے لیے وینڈر لکھیں":"Enter a vendor name for credit purchases",true);return;}
       var notesEn=fd.notes;var notesUr=fd.notesUr;
       if(isUr&&notesUr&&!notesEn){notesEn=await translateToEnglish(notesUr);}
       var fph=S.photo[FID]||{};var isAdmin=role==="danish"||role==="director";
@@ -2389,21 +2535,39 @@ function rMat(){
       var mph=S.photo[FID+"_material"]||{};
       var materialPhotoUrl="";
       if(mph.b64){toast(isUr?"مٹیریل کی تصویر محفوظ ہو رہی ہے...":"Saving material photo...",false,2500);materialPhotoUrl=await sbUploadPhoto(mph.b64,mph.mime,"matrcv_physical");if(!materialPhotoUrl)toast(isUr?"مٹیریل کی تصویر محفوظ نہیں ہو سکی":"Material photo could not be saved",true,3500);}
+      var mvid=(S.video&&S.video[FID+"_material"])||{};
+      var materialVideoUrl="";
+      if(mvid.b64){toast(isUr?"ویڈیو محفوظ ہو رہی ہے...":"Saving video...",false,3500);materialVideoUrl=await sbUploadPhoto(mvid.b64,mvid.mime,"matrcv_video");if(!materialVideoUrl)toast(isUr?"ویڈیو محفوظ نہیں ہو سکی":"Video could not be saved",true,3500);}
+      /* Resolve the free-typed vendor name to a real vendor record, auto-creating one
+         if it doesn't exist yet — same pattern used for Vendor/Contractor on cash
+         entries, so a name typed here is never lost or orphaned from the vendor
+         directory even if it wasn't picked from the suggestion list. */
+      var resolvedVendorId="";
+      var vendorTrimmed=fd.vendorName.trim();
+      if(vendorTrimmed){
+        var existingVendor=S.vendors.find(function(v){return v.name.toLowerCase()===vendorTrimmed.toLowerCase();});
+        if(existingVendor){resolvedVendorId=existingVendor.id;}
+        else{
+          var newVendorMR={id:uid(),name:vendorTrimmed,type:"Supplier",contact:"",ntn:"",created:now2()};
+          S.vendors=[...S.vendors,newVendorMR];svRow("vendors","r7_vn",newVendorMR);
+          resolvedVendorId=newVendorMR.id;
+        }
+      }
       var newRcvId=uid();
       var linkedVentryId=null;
       /* Credit purchases automatically create a vendor payable entry, so the vendor's
          balance reflects material received on credit without a second manual entry —
          this is the actual link your accounts payable is supposed to run through. */
-      if(fd.payType==="credit"&&fd.vendorId){
+      if(fd.payType==="credit"&&resolvedVendorId){
         linkedVentryId=uid();
-        var newVEntry={id:linkedVentryId,vid:fd.vendorId,type:"bill",amount:parseFloat(fd.total),date:fd.date||today(),description:"Material: "+fd.item+" ("+fd.qty+" "+fd.unit+") for "+fd.site,by:S.user,created:now2()};
+        var newVEntry={id:linkedVentryId,vid:resolvedVendorId,type:"bill",amount:parseFloat(fd.total),date:fd.date||today(),description:"Material: "+fd.item+" ("+fd.qty+" "+fd.unit+") for "+fd.site,by:S.user,created:now2()};
         S.ventry=[...S.ventry,newVEntry];
         svRow("ventry","r7_ve",newVEntry);
       }
-      var newRcv={id:newRcvId,site:fd.site,item:fd.item,unit:fd.unit,qty:parseFloat(fd.qty),rate:parseFloat(fd.rate||0),total:parseFloat(fd.total),vendorId:fd.vendorId,payType:fd.payType,date:fd.date||today(),notes:notesEn,notesUr:notesUr,bill_photo:matPhotoUrl||"",material_photo:materialPhotoUrl||"",status:isAdmin?"approved":"pending",submittedBy:S.user,approvedBy:isAdmin?S.user:"",approvedAt:isAdmin?now2():"",ventryId:linkedVentryId,created:now2()};
+      var newRcv={id:newRcvId,site:fd.site,category:fd.category||"Construction",item:fd.item,unit:fd.unit,qty:parseFloat(fd.qty),rate:parseFloat(fd.rate||0),total:parseFloat(fd.total),vendorId:resolvedVendorId,vendorName:vendorTrimmed,payType:fd.payType,date:fd.date||today(),notes:notesEn,notesUr:notesUr,bill_photo:matPhotoUrl||"",material_photo:materialPhotoUrl||"",material_video:materialVideoUrl||"",status:isAdmin?"approved":"pending",submittedBy:S.user,approvedBy:isAdmin?S.user:"",approvedAt:isAdmin?now2():"",ventryId:linkedVentryId,created:now2()};
       S.matrcv=[...S.matrcv,newRcv];
-      svRow("matrcv","r7_mr",newRcv);delete S.photo[FID];delete S.photo[FID+"_material"];
-      S.fd[FID]={site:fd.site,item:"",unit:"",qty:"",rate:"",total:"",vendorId:"",payType:"cash",date:today(),notes:"",notesUr:""};
+      svRow("matrcv","r7_mr",newRcv);delete S.photo[FID];delete S.photo[FID+"_material"];if(S.video)delete S.video[FID+"_material"];
+      S.fd[FID]={site:fd.site,category:fd.category,item:"",unit:"",qty:"",rate:"",total:"",vendorName:"",payType:"cash",date:today(),notes:"",notesUr:""};
       toast(isAdmin?(isUr?"منظور":"Approved"):(isUr?"جمع":"Submitted"));render();
     },"btn-g btn-full"));
   }
@@ -2458,16 +2622,18 @@ function rMat(){
     },"btn-g btn-full"));
   }
   if(tab==="inv"){
-    var invSite=S.tab.invSite||"";var invD1=S.tab.invD1||"";var invD2=S.tab.invD2||"";
+    var invSite=S.tab.invSite||"";var invD1=S.tab.invD1||"";var invD2=S.tab.invD2||"";var invCat=S.tab.invCat||"";
     var filterRow2=dv({display:"flex",gap:"8px",marginBottom:"14px",flexWrap:"wrap"});
+    filterRow2.appendChild(Sel(invCat,function(v){set({tab:Object.assign({},S.tab,{invCat:v})});},[{v:"",l:"All Categories"},{v:"Construction",l:"Construction"},{v:"Doors",l:"Doors"}]));
     filterRow2.appendChild(Sel(invSite,function(v){set({tab:Object.assign({},S.tab,{invSite:v})});},[{v:"",l:"All Sites"}].concat(effectiveSites().map(function(s){return{v:s,l:s};}))));
     var invD1i=Inp(invD1,function(v){set({tab:Object.assign({},S.tab,{invD1:v})});},"date");invD1i.style.maxWidth="140px";filterRow2.appendChild(invD1i);
     var invD2i=Inp(invD2,function(v){set({tab:Object.assign({},S.tab,{invD2:v})});},"date");invD2i.style.maxWidth="140px";filterRow2.appendChild(invD2i);
-    if(invSite||invD1||invD2)filterRow2.appendChild(btn("Clear",function(){set({tab:Object.assign({},S.tab,{invSite:"",invD1:"",invD2:""})});},"btn-o btn-sm"));
+    if(invSite||invD1||invD2||invCat)filterRow2.appendChild(btn("Clear",function(){set({tab:Object.assign({},S.tab,{invSite:"",invD1:"",invD2:"",invCat:""})});},"btn-o btn-sm"));
     w.appendChild(filterRow2);
     var items={};
     S.matrcv.filter(function(r){
       if(r.status!=="approved")return false;
+      if(invCat&&(r.category||"Construction")!==invCat)return false;
       if(invSite&&r.site!==invSite)return false;
       if(invD1&&(r.date||"")<invD1)return false;
       if(invD2&&(r.date||"")>invD2)return false;
@@ -2555,6 +2721,42 @@ function rVendors(){
     var FID2="ve_"+v.id;if(!S.fd[FID2])S.fd[FID2]={type:"bill",amount:"",date:today(),desc:""};var fe=S.fd[FID2];
     var fg2=el("div",{cls:"fg",style:{marginTop:"8px"}});fg2.appendChild(Fld("Type",Sel(fe.type,function(val){fe.type=val;},[{v:"bill",l:"New Bill"},{v:"pay",l:"Payment"}])));fg2.appendChild(Fld("Amount",Inp(fe.amount,function(v){fe.amount=v;},"number")));fg2.appendChild(Fld("Date",Inp(fe.date,function(v){fe.date=v;},"date")));fg2.appendChild(Fld("Details",Inp(fe.desc,function(v){fe.desc=v;},"text")));vc.appendChild(fg2);
     var vid=v.id;vc.appendChild(btn("Add Transaction",function(){if(!fe.amount){toast("Enter amount",true);return;}var newVEntry={id:uid(),vid:vid,type:fe.type,amount:parseFloat(fe.amount),date:fe.date||today(),description:fe.desc,by:S.user,created:now2()};S.ventry=[...S.ventry,newVEntry];svRow("ventry","r7_ve",newVEntry);S.fd[FID2]={type:"bill",amount:"",date:today(),desc:""};toast("Added");render();},"btn-o btn-sm"));
+
+    /* Real vendor ledger statement — every bill and payment that makes up the balance
+       above, not just the summary number. Bills increase what's owed, payments
+       decrease it, shown with a running balance so the history is fully auditable. */
+    var vEntries=S.ventry.filter(function(e){return e.vid===v.id;}).sort(function(a,b){var av=a.created||a.date||"";var bv=b.created||b.date||"";return av>bv?1:-1;});
+    var materialForVendor=S.matrcv.filter(function(m){return m.vendorId===v.id;}).sort(function(a,b){var av=a.created||a.date||"";var bv=b.created||b.date||"";return av>bv?1:-1;});
+    if(vEntries.length||materialForVendor.length){
+      var showStatement=S.tab["vndStmt_"+v.id]||false;
+      var stmtToggle=btn(showStatement?"Hide Statement":"View Statement",function(){var patch={};patch["vndStmt_"+vid]=!showStatement;set({tab:Object.assign({},S.tab,patch)});},"btn-o btn-sm");
+      stmtToggle.style.marginTop="8px";
+      vc.appendChild(stmtToggle);
+      if(showStatement){
+        var stCard=dv({marginTop:"10px",padding:"10px",background:"var(--s2)",borderRadius:"6px"});
+        var runningVBal=0;
+        var chronoV=vEntries.slice().reverse();
+        var vBalances=[];
+        chronoV.forEach(function(e){runningVBal+=(e.type==="bill"?parseFloat(e.amount||0):-parseFloat(e.amount||0));vBalances.push(runningVBal);});
+        for(var vi=chronoV.length-1;vi>=0;vi--){
+          var e=chronoV[vi];var eb=vBalances[vi];
+          var erow=dv({display:"flex",justifyContent:"space-between",padding:"6px 0",borderBottom:"1px solid var(--bd)",fontSize:"12px"});
+          erow.appendChild(dv({},el("div",{},e.date+" — "+(e.type==="bill"?"Bill":"Payment")),e.description?el("div",{style:{color:"var(--ink4)",fontSize:"11px"}},e.description):null));
+          erow.appendChild(dv({style:{textAlign:"right"}},el("div",{style:{fontWeight:"600",color:e.type==="bill"?"var(--neg)":"var(--pos)"}},(e.type==="bill"?"+":"-")+Rs(e.amount)),el("div",{style:{fontSize:"10px",color:"var(--ink4)"}},"Bal: "+Rs(Math.abs(eb)))));
+          stCard.appendChild(erow);
+        }
+        if(materialForVendor.length){
+          stCard.appendChild(el("div",{style:{fontSize:"10px",fontWeight:"700",letterSpacing:".1em",textTransform:"uppercase",color:"var(--ink4)",margin:"10px 0 6px"}},"Material Received (linked)"));
+          materialForVendor.forEach(function(m){
+            var mrow=dv({display:"flex",justifyContent:"space-between",padding:"5px 0",fontSize:"12px"});
+            mrow.appendChild(el("span",{style:{color:"var(--ink3)"}},m.date+" — "+m.item+" ("+m.qty+" "+m.unit+") for "+m.site));
+            mrow.appendChild(el("span",{style:{fontWeight:"600"}},Rs(m.total)));
+            stCard.appendChild(mrow);
+          });
+        }
+        vc.appendChild(stCard);
+      }
+    }
     w.appendChild(vc);
   });
   return w;
@@ -2734,6 +2936,51 @@ function rDoors(){
       });
       vc.appendChild(stages2);
       if(p.description)vc.appendChild(el("div",{style:{fontSize:"12px",color:"var(--ink3)",padding:"8px 10px",background:"var(--s2)",borderRadius:"5px",marginTop:"8px"}},p.description));
+
+      /* Progress evidence — photo or video, since some engineered doors need to be
+         filmed before being pressed (a still photo doesn't capture that step). Also
+         site clearance and client correspondence uploads, all stored against this
+         project's id directly so it works whether the project came from the sales
+         pipeline or was added here manually. */
+      var evidenceTypes=[{id:"progress",l:"Progress Evidence"},{id:"clearance",l:"Site Clearance"},{id:"correspondence",l:"Client Correspondence"}];
+      var showEvidence=S.tab["doorEv_"+p.id]||false;
+      var pidEv=p.id;
+      var evToggle=btn(showEvidence?"Hide Evidence & Documents":"Evidence & Documents",function(){var patch={};patch["doorEv_"+pidEv]=!showEvidence;set({tab:Object.assign({},S.tab,patch)});},"btn-o btn-sm");
+      evToggle.style.marginTop="8px";
+      vc.appendChild(evToggle);
+      if(showEvidence){
+        evidenceTypes.forEach(function(et){
+          var existingEv=S.clientDocs.filter(function(d){return d.projectId===pidEv&&d.docType===et.id;});
+          var evCard=dv({marginTop:"10px",padding:"10px",background:"var(--s2)",borderRadius:"6px"});
+          evCard.appendChild(el("div",{style:{fontSize:"10px",fontWeight:"700",letterSpacing:".1em",textTransform:"uppercase",color:"var(--ink4)",marginBottom:"8px"}},et.l+" ("+existingEv.length+")"));
+          existingEv.forEach(function(doc){
+            var erow=dv({display:"flex",justifyContent:"space-between",padding:"4px 0",fontSize:"11px"});
+            erow.appendChild(el("a",{href:doc.fileUrl,target:"_blank",style:{color:"var(--g)",fontWeight:"600"}},"View — "+(doc.created||"").slice(0,10)));
+            evCard.appendChild(erow);
+          });
+          var FIDEV="proj_ev_"+pidEv+"_"+et.id;
+          evCard.appendChild(PhotoZone(FIDEV,"Photo"));
+          if(et.id==="progress")evCard.appendChild(VideoZone(FIDEV+"_vid","Video (for pressed doors, etc.)"));
+          evCard.appendChild(btn("Save "+et.l,async function(){
+            var eph=S.photo[FIDEV]||{};
+            var evid=(S.video&&S.video[FIDEV+"_vid"])||{};
+            if(!eph.b64&&!evid.b64){toast("Attach a photo or video first",true);return;}
+            var savedAny=false;
+            if(eph.b64){
+              toast("Saving photo...",false,2500);
+              var photoUrl=await sbUploadPhoto(eph.b64,eph.mime,et.id+"_photo");
+              if(photoUrl){var newDocP={id:uid(),leadId:"",projectId:pidEv,docType:et.id,fileUrl:photoUrl,notes:"",uploadedBy:S.user,created:now2()};S.clientDocs=[...S.clientDocs,newDocP];svRow("clientDocs","r7_cdocs",newDocP);delete S.photo[FIDEV];savedAny=true;}
+            }
+            if(evid.b64){
+              toast("Saving video...",false,3500);
+              var videoUrl=await sbUploadPhoto(evid.b64,evid.mime,et.id+"_video");
+              if(videoUrl){var newDocV={id:uid(),leadId:"",projectId:pidEv,docType:et.id,fileUrl:videoUrl,notes:"video",uploadedBy:S.user,created:now2()};S.clientDocs=[...S.clientDocs,newDocV];svRow("clientDocs","r7_cdocs",newDocV);if(S.video)delete S.video[FIDEV+"_vid"];savedAny=true;}
+            }
+            if(savedAny){addAudit("PROJECT_EVIDENCE",p.client+" — "+et.l);toast("Saved");render();}
+          },"btn-g btn-sm"));
+          vc.appendChild(evCard);
+        });
+      }
       if(ROLE_MAP[S.user]==="director"){
         var pidDel=p.id;
         vc.appendChild(btn("Delete Project",function(){if(!confirm("Delete this door project?"))return;addAudit("DELETE_DOOR_PROJECT",p.client);removeRow("doorProjects","r7_dp",pidDel);toast("Deleted");render();},"btn-neg btn-sm"));
@@ -2746,7 +2993,7 @@ function rDoors(){
 
 function rDoorInv(){
   var tab=S.tab.doorInv||"stock";var w=el("div",{});
-  w.appendChild(Tabs([{id:"stock",l:"Current Stock"},{id:"adj",l:"Adjustment"}],tab,function(id){set({tab:Object.assign({},S.tab,{doorInv:id})});}));
+  w.appendChild(Tabs([{id:"stock",l:"Current Stock"},{id:"adj",l:"Adjustment"},{id:"usage",l:"Usage Report"}],tab,function(id){set({tab:Object.assign({},S.tab,{doorInv:id})});}));
   if(tab==="stock"){
     var low=S.doorInvStock.filter(function(i){return i.qty<=i.reorder;});
     if(low.length)w.appendChild(el("div",{cls:"al-r"},low.length+" items at or below reorder level"));
@@ -2762,11 +3009,46 @@ function rDoorInv(){
       tbody.appendChild(tr);
     });
     w.appendChild(el("div",{cls:"tbl-wrap"},el("table",{},thead,tbody)));
-  }else{
-    var FID="di_adj";if(!S.fd[FID])S.fd[FID]={itemId:"",qty:"",note:""};var fd=S.fd[FID];
-    var fg=el("div",{cls:"fg"});fg.appendChild(Fld("Item",Sel(fd.itemId,function(v){fd.itemId=v;},S.doorInvStock.map(function(i){return{v:i.id,l:i.n+" ("+i.qty+" "+i.unit+")"};}))));fg.appendChild(Fld("New Qty",Inp(fd.qty,function(v){fd.qty=v;},"number")));w.appendChild(fg);
-    w.appendChild(Fld("Reason",TA(fd.note,function(v){fd.note=v;},1,"")));
-    w.appendChild(btn("Update Stock",function(){if(!fd.itemId||fd.qty===""){toast("Select item and quantity",true);return;}var idx=S.doorInvStock.findIndex(function(x){return x.id===fd.itemId;});if(idx>=0){S.doorInvStock[idx]=Object.assign({},S.doorInvStock[idx],{qty:parseFloat(fd.qty),updated:today()});}svDoorInv();S.fd[FID]={itemId:"",qty:"",note:""};toast("Updated");render();},"btn-g btn-full"));
+  }else if(tab==="adj"){
+    var FID="di_adj";if(!S.fd[FID])S.fd[FID]={itemId:"",changeType:"use",qty:"",project:"",note:""};var fd=S.fd[FID];
+    w.appendChild(el("div",{cls:"al-b"},"Every adjustment is kept as a permanent record — this is what builds the Usage Report, not just an overwritten number."));
+    var fg=el("div",{cls:"fg"});
+    fg.appendChild(Fld("Item",Sel(fd.itemId,function(v){fd.itemId=v;},S.doorInvStock.map(function(i){return{v:i.id,l:i.n+" ("+i.qty+" "+i.unit+")"};}))));
+    fg.appendChild(Fld("Type",Sel(fd.changeType,function(v){fd.changeType=v;},[{v:"use",l:"Used for a project"},{v:"receive",l:"New stock received"},{v:"correction",l:"Count correction"}])));
+    fg.appendChild(Fld("Qty",Inp(fd.qty,function(v){fd.qty=v;},"number")));
+    fg.appendChild(Fld("Project/Client (if used)",Inp(fd.project,function(v){fd.project=v;},"text")));
+    w.appendChild(fg);
+    w.appendChild(Fld("Note",TA(fd.note,function(v){fd.note=v;},1,"")));
+    w.appendChild(btn("Record Adjustment",function(){
+      if(!fd.itemId||!fd.qty){toast("Select item and quantity",true);return;}
+      var idx=S.doorInvStock.findIndex(function(x){return x.id===fd.itemId;});
+      if(idx<0)return;
+      var itemInfo=S.doorInvStock[idx];
+      var delta=fd.changeType==="use"?-Math.abs(parseFloat(fd.qty)):Math.abs(parseFloat(fd.qty));
+      var newQty=fd.changeType==="correction"?parseFloat(fd.qty):(itemInfo.qty||0)+delta;
+      S.doorInvStock[idx]=Object.assign({},itemInfo,{qty:newQty,updated:today()});
+      svDoorInv();
+      /* This is the actual history record — without it, "usage report" is impossible,
+         since the old flow just overwrote the number with no trace of what happened. */
+      var newAdj={id:uid(),itemId:fd.itemId,itemName:itemInfo.n,changeType:fd.changeType,qty:parseFloat(fd.qty),project:fd.project,note:fd.note,by:S.user,date:today(),created:now2()};
+      S.doorInvAdj=[...(S.doorInvAdj||[]),newAdj];svRow("doorInvAdj","r7_dia",newAdj);
+      S.fd[FID]={itemId:"",changeType:"use",qty:"",project:"",note:""};toast("Recorded");render();
+    },"btn-g btn-full"));
+  }else if(tab==="usage"){
+    var adjHistory=(S.doorInvAdj||[]).sort(function(a,b){return (b.created||"")>(a.created||"")?1:-1;});
+    if(!adjHistory.length){w.appendChild(el("div",{style:{textAlign:"center",padding:"24px",color:"var(--ink4)"}},"No usage recorded yet"));return w;}
+    var utbody=el("tbody",{});
+    adjHistory.forEach(function(a){
+      var tr=el("tr",{});
+      tr.appendChild(el("td",{style:{fontSize:"12px"}},a.date));
+      tr.appendChild(el("td",{style:{fontWeight:"500"}},a.itemName));
+      tr.appendChild(el("td",{},el("span",{cls:"badge "+(a.changeType==="use"?"br":a.changeType==="receive"?"bg":"bw")},a.changeType)));
+      tr.appendChild(el("td",{style:{textAlign:"right",fontWeight:"600"}},String(a.qty)));
+      tr.appendChild(el("td",{style:{fontSize:"12px",color:"var(--ink4)"}},a.project||""));
+      tr.appendChild(el("td",{style:{fontSize:"11px",color:"var(--ink4)"}},gU(a.by).name));
+      utbody.appendChild(tr);
+    });
+    w.appendChild(el("div",{cls:"tbl-wrap"},el("table",{},el("thead",{},el("tr",{},el("th",{},"Date"),el("th",{},"Item"),el("th",{},"Type"),el("th",{style:{textAlign:"right"}},"Qty"),el("th",{},"Project"),el("th",{},"By"))),utbody)));
   }
   return w;
 }
@@ -2918,6 +3200,24 @@ function rBills(){
   var d=new Date().getDate();var m=curMonth();var w=el("div",{});
   var due7=S.bills.filter(function(b){return b.due&&Math.abs(b.due-d)<=7&&b.paid!==m;});
   if(due7.length)w.appendChild(el("div",{cls:"al-r"},due7.length+" bill(s) due within 7 days"));
+
+  /* Salary summary — this page is titled "Bills & Salaries" but previously only
+     showed utility bills, with no mention of salaries at all even though the page
+     name promised it. The actual pay/mark-paid action stays in HR > Salaries (where
+     the cashbook-linking logic already correctly lives) — this is a summary with a
+     direct link there, not a duplicate of that flow. */
+  var unpaidSalaries=SAL_LIST.filter(function(s){return !S.salrec.find(function(r){return r.person===s.p&&r.month===m;});});
+  var paidSalaries=SAL_LIST.filter(function(s){return S.salrec.find(function(r){return r.person===s.p&&r.month===m;});});
+  var totalMonthlySalaries=SAL_LIST.reduce(function(s,r){return s+r.m;},0);
+  var salCard=Card("Salaries — "+m,el("span",{cls:"badge "+(unpaidSalaries.length?"br":"bg")},unpaidSalaries.length?unpaidSalaries.length+" unpaid":"All paid"));
+  var salBody=salCard.querySelector(".cb");
+  salBody.appendChild(el("div",{cls:"kgrid",style:{gridTemplateColumns:"repeat(2,1fr)",marginBottom:"10px"}},KPIsm("Total Monthly Payroll",totalMonthlySalaries,"var(--wrn)"),KPIsm("Paid This Month",paidSalaries.reduce(function(s,r){return s+r.m;},0),"var(--pos)")));
+  if(unpaidSalaries.length){
+    salBody.appendChild(el("div",{style:{fontSize:"11px",color:"var(--ink4)",marginBottom:"6px"}},"Unpaid: "+unpaidSalaries.map(function(s){return s.p;}).join(", ")));
+  }
+  salBody.appendChild(btn("Open HR — Salaries to Pay",function(){set({view:"hr",tab:Object.assign({},S.tab,{hr:"sal"})});},"btn-o btn-full"));
+  w.appendChild(salCard);
+
   var cats=["Utility","Credit Card","Donation","Personal","Other"];
   cats.forEach(function(cat){var cBills=S.bills.filter(function(b){return b.cat===cat;});if(!cBills.length)return;var cc=Card(cat);cBills.forEach(function(b){var paid=b.paid===m;var bi=el("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"8px 0",borderBottom:"1px solid var(--s2)",flexWrap:"wrap",gap:"6px"}});bi.appendChild(dv({},el("div",{style:{fontWeight:"600",fontSize:"13px"}},b.n+(b.prop?" — "+b.prop:"")),el("div",{style:{fontSize:"11px",color:"var(--ink4)",marginTop:"2px"}},(b.due?"Due "+b.due+"th · ":"")+"Amount: "+Rs(b.amt))));bi.appendChild(dv({display:"flex",gap:"7px",alignItems:"center"},el("input",{type:"number",value:String(b.amt||0),style:{width:"90px",padding:"5px 8px",fontSize:"12px"},onChange:function(ev){var idx=S.bills.findIndex(function(x){return x.id===b.id;});if(idx>=0)S.bills[idx]=Object.assign({},S.bills[idx],{amt:parseFloat(ev.target.value||0)});svBills();}}),paid?el("span",{cls:"badge bg"},"Paid"):btn("Mark Paid",function(){var idx=S.bills.findIndex(function(x){return x.id===b.id;});if(idx>=0){S.bills[idx]=Object.assign({},S.bills[idx],{paid:m});svBills();}toast("Marked paid");render();},"btn-sm btn-pos")));cc.querySelector(".cb").appendChild(bi);});w.appendChild(cc);});
   return w;
@@ -3071,6 +3371,381 @@ function rReviewDay(){
       },"btn-o btn-sm"));
     }
     w.appendChild(item);
+  });
+  return w;
+}
+
+/* ═══════════════════════════════════════════
+   DOORS SALES PIPELINE — LEADS
+   ═══════════════════════════════════════════ */
+function rLeads(){
+  var isDirLead=ROLE_MAP[S.user]==="director";
+  var isJunaid=S.user==="junaid";
+  var tab=S.tab.leads||"pipeline";
+  var w=el("div",{});
+  w.appendChild(Tabs([{id:"pipeline",l:"Pipeline"},{id:"add",l:"New Lead"}],tab,function(id){set({tab:Object.assign({},S.tab,{leads:id})});}));
+
+  if(tab==="add"){
+    if(!isJunaid&&!isDirLead){w.appendChild(el("div",{cls:"al-r"},"Only Junaid or a director can add a new lead."));return w;}
+    var FIDL="lead_add";if(!S.fd[FIDL])S.fd[FIDL]={clientName:"",phone:"",source:"Meta",address:"",notes:""};var fdl=S.fd[FIDL];
+    w.appendChild(el("div",{cls:"al-b"},"Leads normally arrive from Meta via the shared link — add one manually here if it comes through another channel (referral, walk-in, phone)."));
+    var fgl=el("div",{cls:"fg"});
+    fgl.appendChild(Fld("Client Name",Inp(fdl.clientName,function(v){fdl.clientName=v;},"text")));
+    fgl.appendChild(Fld("Phone",Inp(fdl.phone,function(v){fdl.phone=v;},"tel")));
+    fgl.appendChild(Fld("Source",Sel(fdl.source,function(v){fdl.source=v;},[{v:"Meta",l:"Meta (Facebook/Instagram)"},{v:"Referral",l:"Referral"},{v:"Walk-in",l:"Walk-in"},{v:"Other",l:"Other"}])));
+    fgl.appendChild(Fld("Address",Inp(fdl.address,function(v){fdl.address=v;},"text")));
+    w.appendChild(fgl);
+    w.appendChild(Fld("Notes",TA(fdl.notes,function(v){fdl.notes=v;},2,"")));
+    w.appendChild(btn("Add Lead — New Clients",function(){
+      if(!fdl.clientName.trim()){toast("Enter client name",true);return;}
+      var newLead={id:uid(),clientName:fdl.clientName,phone:fdl.phone,source:fdl.source,stage:"New Clients",address:fdl.address,notes:fdl.notes,quotationAmount:null,orderProjectId:"",assignedTo:"junaid",createdBy:S.user,created:now2(),updated:now2()};
+      S.leads=[...S.leads,newLead];svRow("leads","r7_leads",newLead);
+      addAudit("NEW_LEAD",fdl.clientName);
+      S.fd[FIDL]={clientName:"",phone:"",source:"Meta",address:"",notes:""};
+      toast("Lead added");set({tab:Object.assign({},S.tab,{leads:"pipeline"})});
+    },"btn-g btn-full"));
+    return w;
+  }
+
+  /* Pipeline view — grouped by stage. Initial Calling and Showroom Visit are Junaid's
+     own work; Follow Up is where directors join the conversation too, since that's
+     the active "how do we close this" discussion stage you specifically asked to be
+     visible to them. */
+  if(!S.leads.length){w.appendChild(el("div",{style:{textAlign:"center",padding:"24px",color:"var(--ink4)"}},"No leads yet"));return w;}
+  LEAD_STAGES.forEach(function(stage){
+    var stageLeads=S.leads.filter(function(l){return l.stage===stage;});
+    if(!stageLeads.length)return;
+    var stageCard=Card(stage,el("span",{cls:"badge bgold"},stageLeads.length));
+    var stageBody=stageCard.querySelector(".cb");
+    stageLeads.forEach(function(lead){
+      var lc=dv({padding:"10px 0",borderBottom:"1px solid var(--s2)"});
+      var ownerLabel=lead.assignedTo&&lead.assignedTo!=="junaid"?gU(lead.assignedTo).name+"'s client":null;
+      lc.appendChild(dv({display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:"8px",marginBottom:"6px"},
+        dv({},el("div",{style:{fontWeight:"700",fontSize:"14px"}},lead.clientName),el("div",{style:{fontSize:"11px",color:"var(--ink4)",marginTop:"2px"}},(lead.phone||"")+(lead.address?" \u00b7 "+lead.address:"")),ownerLabel?el("div",{style:{fontSize:"10px",color:"var(--g)",fontWeight:"700",marginTop:"3px",textTransform:"uppercase",letterSpacing:".06em"}},ownerLabel):null),
+        lead.quotationAmount?el("div",{style:{fontFamily:"'Cormorant Garamond',serif",fontSize:"15px",fontWeight:"600",color:"var(--g)"}},Rs(lead.quotationAmount)):null
+      ));
+      if(lead.notes)lc.appendChild(el("div",{style:{fontSize:"12px",color:"var(--ink3)",marginBottom:"6px"}},lead.notes));
+      var leadIdC=lead.id;
+      /* Personal client claim — at Prospect Clients specifically, a director can
+         recognize a personal contact of theirs and take ownership directly, per the
+         explicit "I will refer to the prospect clients list myself" instruction.
+         Once claimed, it's visually marked as that director's own and Junaid no
+         longer needs to chase it the same way. */
+      if(isDirLead&&stage==="Prospect Clients"&&lead.assignedTo!==S.user){
+        var claimBtn=btn("Claim as My Client",function(){
+          var idx=S.leads.findIndex(function(x){return x.id===leadIdC;});
+          S.leads[idx]=Object.assign({},S.leads[idx],{assignedTo:S.user,updated:now2()});
+          svRow("leads","r7_leads",S.leads[idx]);
+          addAudit("LEAD_CLAIMED",S.leads[idx].clientName+" by "+gU(S.user).name);
+          toast("Claimed");render();
+        },"btn-o btn-sm");
+        claimBtn.style.marginBottom="6px";
+        lc.appendChild(claimBtn);
+      }
+      var actRowL=dv({display:"flex",gap:"7px",flexWrap:"wrap"});
+      /* Stage transition rules — Junaid moves a lead through New Clients and
+         Visited Clients; anyone (Junaid or director) can move it to Quotation
+         Pending once drawings/quote exist, to Prospect Clients, and finally to
+         Order Finalized, which promotes it into a real ongoing project. */
+      var canAdvance=isDirLead||(isJunaid&&(lead.stage==="New Clients"||lead.stage==="Visited Clients"||lead.stage==="Quotation Pending"||lead.stage==="Prospect Clients"));
+      var stageIdx=LEAD_STAGES.indexOf(lead.stage);
+      if(canAdvance&&stageIdx<LEAD_STAGES.length-1){
+        var nextStage=LEAD_STAGES[stageIdx+1];
+        actRowL.appendChild(btn("\u2192 "+nextStage,function(){
+          var idx=S.leads.findIndex(function(x){return x.id===leadIdC;});
+          if(nextStage==="Order Finalized"){
+            /* Promote into a real ongoing project — this is the actual "goes to
+               ongoing projects list" behavior, not just a label change. */
+            var newProj={id:uid(),client:S.leads[idx].clientName,contact:S.leads[idx].phone||"",address:S.leads[idx].address||"",description:S.leads[idx].notes||"",quotation:S.leads[idx].quotationAmount||0,stage:"Quotation",date:today(),created:now2()};
+            S.doorProjects=[...S.doorProjects,newProj];svRow("doorProjects","r7_dp",newProj);
+            S.leads[idx]=Object.assign({},S.leads[idx],{stage:nextStage,orderProjectId:newProj.id,updated:now2()});
+            addAudit("LEAD_FINALIZED",S.leads[idx].clientName);
+            toast("Order finalized — added to ongoing projects");
+          }else{
+            S.leads[idx]=Object.assign({},S.leads[idx],{stage:nextStage,updated:now2()});
+            addAudit("LEAD_STAGE",S.leads[idx].clientName+" \u2192 "+nextStage);
+            toast("Moved to "+nextStage);
+          }
+          svRow("leads","r7_leads",S.leads[idx]);
+          render();
+        },"btn-g btn-sm"));
+      }
+      if(lead.stage==="Quotation Pending"||lead.stage==="Prospect Clients"){
+        var FIDQ="lead_quote_"+lead.id;if(!S.fd[FIDQ])S.fd[FIDQ]=String(lead.quotationAmount||"");
+        var qRow=dv({display:"flex",gap:"6px",alignItems:"center"});
+        var qInp=Inp(S.fd[FIDQ],function(v){S.fd[FIDQ]=v;},"number","Quotation amount");qInp.style.width="130px";
+        qRow.appendChild(qInp);
+        qRow.appendChild(btn("Save Amount",function(){
+          var idx=S.leads.findIndex(function(x){return x.id===leadIdC;});
+          S.leads[idx]=Object.assign({},S.leads[idx],{quotationAmount:parseFloat(S.fd[FIDQ]||0),updated:now2()});
+          svRow("leads","r7_leads",S.leads[idx]);
+          toast("Saved");render();
+        },"btn-o btn-sm"));
+        lc.appendChild(qRow);
+      }
+      lc.appendChild(actRowL);
+      var docBtnL=btn("Documents",function(){set({view:"leadDocs",tab:Object.assign({},S.tab,{leadDocId:leadIdC})});},"btn-o btn-sm");
+      docBtnL.style.marginTop="6px";
+      lc.appendChild(docBtnL);
+      stageBody.appendChild(lc);
+    });
+    w.appendChild(stageCard);
+  });
+  return w;
+}
+
+/* Per-lead document vault — layout plan, quotation, door sizes, drawings, site
+   handover, and any other approved document. Usman (draftsman) gets a restricted
+   view further down that only shows the Drawings document type for leads assigned
+   to him, not the full vault. */
+function rLeadDocs(){
+  var leadId=S.tab.leadDocId;
+  var lead=S.leads.find(function(l){return l.id===leadId;});
+  var w=el("div",{});
+  if(!lead){w.appendChild(el("div",{cls:"al-r"},"Lead not found"));return w;}
+  var backRowLD=dv({display:"flex",alignItems:"center",gap:"8px",marginBottom:"14px",cursor:"pointer"});
+  backRowLD.appendChild(el("span",{style:{fontSize:"18px"}},"\u2190"));
+  backRowLD.appendChild(el("span",{style:{fontSize:"13px",fontWeight:"600"}},"Back to Pipeline"));
+  backRowLD.addEventListener("click",function(){set({view:"crm",tab:Object.assign({},S.tab,{leads:"pipeline"})});});
+  w.appendChild(backRowLD);
+  w.appendChild(el("div",{style:{fontFamily:"'Cormorant Garamond',serif",fontSize:"22px",fontWeight:"600",marginBottom:"14px"}},lead.clientName+" — Documents"));
+
+  var docTypes=[
+    {id:"layout",l:"House Layout Plan",note:"Upload the layout, then mark door positions before sending with the quote."},
+    {id:"quotation",l:"Quotation"},
+    {id:"door_sizes",l:"Door Sizes (from site)"},
+    {id:"drawings",l:"Drawings"},
+    {id:"handover",l:"Site Handover Document"},
+    {id:"other",l:"Other Document"}
+  ];
+  var isDraftsman=S.user==="usman_draft";
+  docTypes.forEach(function(dt){
+    /* Usman (draftsman) only sees and uploads Drawings — restricted access, not the
+       full document vault, per the "only drawing accessibility" requirement. */
+    if(isDraftsman&&dt.id!=="drawings")return;
+    var existingDocs=S.clientDocs.filter(function(d){return d.leadId===leadId&&d.docType===dt.id;});
+    var dtCard=Card(dt.l,el("span",{cls:"badge "+(existingDocs.length?"bg":"br")},existingDocs.length?existingDocs.length+" file(s)":"None yet"));
+    var dtBody=dtCard.querySelector(".cb");
+    if(dt.note)dtBody.appendChild(el("div",{cls:"al-b"},dt.note));
+    existingDocs.forEach(function(doc){
+      var drow=dv({display:"flex",justifyContent:"space-between",alignItems:"center",padding:"6px 0",borderBottom:"1px solid var(--s2)"});
+      drow.appendChild(el("a",{href:doc.fileUrl,target:"_blank",style:{fontSize:"12px",color:"var(--g)",fontWeight:"600"}},"View file — "+(doc.created||"").slice(0,10)));
+      dtBody.appendChild(drow);
+    });
+    var FIDD="doc_"+leadId+"_"+dt.id;
+    dtBody.appendChild(PhotoZone(FIDD,"Upload "+dt.l));
+    dtBody.appendChild(btn("Save "+dt.l,async function(){
+      var dph=S.photo[FIDD]||{};
+      if(!dph.b64){toast("Attach a file first",true);return;}
+      toast("Uploading...",false,2500);
+      var fileUrl=await sbUploadPhoto(dph.b64,dph.mime,"clientdoc_"+dt.id);
+      if(!fileUrl){toast("Could not save the file",true);return;}
+      var newDoc={id:uid(),leadId:leadId,projectId:lead.orderProjectId||"",docType:dt.id,fileUrl:fileUrl,notes:"",uploadedBy:S.user,created:now2()};
+      S.clientDocs=[...S.clientDocs,newDoc];svRow("clientDocs","r7_cdocs",newDoc);
+      delete S.photo[FIDD];
+      addAudit("CLIENT_DOC",lead.clientName+" — "+dt.l);
+      toast("Saved");render();
+    },"btn-g btn-sm"));
+    w.appendChild(dtCard);
+  });
+  return w;
+}
+
+/* Drawings Queue — Usman Draftsman's entire view. Every finalized order pops up here
+   automatically (per "all finalized orders are popped up in his account"), and he can
+   upload drawings directly against each one. This is his ONLY access — not the sales
+   pipeline, not other client documents, not cash entries — drawing accessibility only. */
+function rDrawingsQueue(){
+  var w=el("div",{});
+  w.appendChild(el("div",{cls:"al-b"},"Every finalized door order appears here. Upload the drawings for each once ready."));
+  var finalizedLeads=S.leads.filter(function(l){return l.stage==="Order Finalized";}).sort(function(a,b){return (b.updated||"")>(a.updated||"")?1:-1;});
+  if(!finalizedLeads.length){w.appendChild(el("div",{style:{textAlign:"center",padding:"24px",color:"var(--ink4)"}},"No finalized orders yet"));return w;}
+  finalizedLeads.forEach(function(lead){
+    var existingDrawings=S.clientDocs.filter(function(d){return d.leadId===lead.id&&d.docType==="drawings";});
+    var dc=Card(lead.clientName,el("span",{cls:"badge "+(existingDrawings.length?"bg":"br")},existingDrawings.length?existingDrawings.length+" drawing(s) uploaded":"Needs drawings"));
+    var dcBody=dc.querySelector(".cb");
+    if(lead.address)dcBody.appendChild(el("div",{style:{fontSize:"12px",color:"var(--ink4)",marginBottom:"8px"}},lead.address));
+    existingDrawings.forEach(function(doc){
+      var drow=dv({display:"flex",justifyContent:"space-between",alignItems:"center",padding:"6px 0",borderBottom:"1px solid var(--s2)"});
+      drow.appendChild(el("a",{href:doc.fileUrl,target:"_blank",style:{fontSize:"12px",color:"var(--g)",fontWeight:"600"}},"View — "+(doc.created||"").slice(0,10)));
+      dcBody.appendChild(drow);
+    });
+    var FIDDR="drawing_"+lead.id;
+    dcBody.appendChild(PhotoZone(FIDDR,"Upload Drawing"));
+    var leadIdDR=lead.id;
+    dcBody.appendChild(btn("Save Drawing",async function(){
+      var dph=S.photo[FIDDR]||{};
+      if(!dph.b64){toast("Attach a file first",true);return;}
+      toast("Uploading...",false,2500);
+      var fileUrl=await sbUploadPhoto(dph.b64,dph.mime,"drawing");
+      if(!fileUrl){toast("Could not save the file",true);return;}
+      var newDoc={id:uid(),leadId:leadIdDR,projectId:lead.orderProjectId||"",docType:"drawings",fileUrl:fileUrl,notes:"",uploadedBy:S.user,created:now2()};
+      S.clientDocs=[...S.clientDocs,newDoc];svRow("clientDocs","r7_cdocs",newDoc);
+      delete S.photo[FIDDR];
+      addAudit("DRAWING_UPLOADED",lead.clientName);
+      toast("Drawing saved");render();
+    },"btn-g btn-sm"));
+    w.appendChild(dc);
+  });
+  return w;
+}
+
+/* Complaints — a director or salesperson raises a complaint against a client/project;
+   Umair (Doors Supervisor) is responsible for resolving it with photo evidence before
+   it closes. Anyone can raise one; only Umair or a director can resolve/close it. */
+function rComplaints(){
+  var tab=S.tab.complaints||"open";
+  var canRaise=ROLE_MAP[S.user]==="director"||S.user==="junaid";
+  var canResolve=S.user==="umair"||ROLE_MAP[S.user]==="director";
+  var w=el("div",{});
+  w.appendChild(Tabs([{id:"open",l:"Open"},{id:"closed",l:"Closed"},{id:"add",l:"Raise Complaint"}],tab,function(id){set({tab:Object.assign({},S.tab,{complaints:id})});}));
+
+  if(tab==="add"){
+    if(!canRaise){w.appendChild(el("div",{cls:"al-r"},"Only Junaid or a director can raise a complaint."));return w;}
+    var FIDC="cmp_add";if(!S.fd[FIDC])S.fd[FIDC]={clientName:"",description:""};var fdc=S.fd[FIDC];
+    var fgc=el("div",{cls:"fg"});
+    fgc.appendChild(Fld("Client Name",Inp(fdc.clientName,function(v){fdc.clientName=v;},"text")));
+    w.appendChild(fgc);
+    w.appendChild(Fld("Complaint Description",TA(fdc.description,function(v){fdc.description=v;},3,"What did the client report?")));
+    w.appendChild(btn("Raise Complaint",function(){
+      if(!fdc.clientName.trim()||!fdc.description.trim()){toast("Fill both fields",true);return;}
+      var newCmp={id:uid(),clientName:fdc.clientName,projectId:"",description:fdc.description,status:"open",resolutionNotes:"",resolutionPhoto:"",raisedBy:S.user,assignedTo:"umair",created:now2(),resolvedAt:""};
+      S.complaints=[...S.complaints,newCmp];svRow("complaints","r7_cmp",newCmp);
+      addAudit("COMPLAINT_RAISED",fdc.clientName);
+      S.fd[FIDC]={clientName:"",description:""};
+      toast("Complaint logged for Umair");set({tab:Object.assign({},S.tab,{complaints:"open"})});
+    },"btn-g btn-full"));
+    return w;
+  }
+
+  var filtered=S.complaints.filter(function(c){return tab==="open"?c.status==="open":c.status==="closed";}).sort(function(a,b){return (b.created||"")>(a.created||"")?1:-1;});
+  if(!filtered.length){w.appendChild(el("div",{style:{textAlign:"center",padding:"24px",color:"var(--ink4)"}},tab==="open"?"No open complaints":"No closed complaints yet"));return w;}
+  filtered.forEach(function(c){
+    var cc=el("div",{cls:"vc"});
+    cc.appendChild(dv({display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:"8px",gap:"8px"},
+      dv({},el("div",{style:{fontWeight:"700",fontSize:"14px"}},c.clientName),el("div",{style:{fontSize:"11px",color:"var(--ink4)",marginTop:"2px"}},"Raised by "+gU(c.raisedBy).name+" \u00b7 "+(c.created||"").slice(0,10))),
+      el("span",{cls:"badge "+(c.status==="open"?"br":"bg")},c.status)
+    ));
+    cc.appendChild(el("div",{style:{fontSize:"13px",color:"var(--ink2)",marginBottom:"8px"}},c.description));
+    if(c.status==="closed"){
+      if(c.resolutionNotes)cc.appendChild(el("div",{style:{fontSize:"12px",color:"var(--ink3)",padding:"8px 10px",background:"var(--s2)",borderRadius:"5px",marginBottom:"8px"}},"Resolution: "+c.resolutionNotes));
+      if(c.resolutionPhoto){var rimg=el("img",{src:c.resolutionPhoto,style:{width:"100%",maxHeight:"160px",objectFit:"cover",borderRadius:"6px",marginBottom:"8px"}});cc.appendChild(rimg);}
+    }else if(canResolve){
+      var FIDR="cmp_resolve_"+c.id;if(!S.fd[FIDR])S.fd[FIDR]="";
+      cc.appendChild(TA(S.fd[FIDR],function(v){S.fd[FIDR]=v;},2,"Resolution notes..."));
+      cc.appendChild(PhotoZone(FIDR+"_photo","Evidence Photo"));
+      var cidR=c.id;
+      cc.appendChild(btn("Resolve & Close",async function(){
+        var rNote=S.fd[FIDR];
+        var rph=S.photo[FIDR+"_photo"]||{};
+        if(!rNote||!rNote.trim()){toast("Enter resolution notes",true);return;}
+        if(!rph.b64){toast("Attach evidence photo",true);return;}
+        toast("Saving...",false,2500);
+        var photoUrl=await sbUploadPhoto(rph.b64,rph.mime,"complaint_resolution");
+        if(!photoUrl){toast("Could not save photo",true);return;}
+        var idx=S.complaints.findIndex(function(x){return x.id===cidR;});
+        S.complaints[idx]=Object.assign({},S.complaints[idx],{status:"closed",resolutionNotes:rNote,resolutionPhoto:photoUrl,resolvedAt:now2()});
+        svRow("complaints","r7_cmp",S.complaints[idx]);
+        delete S.photo[FIDR+"_photo"];delete S.fd[FIDR];
+        addAudit("COMPLAINT_RESOLVED",S.complaints[idx].clientName);
+        toast("Resolved and closed");render();
+      },"btn-g btn-sm"));
+    }
+    w.appendChild(cc);
+  });
+  return w;
+}
+
+/* Quotation builder — seeded from the real formats already in use (Wardrobe, Kitchen,
+   Doors quotations). Each category has its own standard line items, matching what's
+   actually printed on your quotations today, so building one here produces the same
+   shape of document your team already sends to clients. */
+var QUOTE_ITEMS={
+  Wardrobe:["Front Panel","Cabinet Carcass","Drawers","Shoe Rack","Spot Lights","Hinges"],
+  Kitchen:["Wall Unit","Base Unit","Cabinet Carcass","Island","Hardware/Hinges","Handles","Sink Cabinet","Drawers","Glass Units","Lights"],
+  Doors:["Main Entrance Door","Internal Doors","Mesh Door","Glass Doors"]
+};
+function rQuotations(){
+  var tab=S.tab.quo||"list";var w=el("div",{});
+  w.appendChild(Tabs([{id:"list",l:"Quotations"},{id:"build",l:"New Quotation"}],tab,function(id){set({tab:Object.assign({},S.tab,{quo:id})});}));
+
+  if(tab==="build"){
+    var FIDQ="quo_build";
+    if(!S.fd[FIDQ])S.fd[FIDQ]={clientName:"",category:"Wardrobe",refNo:"TDC-"+new Date().getFullYear()+"/"+String(Math.floor(Math.random()*900)+100),date:today(),sections:[]};
+    var fdq=S.fd[FIDQ];
+    var fgq=el("div",{cls:"fg"});
+    fgq.appendChild(Fld("Client Name",Inp(fdq.clientName,function(v){fdq.clientName=v;},"text")));
+    fgq.appendChild(Fld("Category",Sel(fdq.category,function(v){fdq.category=v;render();},[{v:"Wardrobe",l:"Wardrobe"},{v:"Kitchen",l:"Kitchen"},{v:"Doors",l:"Doors"}])));
+    fgq.appendChild(Fld("Reference #",Inp(fdq.refNo,function(v){fdq.refNo=v;},"text")));
+    fgq.appendChild(Fld("Date",Inp(fdq.date,function(v){fdq.date=v;},"date")));
+    w.appendChild(fgq);
+
+    w.appendChild(el("div",{cls:"al-b"},fdq.category==="Doors"?"Add one section per door type (Main Entrance, Internal, Mesh, Glass) with quantity and total.":"Add one section per room/area — each gets the standard "+fdq.category.toLowerCase()+" line items."));
+
+    fdq.sections.forEach(function(sec,si){
+      var secCard=dv({padding:"12px",marginBottom:"10px",background:"var(--s2)",borderRadius:"8px"});
+      var secHdr=dv({display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:"8px"});
+      var secNameInp=Inp(sec.name,function(v){sec.name=v;},"text","Section name, e.g. Master Bedroom");secNameInp.style.flex="1";
+      secHdr.appendChild(secNameInp);
+      secHdr.appendChild(btn("Remove",function(){fdq.sections.splice(si,1);render();},"btn-neg btn-sm"));
+      secCard.appendChild(secHdr);
+      var secTotal=0;
+      sec.items.forEach(function(item,ii){
+        secTotal+=parseFloat(item.price||0);
+        var itemRow=dv({display:"flex",gap:"6px",alignItems:"center",marginBottom:"5px"});
+        var itemLabel=el("span",{style:{flex:"1",fontSize:"12px"}},item.label);
+        var priceInp=Inp(String(item.price||""),function(v){item.price=parseFloat(v||0);render();},"number","0");priceInp.style.width="100px";
+        itemRow.appendChild(itemLabel);itemRow.appendChild(priceInp);
+        secCard.appendChild(itemRow);
+      });
+      secCard.appendChild(el("div",{style:{textAlign:"right",fontFamily:"'Cormorant Garamond',serif",fontSize:"16px",fontWeight:"600",color:"var(--g)",marginTop:"6px",paddingTop:"6px",borderTop:"1px solid var(--bd)"}},"Section Total: "+Rs(secTotal)));
+      w.appendChild(secCard);
+    });
+
+    w.appendChild(btn("+ Add Section",function(){
+      var items=QUOTE_ITEMS[fdq.category].map(function(label){return {label:label,price:0};});
+      fdq.sections.push({name:"",items:items});
+      render();
+    },"btn-o btn-full"));
+
+    var grandTotal=fdq.sections.reduce(function(s,sec){return s+sec.items.reduce(function(ss,it){return ss+parseFloat(it.price||0);},0);},0);
+    w.appendChild(el("div",{style:{textAlign:"center",padding:"14px",marginTop:"10px",background:"linear-gradient(135deg,var(--g3),var(--g))",borderRadius:"8px"}},
+      el("div",{style:{fontSize:"10px",fontWeight:"700",letterSpacing:".14em",textTransform:"uppercase",color:"rgba(255,255,255,.75)",marginBottom:"4px"}},"Grand Total"),
+      el("div",{style:{fontFamily:"'Cormorant Garamond',serif",fontSize:"28px",fontWeight:"600",color:"#fff"}},Rs(grandTotal))
+    ));
+
+    w.appendChild(btn("Save Quotation",function(){
+      if(!fdq.clientName.trim()){toast("Enter client name",true);return;}
+      if(!fdq.sections.length){toast("Add at least one section",true);return;}
+      var newQuo={id:uid(),leadId:"",clientName:fdq.clientName,category:fdq.category,refNo:fdq.refNo,sections:JSON.parse(JSON.stringify(fdq.sections)),grandTotal:grandTotal,date:fdq.date||today(),createdBy:S.user,created:now2()};
+      S.quotations=[...S.quotations,newQuo];svRow("quotations","r7_quo",newQuo);
+      /* If a lead exists for this client, save the amount there too so the pipeline
+         reflects it without a second manual entry. */
+      var matchingLead=S.leads.find(function(l){return l.clientName.toLowerCase()===fdq.clientName.trim().toLowerCase();});
+      if(matchingLead){
+        var lidx=S.leads.findIndex(function(l){return l.id===matchingLead.id;});
+        S.leads[lidx]=Object.assign({},S.leads[lidx],{quotationAmount:grandTotal,updated:now2()});
+        svRow("leads","r7_leads",S.leads[lidx]);
+      }
+      addAudit("QUOTATION_SAVED",fdq.clientName+" — "+Rs(grandTotal));
+      S.fd[FIDQ]={clientName:"",category:"Wardrobe",refNo:"TDC-"+new Date().getFullYear()+"/"+String(Math.floor(Math.random()*900)+100),date:today(),sections:[]};
+      toast("Quotation saved");set({tab:Object.assign({},S.tab,{quo:"list"})});
+    },"btn-g btn-full"));
+    return w;
+  }
+
+  if(!S.quotations.length){w.appendChild(el("div",{style:{textAlign:"center",padding:"24px",color:"var(--ink4)"}},"No quotations yet"));return w;}
+  S.quotations.slice().sort(function(a,b){return (b.created||"")>(a.created||"")?1:-1;}).forEach(function(q){
+    var qc=el("div",{cls:"vc"});
+    qc.appendChild(dv({display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:"8px"},
+      dv({},el("div",{style:{fontWeight:"700",fontSize:"14px"}},q.clientName),el("div",{style:{fontSize:"11px",color:"var(--ink4)",marginTop:"2px"}},q.refNo+" \u00b7 "+q.category+" \u00b7 "+q.date)),
+      el("div",{style:{fontFamily:"'Cormorant Garamond',serif",fontSize:"18px",fontWeight:"600",color:"var(--g)"}},Rs(q.grandTotal))
+    ));
+    q.sections.forEach(function(sec){
+      var secTot=sec.items.reduce(function(s,it){return s+parseFloat(it.price||0);},0);
+      qc.appendChild(el("div",{style:{fontSize:"12px",color:"var(--ink3)",padding:"4px 0"}},(sec.name||"Section")+": "+Rs(secTot)));
+    });
+    w.appendChild(qc);
   });
   return w;
 }
@@ -3307,7 +3982,7 @@ function rPage(view){
     bank:rBank,cc:rCC,vouch:rVouchers,petty:rPetty,
     constr:rConstr,mat:rMat,contr:rContr,vnd:rVendors,misc:rMisc,
     doors:rDoors,doorInv:rDoorInv,
-    hr:rHR,bills:rBills,crm:rCRM,
+    hr:rHR,bills:rBills,crm:rLeads,leadDocs:rLeadDocs,crmContacts:rCRM,drawings:rDrawingsQueue,complaints:rComplaints,quotations:rQuotations,
     reports:rReports,ai:rAI,audit:rAudit,security:rSecurity
   };
   return (vm[view]||rDash)();
