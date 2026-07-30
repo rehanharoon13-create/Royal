@@ -939,11 +939,22 @@ async function callAuth(payload){
   return data;
 }
 async function callClaude(payload){
-  var resp=await fetch(AI_PROXY_URL,{
-    method:"POST",
-    headers:{"Content-Type":"application/json","Authorization":"Bearer "+SB_KEY,"apikey":SB_KEY},
-    body:JSON.stringify(payload)
-  });
+  var controller=new AbortController();
+  var timeoutId=setTimeout(function(){controller.abort();},30000);
+  var resp;
+  try{
+    resp=await fetch(AI_PROXY_URL,{
+      method:"POST",
+      headers:{"Content-Type":"application/json","Authorization":"Bearer "+SB_KEY,"apikey":SB_KEY},
+      body:JSON.stringify(payload),
+      signal:controller.signal
+    });
+  }catch(fetchErr){
+    if(fetchErr.name==="AbortError")throw new Error("Timed out — the AI service took too long to respond. Try again, or enter the details manually.");
+    throw new Error("Could not reach the AI service. Check your connection and try again.");
+  }finally{
+    clearTimeout(timeoutId);
+  }
   if(!resp.ok){
     var errText="";
     try{var errJson=await resp.json();errText=errJson.error||JSON.stringify(errJson);}catch(e){errText="HTTP "+resp.status;}
@@ -1194,6 +1205,7 @@ function LedgerTable(rows,showPerson,canEditFn){
     row["Area"]=r.area||"";
     row["Qty"]=r.qty||"";
     row["Bill#"]=r.billNo||"";
+    row["Vendor/Contractor"]=r.vendorName||"";
     row["Particulars"]=r.particulars||"";
     row["Debit"]=r.debit?commaFmt(r.debit):"";
     row["Credit"]=r.credit?commaFmt(r.credit):"";
@@ -1214,7 +1226,7 @@ function LedgerTable(rows,showPerson,canEditFn){
   w.appendChild(actRow);
   var thead=el("thead",{},el("tr",{}));
   var anyEditable=rows.some(function(r){return editCheck(r);});
-  var cols=["#","Date"].concat(showPerson?["Person"]:[]).concat(["CB#","Account","Sub","Area","Qty","Bill#","Particulars","Debit","Credit","Balance","Status","Bill"]).concat(anyEditable?[""]:[]);
+  var cols=["#","Date"].concat(showPerson?["Person"]:[]).concat(["CB#","Account","Sub","Area","Qty","Bill#","Vendor/Contractor","Particulars","Debit","Credit","Balance","Status","Bill"]).concat(anyEditable?[""]:[]);
   cols.forEach(function(c){var th=el("th",{},c);if(["Debit","Credit","Balance","Qty"].includes(c))th.style.textAlign="right";thead.querySelector("tr").appendChild(th);});
   var tbody=el("tbody",{});
   var bal=0;
@@ -1232,6 +1244,7 @@ function LedgerTable(rows,showPerson,canEditFn){
     tr.appendChild(td(r.area||"",{color:"var(--ink4)"}));
     tr.appendChild(td(r.qty||"",{textAlign:"right",color:"var(--ink4)"}));
     tr.appendChild(td(r.billNo||"",{color:"var(--ink4)",fontSize:"11px"}));
+    tr.appendChild(td(r.vendorName||"",{color:"var(--ink3)",fontSize:"12px"}));
     var partCell=el("td",{style:{maxWidth:"200px",wordBreak:"break-word"}});
     partCell.appendChild(el("div",{style:{fontSize:"12px"}},r.particulars||""));
     if(r.particularsUr)partCell.appendChild(el("div",{cls:"ur",style:{fontSize:"11px",color:"var(--ink4)",marginTop:"3px"}},r.particularsUr));
@@ -1412,12 +1425,12 @@ function rExecDash(){
      ledger's By Site view. W-93 excluded per director instruction. */
   var siteBCard=Card("Site Balances",el("span",{style:{fontSize:"10px",color:"var(--ink4)",letterSpacing:".06em",textTransform:"uppercase"}},"Tap to view statement"));
   CSITES.filter(function(site){return site!=="W-93";}).forEach(function(site){
-    var spent=siteSpent(site);
+    var acct=accountLedger("site",site);
     var row=dv({display:"flex",justifyContent:"space-between",alignItems:"center",padding:"8px 0",borderBottom:"1px solid var(--s2)",cursor:"pointer"},
       el("span",{style:{fontWeight:"600",fontSize:"13px"}},site),
-      el("span",{style:{fontFamily:"'Cormorant Garamond',serif",fontSize:"16px",fontWeight:"600",color:"var(--neg)"}},Rs(spent))
+      el("span",{style:{fontFamily:"'Cormorant Garamond',serif",fontSize:"16px",fontWeight:"600",color:acct.balance>=0?"var(--pos)":"var(--neg)"}},Rs(Math.abs(acct.balance))+(acct.balance<0?" Spent":""))
     );
-    row.addEventListener("click",function(){set({cbf:{lv:"byS",person:"",site:"",search:"",d1:"",d2:""},view:"ldg"});});
+    row.addEventListener("click",function(){set({tab:Object.assign({},S.tab,{constrSite:site}),view:"constr"});});
     siteBCard.querySelector(".cb").appendChild(row);
   });
   w.appendChild(siteBCard);
@@ -1623,37 +1636,46 @@ function rAddCB(){
       w.appendChild(el("div",{cls:"al-r"},isUr?"صرف ڈائریکٹر اکاؤنٹس کے درمیان رقم منتقل کر سکتے ہیں":"Only directors can transfer money between accounts"));
       return Card(isUr?"نئی اندراج":"New Cash Entry",null,w);
     }
+    var FIDT="xfer_accounts";if(!S.fd[FIDT])S.fd[FIDT]={from:"",fromSub:"",to:"",toSub:"",amount:"",date:today(),reason:"",reasonUr:""};
+    var fdt=S.fd[FIDT];
     w.appendChild(el("div",{cls:"al-g"},isUr?"یہ اندراج فوری طور پر پوسٹ ہوگی۔ ایک اکاؤنٹ سے رقم منہا ہوگی اور دوسرے میں جمع ہوگی — دونوں طرف ایک ہی لین دین کے طور پر جڑے ہوں گے":"This posts immediately as a true double entry — debits the From account and credits the To account, linked as one transaction on both sides"));
     var dlXferFrom=el("datalist",{id:"dl_xfer_from"});effectiveAccounts().forEach(function(a){dlXferFrom.appendChild(el("option",{value:a}));});
-    var dlXferTo=el("datalist",{id:"dl_xfer_to"});effectiveAccounts().forEach(function(a){dlXferTo.appendChild(el("option",{value:a}));});
-    w.appendChild(dlXferFrom);w.appendChild(dlXferTo);
+    var dlXferSub=el("datalist",{id:"dl_xfer_sub"});effectiveSubs().forEach(function(s){dlXferSub.appendChild(el("option",{value:s}));});
+    w.appendChild(dlXferFrom);w.appendChild(dlXferSub);
     var xferFg=el("div",{cls:"fg"});
-    xferFg.appendChild(Fld(isUr?"تاریخ":"Date",Inp(fd.date,function(v){fd.date=v;},"date")));
-    xferFg.appendChild(Fld(isUr?"سے (منہا)":"From (Debit)",Inp(fd.account,function(v){fd.account=v;},"text",isUr?"لکھیں یا فہرست سے چنیں":"Type or pick an account","dl_xfer_from")));
-    xferFg.appendChild(Fld(isUr?"کو (جمع)":"To (Credit)",Inp(fd.sub,function(v){fd.sub=v;},"text",isUr?"لکھیں یا فہرست سے چنیں":"Type or pick an account","dl_xfer_to")));
-    xferFg.appendChild(Fld(isUr?"رقم (روپے)":"Amount (Rs)",Inp(fd.debit,function(v){fd.debit=v;},"number","0")));
+    xferFg.appendChild(Fld(isUr?"تاریخ":"Date",Inp(fdt.date,function(v){fdt.date=v;},"date")));
+    xferFg.appendChild(Fld(isUr?"سے (منہا)":"From (Debit)",Inp(fdt.from,function(v){fdt.from=v;},"text",isUr?"لکھیں یا فہرست سے چنیں":"Type or pick an account","dl_xfer_from")));
+    xferFg.appendChild(Fld(isUr?"سے ذیلی اکاؤنٹ":"From Sub Account",Inp(fdt.fromSub,function(v){fdt.fromSub=v;},"text",isUr?"اختیاری":"Optional","dl_xfer_sub")));
+    xferFg.appendChild(Fld(isUr?"کو (جمع)":"To (Credit)",Inp(fdt.to,function(v){fdt.to=v;},"text",isUr?"لکھیں یا فہرست سے چنیں":"Type or pick an account","dl_xfer_from")));
+    xferFg.appendChild(Fld(isUr?"کو ذیلی اکاؤنٹ":"To Sub Account",Inp(fdt.toSub,function(v){fdt.toSub=v;},"text",isUr?"اختیاری — یہاں یہ ظاہر ہوتا ہے کہ رقم کہاں جا رہی ہے":"Optional — this is the key to where the entry is directed","dl_xfer_sub")));
+    xferFg.appendChild(Fld(isUr?"رقم (روپے)":"Amount (Rs)",Inp(fdt.amount,function(v){fdt.amount=v;},"number","0")));
     w.appendChild(xferFg);
-    w.appendChild(Fld(isUr?"وجہ (اختیاری)":"Reason (optional)",TA(isUr?fd.partUr:fd.part,function(v){if(isUr)fd.partUr=v;else fd.part=v;},2,isUr?"مثلاً: سائٹ کے درمیان بجٹ ایڈجسٹمنٹ":"e.g. Budget reallocation between sites",isUr)));
+    w.appendChild(Fld(isUr?"وجہ (اختیاری)":"Reason (optional)",TA(isUr?fdt.reasonUr:fdt.reason,function(v){if(isUr)fdt.reasonUr=v;else fdt.reason=v;},2,isUr?"مثلاً: سائٹ کے درمیان بجٹ ایڈجسٹمنٹ":"e.g. Budget reallocation between sites",isUr)));
+    w.appendChild(PhotoZone(FIDT,isUr?"رسید کی تصویر (اختیاری)":"Receipt/Proof Photo (optional)"));
     w.appendChild(btn(isUr?"منتقل کریں":"Transfer",async function(){
-      if(!fd.account||!fd.sub){toast(isUr?"دونوں اکاؤنٹس لکھیں":"Enter both accounts",true);return;}
-      if(fd.account===fd.sub){toast(isUr?"دونوں اکاؤنٹس ایک جیسے نہیں ہو سکتے":"From and To accounts must be different",true);return;}
-      if(!fd.debit||!parseFloat(fd.debit)){toast(isUr?"رقم لکھیں":"Enter amount",true);return;}
-      var partEn=fd.part;var partUr=fd.partUr;
-      if(isUr&&partUr&&!partEn)partEn=await translateToEnglish(partUr);
-      var amt=parseFloat(fd.debit);
-      var xferDate=fd.date||today();
-      var reasonTxt=partEn||"";
+      if(!fdt.from||!fdt.to){toast(isUr?"دونوں اکاؤنٹس لکھیں":"Enter both accounts",true);return;}
+      if(fdt.from===fdt.to&&fdt.fromSub===fdt.toSub){toast(isUr?"دونوں اطراف ایک جیسی نہیں ہو سکتیں":"From and To must be different",true);return;}
+      if(!fdt.amount||!parseFloat(fdt.amount)){toast(isUr?"رقم لکھیں":"Enter amount",true);return;}
+      var reasonEn=fdt.reason;var reasonUr=fdt.reasonUr;
+      if(isUr&&reasonUr&&!reasonEn)reasonEn=await translateToEnglish(reasonUr);
+      var xferPh=S.photo[FIDT]||{};
+      var xferPhotoUrl="";
+      if(xferPh.b64){toast(isUr?"تصویر محفوظ ہو رہی ہے...":"Saving photo...",false,2500);xferPhotoUrl=await sbUploadPhoto(xferPh.b64,xferPh.mime,"acctxfer");if(!xferPhotoUrl)toast(isUr?"تصویر محفوظ نہیں ہو سکی":"Photo could not be saved",true,3500);}
+      var amt=parseFloat(fdt.amount);
+      var xferDate=fdt.date||today();
+      var reasonTxt=reasonEn||"";
       var xferCbNo=nCBNo();
       var xferLinkId=uid();
       /* True double entry — two linked rows, both post instantly (director-only, same
-         authority as Give Cash). Leg 1: debit the From account. */
-      var debitRow={id:uid(),person:S.user,date:xferDate,account:fd.account,subAccount:"",area:"",qty:"",billNo:"",particulars:(reasonTxt?reasonTxt+" — ":"")+"Transfer to "+fd.sub,particularsUr:partUr,debit:amt,credit:0,status:"posted",bill_photo:"",filed:true,rejection:"",cbNo:xferCbNo,siteNo:fd.account&&CSITES.includes(fd.account)?nSNo(fd.account):"",linkId:xferLinkId,created:now2(),approvedBy:S.user,editedBy:"",editedAt:""};
-      /* Leg 2: credit the To account. */
-      var creditRow={id:uid(),person:S.user,date:xferDate,account:fd.sub,subAccount:"",area:"",qty:"",billNo:"",particulars:(reasonTxt?reasonTxt+" — ":"")+"Transfer from "+fd.account,particularsUr:partUr,debit:0,credit:amt,status:"posted",bill_photo:"",filed:true,rejection:"",cbNo:xferCbNo,siteNo:fd.sub&&CSITES.includes(fd.sub)?nSNo(fd.sub):"",linkId:xferLinkId,created:now2(),approvedBy:S.user,editedBy:"",editedAt:""};
+         authority as Give Cash). Leg 1: debit the From account/sub. */
+      var debitRow={id:uid(),person:S.user,date:xferDate,account:fdt.from,subAccount:fdt.fromSub,area:"",qty:"",billNo:"",particulars:(reasonTxt?reasonTxt+" — ":"")+"Transfer to "+fdt.to+(fdt.toSub?"/"+fdt.toSub:""),particularsUr:reasonUr,debit:amt,credit:0,status:"posted",bill_photo:xferPhotoUrl||"",filed:true,rejection:"",cbNo:xferCbNo,siteNo:fdt.from&&CSITES.includes(fdt.from)?nSNo(fdt.from):"",linkId:xferLinkId,created:now2(),approvedBy:S.user,editedBy:"",editedAt:""};
+      /* Leg 2: credit the To account/sub. */
+      var creditRow={id:uid(),person:S.user,date:xferDate,account:fdt.to,subAccount:fdt.toSub,area:"",qty:"",billNo:"",particulars:(reasonTxt?reasonTxt+" — ":"")+"Transfer from "+fdt.from+(fdt.fromSub?"/"+fdt.fromSub:""),particularsUr:reasonUr,debit:0,credit:amt,status:"posted",bill_photo:xferPhotoUrl||"",filed:true,rejection:"",cbNo:xferCbNo,siteNo:fdt.to&&CSITES.includes(fdt.to)?nSNo(fdt.to):"",linkId:xferLinkId,created:now2(),approvedBy:S.user,editedBy:"",editedAt:""};
       S.cb=[...S.cb,debitRow,creditRow];
       svRow("cb","r7_cb",debitRow);svRow("cb","r7_cb",creditRow);
-      addAudit("ACCOUNT_TRANSFER",fd.account+" \u2192 "+fd.sub+" Rs "+fd.debit);
-      S.fd[FID]={mode:"transfer",date:today(),account:"",sub:"",area:"",qty:"",rate:"",vendor:"",billNo:"",part:"",partUr:"",debit:"",credit:"",giveTo:"",_fix:null};
+      addAudit("ACCOUNT_TRANSFER",fdt.from+" \u2192 "+fdt.to+" Rs "+fdt.amount);
+      S.fd[FIDT]={from:"",fromSub:"",to:"",toSub:"",amount:"",date:today(),reason:"",reasonUr:""};
+      delete S.photo[FIDT];
       toast(isUr?"منتقلی مکمل ہوئی":"Transfer complete");
       S.cbf={lv:"journal",person:"",site:"",search:"",d1:"",d2:""};
       set({view:"ldg"});
@@ -1752,10 +1774,10 @@ function rAddCB(){
     var status=isDir?"posted":"awaiting_approval";
     var extras=[];
     if(fd.rate)extras.push((isUr?"ریٹ ":"Rate ")+Rs(fd.rate)+(fd.qty?"/"+fd.qty:""));
-    if(fd.vendor)extras.push((isUr?"وینڈر: ":"Vendor: ")+fd.vendor);
     var finalPartEn=extras.length?(partEn+" ["+extras.join(", ")+"]"):partEn;
     var autoCbNo=fixEntry?fixEntry.cbNo:nCBNo();
-    var row={id:fd._fix||uid(),person:S.user,date:fd.date||today(),account:fd.account,subAccount:fd.sub,area:fd.area,qty:fd.qty,billNo:autoCbNo,particulars:finalPartEn,particularsUr:partUr,vendorName:fd.vendor||"",debit:parseFloat(fd.debit||0)||0,credit:parseFloat(fd.credit||0)||0,status:status,bill_photo:permanentPhotoUrl||(fixEntry?fixEntry.bill_photo:"")||"",filed:isDir,rejection:"",cbNo:autoCbNo,siteNo:fixEntry?fixEntry.siteNo:(fd.account&&CSITES.includes(fd.account)?nSNo(fd.account):""),created:now2(),approvedBy:isDir?S.user:"",editedBy:"",editedAt:""};
+    var autoBillNo=fixEntry?fixEntry.billNo:(fd.account&&CSITES.includes(fd.account)?nSNo(fd.account):autoCbNo);
+    var row={id:fd._fix||uid(),person:S.user,date:fd.date||today(),account:fd.account,subAccount:fd.sub,area:fd.area,qty:fd.qty,billNo:autoBillNo,particulars:finalPartEn,particularsUr:partUr,vendorName:fd.vendor||"",debit:parseFloat(fd.debit||0)||0,credit:parseFloat(fd.credit||0)||0,status:status,bill_photo:permanentPhotoUrl||(fixEntry?fixEntry.bill_photo:"")||"",filed:isDir,rejection:"",cbNo:autoCbNo,siteNo:fixEntry?fixEntry.siteNo:(fd.account&&CSITES.includes(fd.account)?nSNo(fd.account):""),created:now2(),approvedBy:isDir?S.user:"",editedBy:"",editedAt:""};
     if(fd._fix)S.cb=S.cb.map(function(e){return e.id===fd._fix?row:e;});else S.cb=[...S.cb,row];
     svRow("cb","r7_cb",row);addAudit(isDir?"DIRECT_POST":"SUBMIT","CB#"+row.cbNo);
     if(fd.vendor&&fd.vendor.trim()){
@@ -2016,7 +2038,7 @@ function rBank(){
     w.appendChild(Fld("Payable To",Sel(fd.recipType,function(v){fd.recipType=v;fd.recipUser="";fd.recipName="";render();},[{v:"staff",l:"Staff Member"},{v:"others",l:"Others / Vendor / External"}])));
     w.appendChild(el("div",{style:{height:"8px"}}));
     if(fd.recipType==="staff"){w.appendChild(Fld("Staff Member",Sel(fd.recipUser,function(v){fd.recipUser=v;},U.filter(function(u){return ROLE_MAP[u.id]==="staff";}).map(function(u){return{v:u.id,l:u.name+" — "+u.role};}))));w.appendChild(el("div",{cls:"al-b",style:{marginTop:"8px"}},"Cheque credits to staff member's cash balance"));}
-    else{w.appendChild(el("div",{cls:"al-w"},"Cheque posts as direct expense in general journal."));var dlCA=el("datalist",{id:"dl_chq_a"});effectiveAccounts().forEach(function(a){dlCA.appendChild(el("option",{value:a}));});w.appendChild(dlCA);var fg3=el("div",{cls:"fg",style:{marginTop:"8px"}});fg3.appendChild(Fld("Recipient Name",Inp(fd.recipName,function(v){fd.recipName=v;},"text","Full name / company")));fg3.appendChild(Fld("Account",Inp(fd.account,function(v){fd.account=v;},"text","Account","dl_chq_a")));w.appendChild(fg3);w.appendChild(Fld("Description",TA(fd.particulars,function(v){fd.particulars=v;},2,"Purpose...")));}
+    else{w.appendChild(el("div",{cls:"al-w"},"Cheque posts as direct expense in general journal."));var dlCA=el("datalist",{id:"dl_chq_a"});effectiveAccounts().forEach(function(a){dlCA.appendChild(el("option",{value:a}));});w.appendChild(dlCA);var dlCS=el("datalist",{id:"dl_chq_s"});effectiveSubs().forEach(function(s){dlCS.appendChild(el("option",{value:s}));});w.appendChild(dlCS);var fg3=el("div",{cls:"fg",style:{marginTop:"8px"}});fg3.appendChild(Fld("Recipient Name",Inp(fd.recipName,function(v){fd.recipName=v;},"text","Full name / company")));fg3.appendChild(Fld("Account",Inp(fd.account,function(v){fd.account=v;},"text","Account","dl_chq_a")));fg3.appendChild(Fld("Sub Account",Inp(fd.sub,function(v){fd.sub=v;},"text","Sub Account","dl_chq_s")));w.appendChild(fg3);w.appendChild(Fld("Description",TA(fd.particulars,function(v){fd.particulars=v;},2,"Purpose...")));}
     w.appendChild(btn("Issue Cheque",async function(){if(!fd.amount||!parseFloat(fd.amount)){toast("Enter amount",true);return;}if(fd.recipType==="staff"&&!fd.recipUser){toast("Select staff member",true);return;}if(fd.recipType==="others"&&(!fd.recipName.trim()||!fd.account||!fd.particulars.trim())){toast("Fill all fields",true);return;}var bkName=(BANKS.find(function(b){return b.id===fd.bid;})||{name:fd.bid}).name;var chqLinkId=fd.recipType==="staff"?uid():null;var chqPh=S.photo[FID]||{};var chqPhotoUrl="";if(chqPh.b64){toast("Saving photo...",false,2500);chqPhotoUrl=await sbUploadPhoto(chqPh.b64,chqPh.mime,"cheque");if(!chqPhotoUrl)toast("Photo could not be saved — issuing without it",true,3500);}var newBankTxn={id:uid(),bid:fd.bid,typ:"out",amount:parseFloat(fd.amount),particulars:fd.recipType==="staff"?"Cheque to "+gU(fd.recipUser).name:fd.particulars+" — "+fd.recipName,chqNo:chqNo,date:fd.date||today(),linkId:chqLinkId,bill_photo:chqPhotoUrl||"",created:now2()};S.bank=[...S.bank,newBankTxn];svRow("bank","r7_bk",newBankTxn);if(fd.recipType==="staff"){var newCb={id:uid(),person:fd.recipUser,date:fd.date||today(),account:bkName,subAccount:"Cheque #"+chqNo,area:"",qty:"",billNo:chqNo,particulars:"Cheque #"+chqNo+" from "+bkName,particularsUr:"",debit:0,credit:parseFloat(fd.amount),status:"posted",filed:true,rejection:"",cbNo:nCBNo(),siteNo:"",linkId:chqLinkId,bill_photo:chqPhotoUrl||"",created:now2(),approvedBy:S.user,editedBy:"",editedAt:""};S.cb=[...S.cb,newCb];svRow("cb","r7_cb",newCb);}else{var newCb2={id:uid(),person:S.user,date:fd.date||today(),account:fd.account,subAccount:fd.sub,area:"",qty:"",billNo:chqNo,particulars:fd.particulars+" — Cheque #"+chqNo+" to "+fd.recipName+" via "+bkName,particularsUr:"",debit:parseFloat(fd.amount),credit:0,status:"posted",filed:true,rejection:"",cbNo:nCBNo(),siteNo:fd.account&&CSITES.includes(fd.account)?nSNo(fd.account):"",bill_photo:chqPhotoUrl||"",created:now2(),approvedBy:S.user,editedBy:"",editedAt:""};S.cb=[...S.cb,newCb2];svRow("cb","r7_cb",newCb2);}addAudit("CHEQUE","CHQ#"+chqNo+" Rs "+Rs(fd.amount));S.fd[FID]={bid:"hs",recipType:"staff",recipUser:"",recipName:"",account:"",sub:"",particulars:"",amount:"",date:today()};delete S.photo[FID];toast("Cheque #"+chqNo+" issued");render();},"btn-g btn-full"));
   }
   if(tab==="dep"){var FID2="bank_dep";if(!S.fd[FID2])S.fd[FID2]={bid:"hs",amount:"",date:today(),particulars:""};var fd2=S.fd[FID2];w.appendChild(PhotoZone(FID2,"Attach Deposit Slip (optional)"));var fg4=el("div",{cls:"fg"});fg4.appendChild(Fld("Bank",Sel(fd2.bid,function(v){fd2.bid=v;},[{v:"hs",l:"HS Meezan"},{v:"am",l:"Ahmad Meezan"},{v:"ra",l:"Rehan Alfalah"}])));fg4.appendChild(Fld("Amount (Rs)",Inp(fd2.amount,function(v){fd2.amount=v;},"number")));fg4.appendChild(Fld("Date",Inp(fd2.date,function(v){fd2.date=v;},"date")));w.appendChild(fg4);w.appendChild(Fld("Details",TA(fd2.particulars,function(v){fd2.particulars=v;},2,"")));w.appendChild(btn("Record Deposit",async function(){if(!fd2.amount){toast("Enter amount",true);return;}var depPh=S.photo[FID2]||{};var depPhotoUrl="";if(depPh.b64){toast("Saving photo...",false,2500);depPhotoUrl=await sbUploadPhoto(depPh.b64,depPh.mime,"deposit");if(!depPhotoUrl)toast("Photo could not be saved — recording without it",true,3500);}var newDep={id:uid(),bid:fd2.bid,typ:"in",amount:parseFloat(fd2.amount),particulars:fd2.particulars||"Deposit",date:fd2.date||today(),bill_photo:depPhotoUrl||"",created:now2()};S.bank=[...S.bank,newDep];svRow("bank","r7_bk",newDep);S.fd[FID2]={bid:"hs",amount:"",date:today(),particulars:""};delete S.photo[FID2];toast("Deposit recorded");render();},"btn-g btn-full"));}
@@ -2052,30 +2074,51 @@ function rBank(){
         w.appendChild(el("div",{cls:"al-b",style:{marginTop:"8px"}},"Transfer credits to staff member's cash balance"));
       }else{
         var dlXA=el("datalist",{id:"dl_xfer_acc"});effectiveAccounts().forEach(function(a){dlXA.appendChild(el("option",{value:a}));});w.appendChild(dlXA);
+        var dlXS=el("datalist",{id:"dl_xfer_subacc"});effectiveSubs().forEach(function(s){dlXS.appendChild(el("option",{value:s}));});w.appendChild(dlXS);
         var fg7b=el("div",{cls:"fg"});
         fg7b.appendChild(Fld("Recipient Name",Inp(fd6.recipName,function(v){fd6.recipName=v;},"text","Full name / company")));
         fg7b.appendChild(Fld("Account",Inp(fd6.account,function(v){fd6.account=v;},"text","Account","dl_xfer_acc")));
+        fg7b.appendChild(Fld("Sub Account",Inp(fd6.sub,function(v){fd6.sub=v;},"text","Optional","dl_xfer_subacc")));
         w.appendChild(fg7b);
       }
+    }else{
+      /* Incoming transfer — who it's from and which account/sub-account it should
+         credit, so it actually creates a real cashbook entry instead of only a bank
+         register line with nothing behind it. */
+      w.appendChild(el("div",{cls:"al-b"},"Money received — record who it's from and which account it should credit."));
+      var dlXAin=el("datalist",{id:"dl_xfer_acc_in"});effectiveAccounts().forEach(function(a){dlXAin.appendChild(el("option",{value:a}));});w.appendChild(dlXAin);
+      var dlXSin=el("datalist",{id:"dl_xfer_subacc_in"});effectiveSubs().forEach(function(s){dlXSin.appendChild(el("option",{value:s}));});w.appendChild(dlXSin);
+      var fg7c=el("div",{cls:"fg"});
+      fg7c.appendChild(Fld("Received From",Inp(fd6.recipName,function(v){fd6.recipName=v;},"text","Person / client / company name")));
+      fg7c.appendChild(Fld("Account",Inp(fd6.account,function(v){fd6.account=v;},"text","Which account this credits","dl_xfer_acc_in")));
+      fg7c.appendChild(Fld("Sub Account",Inp(fd6.sub,function(v){fd6.sub=v;},"text","Optional","dl_xfer_subacc_in")));
+      w.appendChild(fg7c);
     }
     w.appendChild(Fld("Notes",TA(fd6.particulars,function(v){fd6.particulars=v;},2,"")));
     w.appendChild(btn("Record Transfer",async function(){
       if(!fd6.amount||!parseFloat(fd6.amount)){toast("Enter amount",true);return;}
       if(fd6.direction==="out"&&fd6.recipType==="staff"&&!fd6.recipUser){toast("Select staff member",true);return;}
       if(fd6.direction==="out"&&fd6.recipType==="others"&&(!fd6.recipName.trim()||!fd6.account)){toast("Fill recipient and account",true);return;}
+      if(fd6.direction==="in"&&(!fd6.recipName.trim()||!fd6.account)){toast("Fill who it's from and which account",true);return;}
       var bkName=(BANKS.find(function(b){return b.id===fd6.bid;})||{name:fd6.bid}).name;
       var xph=S.photo[FID6]||{};
       var xferPhotoUrl="";
       if(xph.b64){toast("Saving screenshot...",false,2500);xferPhotoUrl=await sbUploadPhoto(xph.b64,xph.mime,"xfer");if(!xferPhotoUrl)toast("Screenshot could not be saved",true,3500);}
       var xferLinkId=(fd6.direction==="out"&&fd6.recipType==="staff")?uid():null;
-      var newXfer={id:uid(),bid:fd6.bid,typ:fd6.direction,amount:parseFloat(fd6.amount),particulars:(fd6.direction==="out"?(fd6.recipType==="staff"?"Transfer to "+gU(fd6.recipUser).name:fd6.particulars+" — "+fd6.recipName):fd6.particulars||"Online transfer received")+(xferPhotoUrl?" [screenshot attached]":""),chqNo:"",date:fd6.date||today(),linkId:xferLinkId,created:now2()};
+      var newXfer={id:uid(),bid:fd6.bid,typ:fd6.direction,amount:parseFloat(fd6.amount),particulars:(fd6.direction==="out"?(fd6.recipType==="staff"?"Transfer to "+gU(fd6.recipUser).name:fd6.particulars+" — "+fd6.recipName):(fd6.particulars?fd6.particulars+" — ":"")+"Received from "+fd6.recipName)+(xferPhotoUrl?" [screenshot attached]":""),chqNo:"",date:fd6.date||today(),linkId:xferLinkId,bill_photo:xferPhotoUrl||"",created:now2()};
       S.bank=[...S.bank,newXfer];svRow("bank","r7_bk",newXfer);
       if(fd6.direction==="out"&&fd6.recipType==="staff"){
         var newCbX={id:uid(),person:fd6.recipUser,date:fd6.date||today(),account:bkName,subAccount:"Online Transfer",area:"",qty:"",billNo:"",particulars:"Online transfer from "+bkName+(fd6.particulars?" — "+fd6.particulars:""),particularsUr:"",debit:0,credit:parseFloat(fd6.amount),status:"posted",filed:true,rejection:"",cbNo:nCBNo(),siteNo:"",linkId:xferLinkId,created:now2(),approvedBy:S.user,bill_photo:xferPhotoUrl||"",editedBy:"",editedAt:""};
         S.cb=[...S.cb,newCbX];svRow("cb","r7_cb",newCbX);
       }else if(fd6.direction==="out"){
-        var newCbX2={id:uid(),person:S.user,date:fd6.date||today(),account:fd6.account,subAccount:fd6.sub,area:"",qty:"",billNo:"",particulars:fd6.particulars+" — Online transfer to "+fd6.recipName+" via "+bkName,particularsUr:"",debit:parseFloat(fd6.amount),credit:0,status:"posted",filed:true,rejection:"",cbNo:nCBNo(),siteNo:fd6.account&&CSITES.includes(fd6.account)?nSNo(fd6.account):"",created:now2(),approvedBy:S.user,bill_photo:xferPhotoUrl||"",editedBy:"",editedAt:""};
+        var newCbX2={id:uid(),person:S.user,date:fd6.date||today(),account:fd6.account,subAccount:fd6.sub,area:"",qty:"",billNo:"",particulars:fd6.particulars+" — Online transfer to "+fd6.recipName+" via "+bkName,particularsUr:"",vendorName:fd6.recipName||"",debit:parseFloat(fd6.amount),credit:0,status:"posted",filed:true,rejection:"",cbNo:nCBNo(),siteNo:fd6.account&&CSITES.includes(fd6.account)?nSNo(fd6.account):"",created:now2(),approvedBy:S.user,bill_photo:xferPhotoUrl||"",editedBy:"",editedAt:""};
         S.cb=[...S.cb,newCbX2];svRow("cb","r7_cb",newCbX2);
+      }else{
+        /* Incoming transfer — create the cashbook entry that was previously missing
+           entirely. Credits the chosen account, recorded under the director who
+           logged it, with the sender's name in the real Vendor/Contractor field. */
+        var newCbXIn={id:uid(),person:S.user,date:fd6.date||today(),account:fd6.account,subAccount:fd6.sub,area:"",qty:"",billNo:"",particulars:(fd6.particulars?fd6.particulars+" — ":"")+"Online transfer received from "+fd6.recipName+" via "+bkName,particularsUr:"",vendorName:fd6.recipName||"",debit:0,credit:parseFloat(fd6.amount),status:"posted",filed:true,rejection:"",cbNo:nCBNo(),siteNo:fd6.account&&CSITES.includes(fd6.account)?nSNo(fd6.account):"",created:now2(),approvedBy:S.user,bill_photo:xferPhotoUrl||"",editedBy:"",editedAt:""};
+        S.cb=[...S.cb,newCbXIn];svRow("cb","r7_cb",newCbXIn);
       }
       addAudit("BANK_TRANSFER",bkName+" "+fd6.direction+" Rs "+fd6.amount);
       S.fd[FID6]={bid:"hs",direction:"out",recipType:"staff",recipUser:"",recipName:"",account:"",sub:"",amount:"",date:today(),particulars:"",_aiDone:false};delete S.photo[FID6];
