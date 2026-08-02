@@ -233,6 +233,39 @@ function sbUploadPhoto(b64,mime,filenameHint){
     return SB_URL+"/storage/v1/object/public/bill-photos/"+path;
   }).catch(function(e){console.warn("Photo upload error",e);return "";});
 }
+/* Pending-sync queue — every failed upload gets recorded here (table + the exact
+   payload that failed to send), persisted to local storage so it survives a reload.
+   Without this, "Sync Now" only pulled fresh data down and never retried a failed
+   push — a transfer or entry that failed to reach the server stayed stuck on that
+   one device indefinitely, invisible to everyone else, with no real way to fix it
+   short of re-entering it from scratch. */
+var PENDING_SYNC_KEY="r7_pendingsync";
+function getPendingSync(){try{var v=localStorage.getItem(PENDING_SYNC_KEY);return v?JSON.parse(v):[];}catch(e){return [];}}
+function savePendingSync(list){try{localStorage.setItem(PENDING_SYNC_KEY,JSON.stringify(list));}catch(e){}}
+function queuePendingSync(tbl,payload){
+  var list=getPendingSync();
+  list.push({tbl:tbl,payload:payload,queuedAt:new Date().toISOString()});
+  savePendingSync(list);
+}
+async function retryPendingSync(){
+  var list=getPendingSync();
+  if(!list.length)return {attempted:0,succeeded:0};
+  var stillFailed=[];
+  var succeeded=0;
+  for(var i=0;i<list.length;i++){
+    var item=list[i];
+    try{
+      var resp=await fetch(SB_URL+"/rest/v1/"+item.tbl+"?on_conflict=id",{
+        method:"POST",
+        headers:Object.assign({},SBH,{"Prefer":"resolution=merge-duplicates,return=minimal"}),
+        body:JSON.stringify([item.payload])
+      });
+      if(resp.ok)succeeded++;else stillFailed.push(item);
+    }catch(e){stillFailed.push(item);}
+  }
+  savePendingSync(stillFailed);
+  return {attempted:list.length,succeeded:succeeded};
+}
 function sbUp(tbl,rows){
   if(!rows||!rows.length)return Promise.resolve();
   return fetch(SB_URL+"/rest/v1/"+tbl+"?on_conflict=id",{
@@ -244,11 +277,13 @@ function sbUp(tbl,rows){
       /* Saved locally but never reached Supabase — this device will show it, but it will
          never appear on anyone else's device, and a future full sync on THIS device could
          even overwrite it. Silent failure here is worse than for deletes, since nothing
-         ever re-corrects it automatically. */
+         ever re-corrects it automatically. Now queued for real retry, not just a message. */
+      rows.forEach(function(row){queuePendingSync(tbl,row);});
       toast("Saved on this device only — check your connection, then tap Sync Now",true,4500);
     }
   }).catch(function(e){
     console.warn("sbUp",tbl,e);
+    rows.forEach(function(row){queuePendingSync(tbl,row);});
     toast("Saved on this device only — check your connection, then tap Sync Now",true,4500);
   });
 }
@@ -945,13 +980,23 @@ function PhotoZone(fid,label,onPhotoSet){
   var ph=S.photo[fid]||{};
   if(ph.url){var w=el("div",{cls:"pzone-prev"});var img=el("img",{src:ph.url,style:{width:"100%",maxHeight:"200px",objectFit:"cover",display:"block"}});w.appendChild(img);var rb=el("button",{cls:"pzone-rtk",onClick:function(ev){ev.stopPropagation();delete S.photo[fid];render();}});rb.textContent="Retake";w.appendChild(rb);return w;}
   var z=el("div",{cls:"pzone"});
-  var fi=el("input",{type:"file",accept:"image/*",capture:"environment",style:{display:"none",position:"absolute",opacity:"0",width:"1px",height:"1px"}});
+  /* Every previous hidden file input for this exact field must be removed before
+     creating a new one — without this, every re-render (which happens on nearly
+     every keystroke elsewhere on the same page) leaves the old input attached to
+     document.body forever, since render() only clears the visible page container,
+     not the body itself. Left unfixed, dozens of stray inputs accumulate in a single
+     session, which is exactly what could make "Attach Photo" stop reliably opening
+     anything — the visible zone's click handler and the actual input can drift out
+     of sync once this many duplicates exist. */
+  var prevInput=document.getElementById("pzone_input_"+fid);
+  if(prevInput&&prevInput.remove)prevInput.remove();
+  var fi=el("input",{id:"pzone_input_"+fid,type:"file",accept:"image/*",capture:"environment",style:{display:"none",position:"absolute",opacity:"0",width:"1px",height:"1px"}});
   document.body.appendChild(fi);
   fi.addEventListener("change",function(ev){var f=ev.target.files&&ev.target.files[0];if(!f)return;var reader=new FileReader();reader.onload=function(re){var b64=re.target.result.split(",")[1];S.photo[fid]={b64:b64,mime:f.type||"image/jpeg",url:URL.createObjectURL(f)};render();if(onPhotoSet)setTimeout(onPhotoSet,50);};reader.readAsDataURL(f);});
   z.appendChild(el("div",{style:{fontSize:"26px",marginBottom:"6px"}},"📷"));
   z.appendChild(el("div",{style:{fontSize:"11px",fontWeight:"600",color:"var(--g3)",letterSpacing:".1em",textTransform:"uppercase"}},isUrdu()?UR.photoBtn:(label||"Attach Bill Photo")));
   z.appendChild(el("div",{style:{fontSize:"11px",color:"var(--ink4)",marginTop:"3px"}},isUrdu()?"تصویر لیں یا گیلری سے چنیں":"Tap to take photo or choose from gallery"));
-  z.addEventListener("click",function(ev){ev.preventDefault();fi.value="";fi.click();});
+  z.addEventListener("click",function(ev){ev.preventDefault();var currentInput=document.getElementById("pzone_input_"+fid);if(currentInput){currentInput.value="";currentInput.click();}});
   return z;
 }
 
@@ -966,7 +1011,9 @@ function VideoZone(fid,label){
   var vd=S.video[fid]||{};
   if(vd.url){var wv=el("div",{cls:"pzone-prev"});var vidEl=el("video",{src:vd.url,controls:true,style:{width:"100%",maxHeight:"200px",display:"block"}});wv.appendChild(vidEl);var rbv=el("button",{cls:"pzone-rtk",onClick:function(ev){ev.stopPropagation();delete S.video[fid];render();}});rbv.textContent="Remove";wv.appendChild(rbv);return wv;}
   var zv=el("div",{cls:"pzone"});
-  var fiv=el("input",{type:"file",accept:"video/*",style:{display:"none",position:"absolute",opacity:"0",width:"1px",height:"1px"}});
+  var prevVidInput=document.getElementById("vzone_input_"+fid);
+  if(prevVidInput&&prevVidInput.remove)prevVidInput.remove();
+  var fiv=el("input",{id:"vzone_input_"+fid,type:"file",accept:"video/*",style:{display:"none",position:"absolute",opacity:"0",width:"1px",height:"1px"}});
   document.body.appendChild(fiv);
   fiv.addEventListener("change",function(ev){
     var f=ev.target.files&&ev.target.files[0];if(!f)return;
@@ -978,7 +1025,7 @@ function VideoZone(fid,label){
   zv.appendChild(el("div",{style:{fontSize:"26px",marginBottom:"6px"}},"\uD83C\uDFA5"));
   zv.appendChild(el("div",{style:{fontSize:"11px",fontWeight:"600",color:"var(--g3)",letterSpacing:".1em",textTransform:"uppercase"}},label||(isUrdu()?"ویڈیو منسلک کریں":"Attach Video")));
   zv.appendChild(el("div",{style:{fontSize:"11px",color:"var(--ink4)",marginTop:"3px"}},isUrdu()?"اختیاری — زیادہ سے زیادہ 50MB":"Optional — max 50MB"));
-  zv.addEventListener("click",function(ev){ev.preventDefault();fiv.value="";fiv.click();});
+  zv.addEventListener("click",function(ev){ev.preventDefault();var currentVidInput=document.getElementById("vzone_input_"+fid);if(currentVidInput){currentVidInput.value="";currentVidInput.click();}});
   return zv;
 }
 
@@ -1090,6 +1137,7 @@ var NAV=[
   {id:"reviewDay",l:"Daily Review",icon:"\uD83D\uDD0D",roles:["danish"]},
   {id:"dirApp",l:"Director Approval",icon:"⚖",roles:["director"],badge:"cbAw"},
   {id:"ldg",l:"General Ledger",icon:"≡",roles:["danish","director"]},
+  {id:"accountsList",l:"Chart of Accounts",icon:"\uD83D\uDCCB",roles:["staff","danish","director"]},
   {id:"trial",l:"Trial Balance",icon:"⚖",roles:["danish","director"]},
   {id:"pl",l:"Profit & Loss",icon:"↑↓",roles:["director"]},
   {id:"cashflow",l:"Cash Flow",icon:"~",roles:["danish","director"]},
@@ -1166,8 +1214,18 @@ function renderShell(){
   var nb=el("button",{cls:"ni",onClick:function(){S.notifOpen=!S.notifOpen;renderNotif();}});
   nb.appendChild(el("span",{cls:"nicon"},"🔔"));nb.appendChild(el("span",{cls:"nl"},"Notifications"));
   if(notifCnt>0)nb.appendChild(el("span",{cls:"nb3"},String(notifCnt)));bot.appendChild(nb);
-  var syncBtn=el("button",{cls:"ni",onClick:function(){loadFromSupabase(false).then(function(){render();});}});
-  syncBtn.appendChild(el("span",{cls:"nicon"},"⟳"));syncBtn.appendChild(el("span",{cls:"nl"},"Sync Now"));bot.appendChild(syncBtn);
+  var pendingCount=getPendingSync().length;
+  var syncBtn=el("button",{cls:"ni",onClick:async function(){
+    toast(pendingCount>0?"Retrying "+pendingCount+" unsaved item(s)...":"Syncing...",false,2000);
+    var retryResult=await retryPendingSync();
+    if(retryResult.attempted>0){
+      if(retryResult.succeeded===retryResult.attempted)toast("All "+retryResult.succeeded+" pending item(s) saved successfully");
+      else toast(retryResult.succeeded+" of "+retryResult.attempted+" saved — "+(retryResult.attempted-retryResult.succeeded)+" still pending, check your connection",true,4500);
+    }
+    await loadFromSupabase(false);
+    render();
+  }});
+  syncBtn.appendChild(el("span",{cls:"nicon"},"⟳"));syncBtn.appendChild(el("span",{cls:"nl"},pendingCount>0?"Sync Now ("+pendingCount+")":"Sync Now"));bot.appendChild(syncBtn);
   var exitBtn=el("button",{cls:"ni",style:{color:"var(--neg)"},onClick:function(){addAudit("LOGOUT",gU(S.user).name);S.user=null;document.getElementById("app").style.display="none";document.getElementById("bnav").style.display="none";document.getElementById("lr").style.display="";rLogin();}});
   exitBtn.appendChild(el("span",{cls:"nicon"},"\u2192"));exitBtn.appendChild(el("span",{cls:"nl"},"Sign Out"));bot.appendChild(exitBtn);
   sb.appendChild(bot);
@@ -1472,18 +1530,76 @@ function rExecDash(){
   hr2.appendChild(el("div",{style:{fontSize:"9px",color:"rgba(200,191,176,.5)",marginTop:"4px",letterSpacing:".1em",textTransform:"uppercase"}},"Cash + Bank"));
   hrow.appendChild(hl);hrow.appendChild(hr2);hero.appendChild(hrow);w.appendChild(hero);
 
+  /* FINANCIAL POSITION — Assets vs Liabilities, each expandable into the accounts
+     that make it up. This replaces the old flat KPI grid with something that
+     actually reads like a real financial position, not a list of disconnected
+     numbers. Site balances are summed as accumulated spend across every site
+     (a liability in the sense of money already committed/spent, not yet closed
+     out against income), matching how the rest of the app already treats them. */
+  var sitesAccumulated=CSITES.filter(function(s){return s!=="W-93";}).reduce(function(sum,site){return sum+accountLedger("site",site).debit;},0);
+  var expandedSection=S.tab.finPosExpand||"";
+  function finPosRow(label,amount,color,sectionKey){
+    var isExpanded=expandedSection===sectionKey;
+    var row=dv({display:"flex",justifyContent:"space-between",alignItems:"center",padding:"11px 0",borderBottom:"1px solid var(--s2)",cursor:"pointer"},
+      el("span",{style:{fontWeight:"600",fontSize:"13px"}},label+(isExpanded?" \u25BE":" \u25B8")),
+      el("span",{style:{fontFamily:"'Cormorant Garamond',serif",fontSize:"17px",fontWeight:"700",color:color}},Rs(Math.abs(amount)))
+    );
+    row.addEventListener("click",function(){set({tab:Object.assign({},S.tab,{finPosExpand:isExpanded?"":sectionKey})});});
+    return row;
+  }
+  var finPosCard=Card("Current Financial Position",null);
+  var finPosBody=finPosCard.querySelector(".cb");
+
+  finPosBody.appendChild(el("div",{style:{fontSize:"10px",fontWeight:"700",letterSpacing:".14em",textTransform:"uppercase",color:"var(--pos)",margin:"4px 0 6px"}},"Assets"));
+  finPosBody.appendChild(finPosRow("Cash",cashTot,"var(--pos)","cash"));
+  if(expandedSection==="cash"){
+    var cashDetail=dv({padding:"6px 0 10px 12px"});
+    U.forEach(function(u){var b=pBal(u.id);if(!b)return;var r=dv({display:"flex",justifyContent:"space-between",padding:"5px 0",fontSize:"12px",cursor:"pointer"},el("span",{style:{color:"var(--ink3)"}},u.name),el("span",{style:{fontWeight:"600",color:b>=0?"var(--pos)":"var(--neg)"}},Rs(Math.abs(b))+(b<0?" Shortfall":"")));r.addEventListener("click",function(){var uid2=u.id;set({cbf:{lv:"byP",person:uid2,site:"",search:"",d1:"",d2:""},view:"ldg"});});cashDetail.appendChild(r);});
+    finPosBody.appendChild(cashDetail);
+  }
+  finPosBody.appendChild(finPosRow("Bank",bkTot,"var(--pos)","bank"));
+  if(expandedSection==="bank"){
+    var bankDetail=dv({padding:"6px 0 10px 12px"});
+    BANKS.forEach(function(b){var bal=bBal(b.id);var r=dv({display:"flex",justifyContent:"space-between",padding:"5px 0",fontSize:"12px",cursor:"pointer"},el("span",{style:{color:"var(--ink3)"}},b.name),el("span",{style:{fontWeight:"600",color:bal>=0?"var(--pos)":"var(--neg)"}},Rs(Math.abs(bal))));r.addEventListener("click",function(){set({view:"bank",tab:Object.assign({},S.tab,{bank:"ov"})});});bankDetail.appendChild(r);});
+    finPosBody.appendChild(bankDetail);
+  }
+
+  finPosBody.appendChild(el("div",{style:{fontSize:"10px",fontWeight:"700",letterSpacing:".14em",textTransform:"uppercase",color:"var(--neg)",margin:"14px 0 6px"}},"Liabilities"));
+  finPosBody.appendChild(finPosRow("Sites Balance (Accumulated)",sitesAccumulated,"var(--neg)","sites"));
+  if(expandedSection==="sites"){
+    var sitesDetail=dv({padding:"6px 0 10px 12px"});
+    CSITES.filter(function(s){return s!=="W-93";}).forEach(function(site){var acct=accountLedger("site",site);if(!acct.debit)return;var r=dv({display:"flex",justifyContent:"space-between",padding:"5px 0",fontSize:"12px",cursor:"pointer"},el("span",{style:{color:"var(--ink3)"}},site),el("span",{style:{fontWeight:"600",color:"var(--neg)"}},Rs(acct.debit)));r.addEventListener("click",function(){var s2=site;set({tab:Object.assign({},S.tab,{constrSite:s2}),view:"constr"});});sitesDetail.appendChild(r);});
+    finPosBody.appendChild(sitesDetail);
+  }
+  finPosBody.appendChild(finPosRow("Credit Cards",ccOw,"var(--neg)","cc"));
+  if(expandedSection==="cc"){
+    var ccDetail=dv({padding:"6px 0 10px 12px"});
+    CARDS.forEach(function(c){var bal=cBal(c.id);var r=dv({display:"flex",justifyContent:"space-between",padding:"5px 0",fontSize:"12px",cursor:"pointer"},el("span",{style:{color:"var(--ink3)"}},c.name),el("span",{style:{fontWeight:"600",color:"var(--neg)"}},Rs(Math.abs(bal))));r.addEventListener("click",function(){var cid2=c.id;set({view:"cc",tab:Object.assign({},S.tab,{ccOvSel:cid2})});});ccDetail.appendChild(r);});
+    finPosBody.appendChild(ccDetail);
+  }
+  finPosBody.appendChild(finPosRow("Vendor Payables",totPay,"var(--neg)","vnd"));
+  if(expandedSection==="vnd"){
+    var vndDetail=dv({padding:"6px 0 10px 12px"});
+    S.vendors.filter(function(v){return vBal(v.id)>0;}).forEach(function(v){var r=dv({display:"flex",justifyContent:"space-between",padding:"5px 0",fontSize:"12px",cursor:"pointer"},el("span",{style:{color:"var(--ink3)"}},v.name),el("span",{style:{fontWeight:"600",color:"var(--neg)"}},Rs(vBal(v.id))));r.addEventListener("click",function(){set({view:"vnd"});});vndDetail.appendChild(r);});
+    finPosBody.appendChild(vndDetail);
+  }
+
+  var netPosition=(cashTot+bkTot)-(sitesAccumulated+ccOw+totPay);
+  finPosBody.appendChild(dv({display:"flex",justifyContent:"space-between",alignItems:"center",padding:"12px 0 4px",marginTop:"6px",borderTop:"2px solid var(--bd)"},
+    el("span",{style:{fontWeight:"700",fontSize:"13px"}},"Net Position"),
+    el("span",{style:{fontFamily:"'Cormorant Garamond',serif",fontSize:"20px",fontWeight:"700",color:netPosition>=0?"var(--pos)":"var(--neg)"}},Rs(Math.abs(netPosition))+(netPosition<0?" Deficit":""))
+  ));
+  w.appendChild(finPosCard);
+
   /* QUICK ACCESS — moved to TOP */
   w.appendChild(el("div",{style:{fontFamily:"'Cormorant Garamond',serif",fontSize:"17px",fontWeight:"500",color:"var(--ink)",letterSpacing:".03em",margin:"0 0 10px"}},"Quick Access"));
   var qg=el("div",{cls:"mc-grid",style:{marginBottom:"20px"}});
-  [{id:"addCB",l:"New Entry",e:"\u2795"},{id:"myLedger",l:"My Ledger",e:"\uD83D\uDCD2"},{id:"dirApp",l:"Approve",e:"✅"},{id:"ldg",l:"Ledger",e:"\u2261"},{id:"bank",l:"Bank",e:"\u2B1C"},{id:"cc",l:"Cards",e:"\u25A3"},{id:"ccExp",l:"Add CC Expense",e:"\uD83D\uDCB3"},{id:"constr",l:"Sites",e:"\u25EB"},{id:"mat",l:"Material",e:"\u2B21"},{id:"contr",l:"Contractors",e:"\u25C8"},{id:"vnd",l:"Vendors",e:"\u25CF"},{id:"doors",l:"Doors",e:"\u25AD"},{id:"hr",l:"HR",e:"\uD83D\uDC77"},{id:"bills",l:"Bills",e:"\uD83D\uDD14"},{id:"ai",l:"AI",e:"\u2746"}].forEach(function(m2){var mc=el("div",{cls:"mc",onClick:function(){if(m2.id==="myLedger"){set({cbf:{lv:"byP",person:S.user,site:"",search:"",d1:"",d2:""},view:"ldg"});}else if(m2.id==="ccExp"){set({view:"cc",tab:Object.assign({},S.tab,{cc:"exp"})});}else{set({view:m2.id});}}});mc.appendChild(el("div",{cls:"mc-icon"},m2.e));mc.appendChild(el("div",{cls:"mc-label"},m2.l));qg.appendChild(mc);});
+  [{id:"addCB",l:"New Entry",e:"\u2795"},{id:"accountsList",l:"Accounts",e:"\uD83D\uDCCB"},{id:"myLedger",l:"My Ledger",e:"\uD83D\uDCD2"},{id:"dirApp",l:"Approve",e:"✅"},{id:"ldg",l:"Ledger",e:"\u2261"},{id:"bank",l:"Bank",e:"\u2B1C"},{id:"cc",l:"Cards",e:"\u25A3"},{id:"ccExp",l:"Add CC Expense",e:"\uD83D\uDCB3"},{id:"constr",l:"Sites",e:"\u25EB"},{id:"mat",l:"Material",e:"\u2B21"},{id:"contr",l:"Contractors",e:"\u25C8"},{id:"vnd",l:"Vendors",e:"\u25CF"},{id:"doors",l:"Doors",e:"\u25AD"},{id:"hr",l:"HR",e:"\uD83D\uDC77"},{id:"bills",l:"Bills",e:"\uD83D\uDD14"},{id:"ai",l:"AI",e:"\u2746"}].forEach(function(m2){var mc=el("div",{cls:"mc",onClick:function(){if(m2.id==="myLedger"){set({cbf:{lv:"byP",person:S.user,site:"",search:"",d1:"",d2:""},view:"ldg"});}else if(m2.id==="ccExp"){set({view:"cc",tab:Object.assign({},S.tab,{cc:"exp"})});}else{set({view:m2.id});}}});mc.appendChild(el("div",{cls:"mc-icon"},m2.e));mc.appendChild(el("div",{cls:"mc-label"},m2.l));qg.appendChild(mc);});
   w.appendChild(qg);
 
-  /* TOP KPIs */
+  /* MONTHLY ACTIVITY — the Financial Position card above already covers Cash, Bank,
+     Vendor Payables, and CC Outstanding, so this keeps only what isn't duplicated. */
   w.appendChild(el("div",{cls:"kgrid"},
-    KPI("Cash in Hand",cashTot,"var(--pos)","All members"),
-    KPI("Bank Balance",bkTot,"var(--inf)","HS + Ahmad + Alfalah"),
-    KPI("Vendor Payables",totPay,"var(--neg)","Outstanding"),
-    KPI("CC Outstanding",ccOw,"var(--neg)","BOP + JS Bank"),
     KPI("Month Expenses",mDr,"var(--wrn)",m),
     KPI("Month Receipts",mCr,"var(--pos)",m),
     KPI(mCr>=mDr?"Month Surplus":"Month Deficit",Math.abs(mCr-mDr),mCr>=mDr?"var(--pos)":"var(--neg)","This month"),
@@ -3751,6 +3867,11 @@ var QUOTE_ITEMS={
   Kitchen:["Wall Unit","Base Unit","Cabinet Carcass","Island","Hardware/Hinges","Handles","Sink Cabinet","Drawers","Glass Units","Lights"],
   Doors:["Main Entrance Door","Internal Doors","Mesh Door","Glass Doors"]
 };
+/* Chart of Accounts — every account currently in use (hardcoded + director-added),
+   with its live balance, tap to open the ledger filtered to it. The free-text field
+   at the top both registers a brand-new account (same mechanism as Security >
+   Manage Accounts) AND opens New Entry with it pre-filled, so a director doesn't
+   need two separate steps to add an account and then immediately post against it. */
 function rQuotations(){
   var tab=S.tab.quo||"list";var w=el("div",{});
   w.appendChild(Tabs([{id:"list",l:"Quotations"},{id:"build",l:"New Quotation"}],tab,function(id){set({tab:Object.assign({},S.tab,{quo:id})});}));
@@ -3836,6 +3957,12 @@ function rQuotations(){
   return w;
 }
 
+/* Accounts list — every account currently known to the system (built-in + custom +
+   registered sites), tap one to open New Entry pre-filled with it. The free-text
+   field below covers anything not yet on the list — typing a name there and
+   submitting opens New Entry with that exact text pre-filled as the account, the
+   same way any brand-new account name already works elsewhere in the app. */
+
 function rReports(){
   var posted=S.cb.filter(function(e){return e.status==="posted";});
   var m=curMonth();var yr=new Date().getFullYear().toString();
@@ -3886,6 +4013,55 @@ function rAI(){
     S.aiResult.split("\n").forEach(function(line){if(line.trim())rc.appendChild(el("p",{style:{marginBottom:"8px",fontSize:"13px",lineHeight:"1.6",color:"var(--ink2)"}},line));});
     w.appendChild(resultCard);
   }
+  return w;
+}
+
+/* Accounts List — a browsable Chart of Accounts, separate from the director-only
+   Manage Accounts screen (which is for adding/removing accounts from the list
+   itself). This page is for everyone: see every account that exists, and jump
+   straight into a New Entry against it. The free-text field at the top covers an
+   account that isn't in the list yet at all — New Entry already accepts any typed
+   name, so this just gives a direct, visible door into that instead of requiring
+   someone to already know free text works there. */
+function rAccountsList(){
+  var w=el("div",{});
+  var FIDAL="accounts_freetext";if(!S.fd[FIDAL])S.fd[FIDAL]="";
+  w.appendChild(el("div",{cls:"al-b"},"Tap any account below to start a new entry against it. Or type a new account name directly — New Entry accepts any name, whether or not it's on this list yet."));
+  var freeRow=dv({display:"flex",gap:"8px",marginBottom:"18px"});
+  var freeInp=Inp(S.fd[FIDAL],function(v){S.fd[FIDAL]=v;},"text","Type a new or existing account name...");
+  freeInp.style.flex="1";
+  freeRow.appendChild(freeInp);
+  freeRow.appendChild(btn("Open Entry",function(){
+    var acctName=(S.fd[FIDAL]||"").trim();
+    if(!acctName){toast("Type an account name first",true);return;}
+    var FIDNE="addCB";
+    if(!S.fd[FIDNE])S.fd[FIDNE]={mode:"expense",date:today(),account:"",sub:"",area:"",qty:"",rate:"",vendor:"",part:"",partUr:"",debit:"",credit:"",giveTo:"",_fix:null};
+    S.fd[FIDNE].account=acctName;
+    S.fd[FIDAL]="";
+    set({view:"addCB"});
+  },"btn-g"));
+  w.appendChild(freeRow);
+
+  var allAccounts=effectiveAccounts();
+  if(!allAccounts.length){w.appendChild(el("div",{style:{textAlign:"center",padding:"24px",color:"var(--ink4)"}},"No accounts yet"));return w;}
+  var acctListCard=Card("Chart of Accounts",el("span",{style:{fontSize:"10px",color:"var(--ink4)"}},allAccounts.length+" accounts"));
+  var acctListBody=acctListCard.querySelector(".cb");
+  allAccounts.forEach(function(a){
+    var isCustom=(S.customAccounts||[]).some(function(c){return c.toLowerCase()===a.toLowerCase();});
+    var row=dv({display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 0",borderBottom:"1px solid var(--s2)",cursor:"pointer"},
+      dv({display:"flex",alignItems:"center",gap:"8px"},el("span",{style:{fontSize:"13px",fontWeight:"600"}},a),isCustom?el("span",{cls:"badge bgold",style:{fontSize:"9px"}},"Custom"):null),
+      el("span",{style:{fontSize:"11px",color:"var(--g)",fontWeight:"700"}},"New Entry \u2192")
+    );
+    row.addEventListener("click",function(){
+      var acctName=a;
+      var FIDNE="addCB";
+      if(!S.fd[FIDNE])S.fd[FIDNE]={mode:"expense",date:today(),account:"",sub:"",area:"",qty:"",rate:"",vendor:"",part:"",partUr:"",debit:"",credit:"",giveTo:"",_fix:null};
+      S.fd[FIDNE].account=acctName;
+      set({view:"addCB"});
+    });
+    acctListBody.appendChild(row);
+  });
+  w.appendChild(acctListCard);
   return w;
 }
 
@@ -4068,7 +4244,7 @@ function rPage(view){
     bank:rBank,cc:rCC,vouch:rVouchers,petty:rPetty,
     constr:rConstr,mat:rMat,contr:rContr,vnd:rVendors,misc:rMisc,
     doors:rDoors,doorInv:rDoorInv,
-    hr:rHR,bills:rBills,crm:rLeads,leadDocs:rLeadDocs,crmContacts:rCRM,drawings:rDrawingsQueue,complaints:rComplaints,quotations:rQuotations,
+    hr:rHR,bills:rBills,crm:rLeads,leadDocs:rLeadDocs,crmContacts:rCRM,drawings:rDrawingsQueue,complaints:rComplaints,quotations:rQuotations,accountsList:rAccountsList,
     reports:rReports,ai:rAI,audit:rAudit,security:rSecurity
   };
   return (vm[view]||rDash)();
