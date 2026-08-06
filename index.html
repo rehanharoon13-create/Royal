@@ -8,11 +8,16 @@
 <meta name="apple-mobile-web-app-title" content="Royal Inc."/>
 <meta name="theme-color" content="#B8973A"/>
 <title>Royal Inc.</title>
-<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Inter:wght@300;400;500;600;700&family=Sora:wght@400;500;600;700&display=swap" rel="stylesheet"/>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 html{overscroll-behavior:none;overscroll-behavior-y:none;height:100%}
 body{font-family:"Inter",sans-serif;background:#F2EDE4;color:#1C1A16;font-size:14px;-webkit-font-smoothing:antialiased;overscroll-behavior:none;overscroll-behavior-y:none;min-height:100%}
+/* Numerals-only font swap (reference: rounded/geometric digit style). .rn spans are
+   injected app-wide around digit runs by wrapNumerals() in combined.js — this rule
+   only ever touches those spans, never surrounding text, so headings/labels keep
+   their existing Cormorant Garamond / Inter typography untouched. */
+.rn{font-family:"Sora",inherit;font-variant-numeric:tabular-nums;letter-spacing:.01em}
 :root{
   --bg:#F2EDE4;--s1:#FFFFFF;--s2:#FAF7F2;--s3:#F0EAE0;
   --bd:#D8D0C4;--bd2:#C8BFB0;
@@ -751,6 +756,20 @@ function fmt(n){return Rs(n);}
 
 function gU(id){return U.find(function(u){return u.id===id;})||{name:String(id||""),init:"?",clr:"#9A9088",role:"",lang:"en"};}
 
+/* Bank transactions and vendor entries don't carry their own Account/Sub Account —
+   only Particulars — because that dimension already lives on the cash-book (cb) entry
+   that gets created alongside them (e.g. issuing a cheque also posts a linked cb row
+   with the account it was drawn against). This looks that linked cb row up by linkId
+   so Bank/Vendor statements can show the same Account/Sub Account columns the site
+   ledger does, without duplicating the field or requiring a schema migration. Returns
+   blanks when there's no linked cb row (e.g. a plain deposit isn't drawn against any
+   site/expense account, so it genuinely has none to show). */
+function linkedAcct(linkId){
+  if(!linkId)return{account:"",subAccount:""};
+  var row=S.cb.find(function(c){return c.linkId===linkId;});
+  return row?{account:row.account||"",subAccount:row.subAccount||""}:{account:"",subAccount:""};
+}
+
 function nCBNo(){var max=S.cb.reduce(function(a,e){return Math.max(a,parseInt((e.cbNo||"CB-0").replace("CB-",""))||0);},0);return "CB-"+String(max+1).padStart(3,"0");}
 function nSNo(site){var cnt=S.cb.filter(function(e){return e.account===site;}).length;return site+"-"+String(cnt+1).padStart(3,"0");}
 function nCHQNo(){var max=S.bank.filter(function(e){return e.chqNo;}).reduce(function(a,e){return Math.max(a,parseInt(e.chqNo)||0);},0);return String(max+1).padStart(4,"0");}
@@ -1413,7 +1432,44 @@ function renderNotif(){
   var h=dv({display:"flex",justifyContent:"space-between",alignItems:"center",padding:"12px 15px",borderBottom:"1px solid var(--bd)"},el("span",{style:{fontWeight:"700",fontSize:"13px",fontFamily:"'Cormorant Garamond',serif"}},"Notifications"),el("span",{style:{fontSize:"10px",color:"var(--ink4)",letterSpacing:".08em"}},notes.length+" alerts"));
   panel.appendChild(h);
   notes.forEach(function(n){var item=el("div",{cls:"nitem"});item.appendChild(dv({display:"flex",gap:"10px",alignItems:"flex-start"},el("span",{style:{fontSize:"15px",flexShrink:"0"}},n.icon),el("div",{style:{fontSize:"12px",color:"var(--ink2)"}},n.text)));panel.appendChild(item);});
+  try{wrapNumerals(panel);}catch(e){}
   setTimeout(function(){document.addEventListener("click",function h2(e){if(!panel.contains(e.target)){S.notifOpen=false;renderNotif();document.removeEventListener("click",h2);}},true);},50);
+}
+
+/* Wraps every run of digits (allowing embedded , . : so "1,325.50" and "10:30" stay
+   one span) in a <span class="rn"> so the numerals-only font (see .rn in v7_head.html)
+   applies without touching surrounding text. Walks real text nodes only, so it never
+   reaches into <input>/<textarea> values (those aren't text nodes) — typing in a form
+   field is unaffected. Skips script/style and anything already wrapped, so re-running
+   it on every render doesn't double-wrap or fight itself. */
+function wrapNumerals(root){
+  if(!root)return;
+  var SKIP={SCRIPT:1,STYLE:1,TEXTAREA:1,INPUT:1};
+  var walker=document.createTreeWalker(root,NodeFilter.SHOW_TEXT,{acceptNode:function(node){
+    var p=node.parentNode;
+    if(!p||SKIP[p.nodeName])return NodeFilter.FILTER_REJECT;
+    if(p.classList&&p.classList.contains("rn"))return NodeFilter.FILTER_REJECT;
+    if(!/\d/.test(node.nodeValue))return NodeFilter.FILTER_REJECT;
+    return NodeFilter.FILTER_ACCEPT;
+  }});
+  var nodes=[];var n;
+  while(n=walker.nextNode())nodes.push(n);
+  nodes.forEach(function(node){
+    var text=node.nodeValue;
+    var re=/\d+(?:[.,:]\d+)*/g;
+    var last=0,m,frag=null;
+    while((m=re.exec(text))){
+      if(!frag)frag=document.createDocumentFragment();
+      if(m.index>last)frag.appendChild(document.createTextNode(text.slice(last,m.index)));
+      var span=document.createElement("span");
+      span.className="rn";span.textContent=m[0];
+      frag.appendChild(span);
+      last=m.index+m[0].length;
+    }
+    if(!frag)return;
+    if(last<text.length)frag.appendChild(document.createTextNode(text.slice(last)));
+    node.parentNode.replaceChild(frag,node);
+  });
 }
 
 /* RENDER GUARD */
@@ -1439,6 +1495,7 @@ function render(){
     }
     if(content)page.appendChild(content);
     renderShell();
+    try{wrapNumerals(document.getElementById("app"));wrapNumerals(document.getElementById("bnav"));}catch(e){}
   }finally{
     _rendering=false;
   }
@@ -1633,7 +1690,12 @@ function rLogin(){
     document.getElementById("bnav").style.display="block";
     S.view="dash";
     renderShell();render();
-    loadFromSupabase(false).then(function(){render();startAutoSync();});
+    /* silent=true: the dashboard is already visible at this point (lines above), so
+       pulling cloud data with the blocking full-screen "Syncing from cloud..." loader
+       here just covers up the screen the person is already looking at — this was the
+       actual cause of login feeling slow, not the network call itself. Same silent
+       background-refresh pattern startAutoSync() already uses every 25s. */
+    loadFromSupabase(true).then(function(){render();startAutoSync();});
   }
   passInp.addEventListener("keydown",function(e){if(e.key==="Enter")go();});
   card.appendChild(gb);
@@ -2139,6 +2201,19 @@ function rAddCB(){
   var lbl=isDir?"Post to Ledger":(isUr?"ڈینش کو بھیجیں":"Submit to Danish");
   w.appendChild(btn(lbl,async function(){
     if(!fd.account){toast(isUr?"اکاؤنٹ لکھیں":"Enter account",true);return;}
+    /* Chart of Accounts auto-register: if a director types an account name that isn't
+       already in the chart (effectiveAccounts — hardcoded defaults + whatever's been
+       added before), register it now via the same addCustomAccount() path Manage
+       Accounts uses, instead of requiring a separate manual step there first. Staff
+       entries don't auto-register — only a director's typed account grows the chart,
+       same authority level as Manage Accounts already requires. */
+    if(isDir&&fd.account.trim()&&!effectiveAccounts().some(function(a){return a.toLowerCase()===fd.account.trim().toLowerCase();})){
+      addCustomAccount(fd.account.trim());
+      toast("\""+fd.account.trim()+"\" added to Chart of Accounts",false,2500);
+    }
+    if(isDir&&fd.sub&&fd.sub.trim()&&!effectiveSubs().some(function(s){return s.toLowerCase()===fd.sub.trim().toLowerCase();})){
+      addCustomSub(fd.sub.trim());
+    }
     var partEn=fd.part;var partUr=fd.partUr;
     if(isUr&&partUr&&!partEn){toast(isUr?"ترجمہ ہو رہا ہے...":"Translating...",false,2000);partEn=await translateToEnglish(partUr);}
     if(!partEn&&!partUr){toast(isUr?"تفصیل لکھیں":"Enter description",true);return;}
@@ -2432,13 +2507,13 @@ function rBank(){
          reads the same as what's actually visible, not a different sort order. */
       var exportRunBal=0;
       var exportChrono=bankRows.slice().reverse();
-      var exportRows=exportChrono.map(function(r){exportRunBal+=(r.typ==="in"?parseFloat(r.amount||0):-parseFloat(r.amount||0));return{Date:r.date||"",Type:r.typ==="in"?"In":"Out",Details:r.particulars||"",Debit:r.typ!=="in"?r.amount:"",Credit:r.typ==="in"?r.amount:"",Balance:exportRunBal};}).reverse();
+      var exportRows=exportChrono.map(function(r){exportRunBal+=(r.typ==="in"?parseFloat(r.amount||0):-parseFloat(r.amount||0));var la=linkedAcct(r.linkId);return{Date:r.date||"",Account:la.account,"Sub Account":la.subAccount,Particulars:r.particulars||"",Debit:r.typ!=="in"?r.amount:"",Credit:r.typ==="in"?r.amount:"",Balance:exportRunBal};}).reverse();
       var exportBtnRow=dv({display:"flex",gap:"8px",flexWrap:"wrap",marginTop:"10px"});
       exportBtnRow.appendChild(xlsxBtn(exportRows,bkInfo.name.replace(/\s+/g,"_")+"_statement.xlsx","Download Excel",bkInfo.name));
       exportBtnRow.appendChild(expBtn(exportRows,bkInfo.name.replace(/\s+/g,"_")+"_statement.csv","Download CSV"));
       w.appendChild(exportBtnRow);
       w.appendChild(el("div",{cls:"kgrid",style:{gridTemplateColumns:"repeat(3,1fr)",marginBottom:"14px",marginTop:"10px"}},KPI("Total In",bTotCr,"var(--pos)"),KPI("Total Out",bTotDr,"var(--neg)"),KPI("Balance",Math.abs(bTotCr-bTotDr),bTotCr>=bTotDr?"var(--pos)":"var(--neg)")));
-      var stmtThead=el("thead",{},el("tr",{},el("th",{},"Date"),el("th",{},"Type"),el("th",{},"Details"),amtTh("Debit"),amtTh("Credit"),amtTh("Balance")));
+      var stmtThead=el("thead",{},el("tr",{},el("th",{},"Date"),el("th",{},"Type"),el("th",{},"Account"),el("th",{},"Sub Account"),el("th",{},"Particulars"),amtTh("Debit"),amtTh("Credit"),amtTh("Balance")));
       var stmtTbody=el("tbody",{});
       var runBal=0;
       /* Build running balance oldest-first, then render newest-first to match how the
@@ -2447,10 +2522,12 @@ function rBank(){
       var balances=[];
       chronological.forEach(function(r){runBal+=(r.typ==="in"?parseFloat(r.amount||0):-parseFloat(r.amount||0));balances.push(runBal);});
       for(var bi=chronological.length-1;bi>=0;bi--){
-        var r=chronological[bi];var rb=balances[bi];
+        var r=chronological[bi];var rb=balances[bi];var la=linkedAcct(r.linkId);
         var tr=el("tr",{});
         tr.appendChild(el("td",{style:{fontSize:"12px",whiteSpace:"nowrap"}},r.date||""));
         tr.appendChild(el("td",{},el("span",{cls:"badge "+(r.typ==="in"?"bg":"br")},r.typ==="in"?"In":"Out")));
+        tr.appendChild(el("td",{style:{fontSize:"12px",fontWeight:"500"}},la.account||"\u2014"));
+        tr.appendChild(el("td",{style:{fontSize:"12px",color:"var(--ink3)"}},la.subAccount||""));
         var detTd=el("td",{style:{fontSize:"12px"}},r.particulars||"");
         tr.appendChild(detTd);
         tr.appendChild(el("td",{style:{textAlign:"right",color:"var(--neg)",fontWeight:"600"}},r.typ!=="in"?num(r.amount):""));
@@ -2664,13 +2741,13 @@ function rCC(){
          shown on screen, not a separately-computed number. */
       var cExportRunBal=0;
       var cExportChrono=cardRows.slice().reverse();
-      var cExportRows=cExportChrono.map(function(r){cExportRunBal+=(r.typ!=="pay"?parseFloat(r.amount||0):-parseFloat(r.amount||0));return{Date:r.date||"",Type:r.typ==="pay"?"Payment":"Expense",Merchant:r.merchant||"",Details:r.particulars||"",Debit:r.typ!=="pay"?r.amount:"",Credit:r.typ==="pay"?r.amount:"",Balance:cExportRunBal};}).reverse();
+      var cExportRows=cExportChrono.map(function(r){cExportRunBal+=(r.typ!=="pay"?parseFloat(r.amount||0):-parseFloat(r.amount||0));return{Date:r.date||"",Account:r.account||"","Sub Account":r.subAccount||"",Merchant:r.merchant||"",Particulars:r.particulars||"",Debit:r.typ!=="pay"?r.amount:"",Credit:r.typ==="pay"?r.amount:"",Balance:cExportRunBal};}).reverse();
       var cExportBtnRow=dv({display:"flex",gap:"8px",flexWrap:"wrap",marginTop:"10px"});
       cExportBtnRow.appendChild(xlsxBtn(cExportRows,cardInfo.name.replace(/\s+/g,"_")+"_statement.xlsx","Download Excel",cardInfo.name));
       cExportBtnRow.appendChild(expBtn(cExportRows,cardInfo.name.replace(/\s+/g,"_")+"_statement.csv","Download CSV"));
       w.appendChild(cExportBtnRow);
       w.appendChild(el("div",{cls:"kgrid",style:{gridTemplateColumns:"repeat(3,1fr)",marginBottom:"14px",marginTop:"10px"}},KPI("Total Spent",cTotDr,"var(--neg)"),KPI("Total Paid",cTotCr,"var(--pos)"),KPI("Outstanding",Math.abs(cTotDr-cTotCr),"var(--neg)")));
-      var cStmtThead=el("thead",{},el("tr",{},el("th",{},"Date"),el("th",{},"Type"),el("th",{},"Details"),amtTh("Debit"),amtTh("Credit"),amtTh("Balance")));
+      var cStmtThead=el("thead",{},el("tr",{},el("th",{},"Date"),el("th",{},"Type"),el("th",{},"Account"),el("th",{},"Sub Account"),el("th",{},"Particulars"),amtTh("Debit"),amtTh("Credit"),amtTh("Balance")));
       var cStmtTbody=el("tbody",{});
       var cRunBal=0;
       var cChrono=cardRows.slice().reverse();
@@ -2681,6 +2758,8 @@ function rCC(){
         var tr=el("tr",{});
         tr.appendChild(el("td",{style:{fontSize:"12px",whiteSpace:"nowrap"}},r.date||""));
         tr.appendChild(el("td",{},el("span",{cls:"badge "+(r.typ==="pay"?"bg":"br")},r.typ==="pay"?"Payment":"Expense")));
+        tr.appendChild(el("td",{style:{fontSize:"12px",fontWeight:"500"}},r.account||"\u2014"));
+        tr.appendChild(el("td",{style:{fontSize:"12px",color:"var(--ink3)"}},r.subAccount||""));
         tr.appendChild(el("td",{style:{fontSize:"12px"}},(r.merchant?r.merchant+" — ":"")+(r.particulars||"")));
         tr.appendChild(el("td",{style:{textAlign:"right",color:"var(--neg)",fontWeight:"600"}},r.typ!=="pay"?num(r.amount):""));
         tr.appendChild(el("td",{style:{textAlign:"right",color:"var(--pos)",fontWeight:"600"}},r.typ==="pay"?num(r.amount):""));
@@ -3183,7 +3262,7 @@ function rVendors(){
     if(vEntries.length){
       var vExportRunBal=0;
       var vExportChrono=vEntries.slice().reverse();
-      var vExportRows=vExportChrono.map(function(e){vExportRunBal+=(e.type==="bill"?parseFloat(e.amount||0):-parseFloat(e.amount||0));return{Date:e.date||"",Type:e.type==="bill"?"Bill":"Payment",Details:e.description||"",Amount:e.amount,Balance:vExportRunBal};}).reverse();
+      var vExportRows=vExportChrono.map(function(e){vExportRunBal+=(e.type==="bill"?parseFloat(e.amount||0):-parseFloat(e.amount||0));return{Date:e.date||"",Type:e.type==="bill"?"Bill":"Payment",Account:v.name,"Sub Account":"",Particulars:e.description||"",Debit:e.type!=="bill"?e.amount:"",Credit:e.type==="bill"?e.amount:"",Balance:vExportRunBal};}).reverse();
       var vExportBtnRow=dv({display:"flex",gap:"8px",flexWrap:"wrap"});
       vExportBtnRow.appendChild(xlsxBtn(vExportRows,v.name.replace(/\s+/g,"_")+"_statement.xlsx","Download Excel",v.name));
       vExportBtnRow.appendChild(expBtn(vExportRows,v.name.replace(/\s+/g,"_")+"_statement.csv","Download CSV"));
@@ -3211,7 +3290,12 @@ function rVendors(){
       w.appendChild(el("div",{style:{textAlign:"center",padding:"20px",color:"var(--ink4)"}},"No transactions yet"));
       return w;
     }
-    var stThead=el("thead",{},el("tr",{},el("th",{},"Date"),el("th",{},"Type"),el("th",{},"Details"),amtTh("Amount"),amtTh("Balance")));
+    /* Account here is always this vendor (v.name) — a vendor statement is already
+       scoped to one vendor, the same way a bank statement is scoped to one bank
+       account, so there's no separate per-row account to look up. Sub Account is left
+       blank: vendor entries don't currently carry a sub-category, and adding one would
+       need a new Supabase column (a schema migration), not just a display change. */
+    var stThead=el("thead",{},el("tr",{},el("th",{},"Date"),el("th",{},"Type"),el("th",{},"Account"),el("th",{},"Sub Account"),el("th",{},"Particulars"),amtTh("Debit"),amtTh("Credit"),amtTh("Balance")));
     var stTbody=el("tbody",{});
     var runningVBal=0;
     var chronoV=vEntries.slice().reverse();
@@ -3222,8 +3306,11 @@ function rVendors(){
       var tr=el("tr",{});
       tr.appendChild(el("td",{style:{fontSize:"12px",whiteSpace:"nowrap"}},e.date||""));
       tr.appendChild(el("td",{},el("span",{cls:"badge "+(e.type==="bill"?"br":"bg")},e.type==="bill"?"Bill":"Payment")));
+      tr.appendChild(el("td",{style:{fontSize:"12px",fontWeight:"500"}},v.name));
+      tr.appendChild(el("td",{style:{fontSize:"12px",color:"var(--ink3)"}},""));
       tr.appendChild(el("td",{style:{fontSize:"12px"}},e.description||""));
-      tr.appendChild(el("td",{style:{textAlign:"right",fontWeight:"600",color:e.type==="bill"?"var(--neg)":"var(--pos)"}},(e.type==="bill"?"+":"-")+num(e.amount)));
+      tr.appendChild(el("td",{style:{textAlign:"right",color:"var(--neg)",fontWeight:"600"}},e.type!=="bill"?num(e.amount):""));
+      tr.appendChild(el("td",{style:{textAlign:"right",color:"var(--pos)",fontWeight:"600"}},e.type==="bill"?num(e.amount):""));
       tr.appendChild(el("td",{style:{textAlign:"right",fontFamily:"'Cormorant Garamond',serif",fontWeight:"600",color:eb>0?"var(--neg)":"var(--pos)"}},num(Math.abs(eb))));
       stTbody.appendChild(tr);
     }
