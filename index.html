@@ -1100,8 +1100,16 @@ function PhotoZone(fid,label,onPhotoSet){
      force camera-only with no gallery fallback on some devices, or fail silently on
      others, notably certain iOS Safari versions). Offering an explicit choice is
      more reliable than depending on that ambiguous, device-specific default. */
-  var fiCam=el("input",{id:"pzone_cam_"+fid,type:"file",accept:"image/*",capture:"environment",style:{display:"none",position:"absolute",opacity:"0",width:"1px",height:"1px"}});
-  var fiGal=el("input",{id:"pzone_gal_"+fid,type:"file",accept:"image/*",style:{display:"none",position:"absolute",opacity:"0",width:"1px",height:"1px"}});
+  /* Genuinely off-screen and invisible, but NOT display:none — real mobile browsers
+     (notably iOS Safari) silently refuse to open the native camera/file picker on
+     .click() for an input that's display:none, since it isn't actually in the render
+     tree. Position it off-canvas instead: still invisible to the person, but present
+     enough for the browser to treat the programmatic click as legitimate. This was
+     the real cause of "nothing happens at all" when tapping Take Photo — the previous
+     fix (separate cam/gallery inputs, cleaned up per re-render) was correct, it just
+     kept this specific styling bug alongside it. */
+  var fiCam=el("input",{id:"pzone_cam_"+fid,type:"file",accept:"image/*",capture:"environment",style:{position:"fixed",top:"-9999px",left:"-9999px",opacity:"0",width:"1px",height:"1px",pointerEvents:"none"}});
+  var fiGal=el("input",{id:"pzone_gal_"+fid,type:"file",accept:"image/*",style:{position:"fixed",top:"-9999px",left:"-9999px",opacity:"0",width:"1px",height:"1px",pointerEvents:"none"}});
   document.body.appendChild(fiCam);
   document.body.appendChild(fiGal);
   function handlePhotoFile(ev){var f=ev.target.files&&ev.target.files[0];if(!f)return;var reader=new FileReader();reader.onload=function(re){var b64=re.target.result.split(",")[1];S.photo[fid]={b64:b64,mime:f.type||"image/jpeg",url:URL.createObjectURL(f)};render();if(onPhotoSet)setTimeout(onPhotoSet,50);};reader.readAsDataURL(f);}
@@ -1132,7 +1140,7 @@ function VideoZone(fid,label){
   var zv=el("div",{cls:"pzone"});
   var prevVidInput=document.getElementById("vzone_input_"+fid);
   if(prevVidInput&&prevVidInput.remove)prevVidInput.remove();
-  var fiv=el("input",{id:"vzone_input_"+fid,type:"file",accept:"video/*",style:{display:"none",position:"absolute",opacity:"0",width:"1px",height:"1px"}});
+  var fiv=el("input",{id:"vzone_input_"+fid,type:"file",accept:"video/*",style:{position:"fixed",top:"-9999px",left:"-9999px",opacity:"0",width:"1px",height:"1px",pointerEvents:"none"}});
   document.body.appendChild(fiv);
   fiv.addEventListener("change",function(ev){
     var f=ev.target.files&&ev.target.files[0];if(!f)return;
@@ -1161,7 +1169,7 @@ function PDFZone(fid,label){
   var zp=el("div",{cls:"pzone"});
   var prevPdfInput=document.getElementById("pdfzone_input_"+fid);
   if(prevPdfInput&&prevPdfInput.remove)prevPdfInput.remove();
-  var fip=el("input",{id:"pdfzone_input_"+fid,type:"file",accept:"application/pdf",style:{display:"none",position:"absolute",opacity:"0",width:"1px",height:"1px"}});
+  var fip=el("input",{id:"pdfzone_input_"+fid,type:"file",accept:"application/pdf",style:{position:"fixed",top:"-9999px",left:"-9999px",opacity:"0",width:"1px",height:"1px",pointerEvents:"none"}});
   document.body.appendChild(fip);
   fip.addEventListener("change",function(ev){
     var f=ev.target.files&&ev.target.files[0];if(!f)return;
