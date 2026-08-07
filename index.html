@@ -13,7 +13,15 @@
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 html{overscroll-behavior:none;overscroll-behavior-y:none;height:100%}
-body{font-family:"Inter",sans-serif;background:#F2EDE4;color:#1C1A16;font-size:14px;-webkit-font-smoothing:antialiased;overscroll-behavior:none;overscroll-behavior-y:none;min-height:100%}
+/* App-wide luxury texture (reference: dark wave/dot pattern, translated to the light
+   parchment theme as requested — gold dots at low opacity on a band a touch darker
+   than the card surfaces, so cards/sidebar still read as clearly "lifted" above it,
+   same visual hierarchy the app already uses between --bg and --s1/--s2/--s3, just
+   textured instead of flat). Two background layers: a soft directional gold glow
+   (top-right, echoing the reference's light source) plus a small tileable dot-grid
+   SVG for the woven texture itself. Both are intentionally subtle (low opacity) so
+   they read as texture, not decoration competing with actual content. */
+body{font-family:"Inter",sans-serif;background-color:#EDE6D8;background-image:radial-gradient(ellipse 65% 55% at 88% -5%,rgba(184,151,58,.12),transparent 60%),url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='48' height='48'%3E%3Cg fill='%23B8973A' fill-opacity='0.28'%3E%3Ccircle cx='4' cy='4' r='1'/%3E%3Ccircle cx='20' cy='4' r='1'/%3E%3Ccircle cx='36' cy='4' r='1'/%3E%3Ccircle cx='12' cy='16' r='1'/%3E%3Ccircle cx='28' cy='16' r='1'/%3E%3Ccircle cx='44' cy='16' r='1'/%3E%3Ccircle cx='4' cy='28' r='1'/%3E%3Ccircle cx='20' cy='28' r='1'/%3E%3Ccircle cx='36' cy='28' r='1'/%3E%3Ccircle cx='12' cy='40' r='1'/%3E%3Ccircle cx='28' cy='40' r='1'/%3E%3Ccircle cx='44' cy='40' r='1'/%3E%3C/g%3E%3C/svg%3E");background-repeat:no-repeat,repeat;background-size:cover,48px 48px;background-attachment:fixed,fixed;color:#1C1A16;font-size:14px;-webkit-font-smoothing:antialiased;overscroll-behavior:none;overscroll-behavior-y:none;min-height:100%}
 /* Numerals-only font swap (reference: rounded/geometric digit style). .rn spans are
    injected app-wide around digit runs by wrapNumerals() in combined.js — this rule
    only ever touches those spans, never surrounding text, so headings/labels keep
@@ -1478,7 +1486,7 @@ function renderNotif(){
   var h=dv({display:"flex",justifyContent:"space-between",alignItems:"center",padding:"12px 15px",borderBottom:"1px solid var(--bd)"},el("span",{style:{fontWeight:"700",fontSize:"13px",fontFamily:"'Cormorant Garamond',serif"}},"Notifications"),el("span",{style:{fontSize:"10px",color:"var(--ink4)",letterSpacing:".08em"}},notes.length+" alerts"));
   panel.appendChild(h);
   notes.forEach(function(n){var item=el("div",{cls:"nitem"});item.appendChild(dv({display:"flex",gap:"10px",alignItems:"flex-start"},el("span",{style:{fontSize:"15px",flexShrink:"0"}},n.icon),el("div",{style:{fontSize:"12px",color:"var(--ink2)"}},n.text)));panel.appendChild(item);});
-  try{wrapNumerals(panel);}catch(e){}
+  try{wrapNumerals(panel);}catch(e){console.warn("wrapNumerals failed",e);}
   setTimeout(function(){document.addEventListener("click",function h2(e){if(!panel.contains(e.target)){S.notifOpen=false;renderNotif();document.removeEventListener("click",h2);}},true);},50);
 }
 
@@ -1488,34 +1496,53 @@ function renderNotif(){
    reaches into <input>/<textarea> values (those aren't text nodes) — typing in a form
    field is unaffected. Skips script/style and anything already wrapped, so re-running
    it on every render doesn't double-wrap or fight itself. */
+/* Rewritten to use a plain recursive childNodes walk instead of
+   document.createTreeWalker + NodeFilter. TreeWalker is broadly supported, but this
+   function was wrapped in a silent try/catch at every call site — if TreeWalker (or
+   the object-literal filter form of it) ever threw on some real device/WebView, the
+   whole function would silently no-op on every single render, with zero visible sign
+   anything was wrong. A plain childNodes walk has no such platform-specific surface;
+   every browser since the beginning of the web supports .childNodes, .nodeType,
+   .nodeValue, and .replaceChild. */
 function wrapNumerals(root){
   if(!root)return;
   var SKIP={SCRIPT:1,STYLE:1,TEXTAREA:1,INPUT:1};
-  var walker=document.createTreeWalker(root,NodeFilter.SHOW_TEXT,{acceptNode:function(node){
-    var p=node.parentNode;
-    if(!p||SKIP[p.nodeName])return NodeFilter.FILTER_REJECT;
-    if(p.classList&&p.classList.contains("rn"))return NodeFilter.FILTER_REJECT;
-    if(!/\d/.test(node.nodeValue))return NodeFilter.FILTER_REJECT;
-    return NodeFilter.FILTER_ACCEPT;
-  }});
-  var nodes=[];var n;
-  while(n=walker.nextNode())nodes.push(n);
-  nodes.forEach(function(node){
-    var text=node.nodeValue;
-    var re=/\d+(?:[.,:]\d+)*/g;
-    var last=0,m,frag=null;
-    while((m=re.exec(text))){
-      if(!frag)frag=document.createDocumentFragment();
-      if(m.index>last)frag.appendChild(document.createTextNode(text.slice(last,m.index)));
-      var span=document.createElement("span");
-      span.className="rn";span.textContent=m[0];
-      frag.appendChild(span);
-      last=m.index+m[0].length;
+  var re=/\d+(?:[.,:]\d+)*/g;
+  function walk(node){
+    var kids=node.childNodes;
+    if(!kids)return;
+    // Copy to a plain array first — we're about to mutate the live childNodes list
+    // (replaceChild) while iterating, which skips/duplicates entries on a live list.
+    var arr=[];for(var i=0;i<kids.length;i++)arr.push(kids[i]);
+    for(var j=0;j<arr.length;j++){
+      var child=arr[j];
+      if(child.nodeType===3){ // Text node
+        var p=child.parentNode;
+        if(!p||SKIP[p.nodeName]||(p.className&&(" "+p.className+" ").indexOf(" rn ")!==-1))continue;
+        var text=child.nodeValue;
+        if(!/\d/.test(text))continue;
+        var last=0,m,frag=null;
+        re.lastIndex=0;
+        while((m=re.exec(text))){
+          if(!frag)frag=document.createDocumentFragment();
+          if(m.index>last)frag.appendChild(document.createTextNode(text.slice(last,m.index)));
+          var span=document.createElement("span");
+          span.className="rn";span.textContent=m[0];
+          frag.appendChild(span);
+          last=m.index+m[0].length;
+        }
+        if(frag){
+          if(last<text.length)frag.appendChild(document.createTextNode(text.slice(last)));
+          p.replaceChild(frag,child);
+        }
+      }else if(child.nodeType===1){ // Element node
+        if(!SKIP[child.nodeName]&&!(child.className&&(" "+child.className+" ").indexOf(" rn ")!==-1)){
+          walk(child);
+        }
+      }
     }
-    if(!frag)return;
-    if(last<text.length)frag.appendChild(document.createTextNode(text.slice(last)));
-    node.parentNode.replaceChild(frag,node);
-  });
+  }
+  walk(root);
 }
 
 /* RENDER GUARD */
@@ -1541,7 +1568,7 @@ function render(){
     }
     if(content)page.appendChild(content);
     renderShell();
-    try{wrapNumerals(document.getElementById("app"));wrapNumerals(document.getElementById("bnav"));}catch(e){}
+    try{wrapNumerals(document.getElementById("app"));wrapNumerals(document.getElementById("bnav"));}catch(e){console.warn("wrapNumerals failed",e);}
   }finally{
     _rendering=false;
   }
