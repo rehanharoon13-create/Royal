@@ -1568,7 +1568,22 @@ function render(){
     }
     if(content)page.appendChild(content);
     renderShell();
-    try{wrapNumerals(document.getElementById("app"));wrapNumerals(document.getElementById("bnav"));}catch(e){console.warn("wrapNumerals failed",e);}
+    try{
+      wrapNumerals(document.getElementById("app"));
+      wrapNumerals(document.getElementById("bnav"));
+      /* Temporary one-time diagnostic: numerals styling has failed to visibly apply
+         across several different fonts/rewrites, so instead of guessing again, surface
+         hard proof of whether this function is actually running and finding matches on
+         the real device. Remove this whole if-block once confirmed working. */
+      if(!window._rnDebugShown){
+        window._rnDebugShown=true;
+        var rnCount=document.querySelectorAll?document.querySelectorAll(".rn").length:-1;
+        setTimeout(function(){toast("rn debug: "+rnCount+" numeral spans found",false,6000);},400);
+      }
+    }catch(e){
+      console.warn("wrapNumerals failed",e);
+      if(!window._rnDebugShown){window._rnDebugShown=true;setTimeout(function(){toast("rn debug: wrapNumerals THREW — "+(e&&e.message||e),true,8000);},400);}
+    }
   }finally{
     _rendering=false;
   }
