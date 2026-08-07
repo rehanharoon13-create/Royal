@@ -17,7 +17,7 @@ body{font-family:"Inter",sans-serif;background:#F2EDE4;color:#1C1A16;font-size:1
    injected app-wide around digit runs by wrapNumerals() in combined.js — this rule
    only ever touches those spans, never surrounding text, so headings/labels keep
    their existing Cormorant Garamond / Inter typography untouched. */
-.rn{font-family:"Sora",inherit;font-variant-numeric:tabular-nums;letter-spacing:.01em}
+.rn{font-family:"Sora",inherit;font-variant-numeric:tabular-nums;letter-spacing:.01em;color:var(--g)}
 :root{
   --bg:#F2EDE4;--s1:#FFFFFF;--s2:#FAF7F2;--s3:#F0EAE0;
   --bd:#D8D0C4;--bd2:#C8BFB0;
@@ -1077,8 +1077,25 @@ function LangToggle(){
 
 function printStatement(title,html){
   var w=window.open("","_blank");if(!w)return;
-  var parts2=["<!DOCTYPE html><html><head><meta charset=\"UTF-8\"><title>",title,"<\/title><style>body{font-family:Georgia,serif;font-size:12px;padding:20px;color:#1C1A16}h1{font-size:18px;margin-bottom:4px}table{width:100%;border-collapse:collapse;margin-top:10px}th{padding:8px 10px;text-align:left;font-weight:700;font-size:10px;text-transform:uppercase;background:#F0EAE0;border-bottom:2px solid #D8D0C4}td{padding:7px 10px;border-bottom:1px solid #F0EAE0;font-size:12px}.pos{color:#5E8C6A}.neg{color:#B85C4A}tfoot td{font-weight:700;background:#F0EAE0;border-top:2px solid #D8D0C4}@media print{button{display:none}}<\/style><\/head><body>","<h1>Royal Inc.<\/h1><p style=\"font-size:11px;color:#6B6358;margin-bottom:14px\">",title," \u00b7 Printed ",new Date().toLocaleDateString("en-PK"),"<\/p>",html,"<br><button onclick=\"window.print()\" style=\"padding:8px 18px;background:#B8973A;color:#fff;border:none;border-radius:5px;cursor:pointer;font-weight:700\">Print<\/button>","<\/body><\/html>"];
+  var parts2=["<!DOCTYPE html><html><head><meta charset=\"UTF-8\"><title>",title,"<\/title><style>body{font-family:Georgia,serif;font-size:12px;padding:20px;color:#1C1A16}h1{font-size:18px;margin-bottom:4px}table{width:100%;border-collapse:collapse;margin-top:10px}th{padding:8px 10px;text-align:left;font-weight:700;font-size:10px;text-transform:uppercase;background:#F0EAE0;border-bottom:2px solid #D8D0C4}td{padding:7px 10px;border-bottom:1px solid #F0EAE0;font-size:12px}.pos{color:#5E8C6A}.neg{color:#B85C4A}tfoot td{font-weight:700;background:#F0EAE0;border-top:2px solid #D8D0C4}@media print{button{display:none}}<\/style><\/head><body>","<h1>Royal Inc.<\/h1><p style=\"font-size:11px;color:#6B6358;margin-bottom:14px\">",title," \u00b7 Printed ",new Date().toLocaleDateString("en-PK"),"<\/p>",html,"<br><button onclick=\"window.print()\" style=\"padding:8px 18px;background:#B8973A;color:#fff;border:none;border-radius:5px;cursor:pointer;font-weight:700\">Print / Save as PDF<\/button>","<\/body><\/html>"];
   w.document.write(parts2.join(""));w.document.close();
+}
+
+/* Generic "PDF" export button for any statement (Bank/CC/Vendor) that already has its
+   rows in the same {ColumnName: value} shape used for CSV/Excel export — reuses
+   printStatement() (the browser's own print dialog, "Save as PDF") instead of pulling
+   in a PDF-generation library, matching the one PDF export the app already had (the
+   General Ledger's Print button). numericCols right-aligns the columns that are
+   amounts, same convention as the ledger's own Print button. */
+function pdfBtn(title,rows,numericCols){
+  return btn("PDF",function(){
+    if(!rows||!rows.length){toast("No data",true);return;}
+    var cols=Object.keys(rows[0]);
+    var isNum=function(c){return (numericCols||["Debit","Credit","Balance"]).indexOf(c)!==-1;};
+    var headHtml=cols.map(function(c){return "<th"+(isNum(c)?" style='text-align:right'":"")+">"+c+"</th>";}).join("");
+    var bodyHtml=rows.map(function(row){return "<tr>"+cols.map(function(c){var v=row[c];return "<td"+(isNum(c)?" style='text-align:right'":"")+">"+(v===""||v==null?"":String(v))+"</td>";}).join("")+"</tr>";}).join("");
+    printStatement(title,"<table><thead><tr>"+headHtml+"</tr></thead><tbody>"+bodyHtml+"</tbody></table>");
+  },"btn-o btn-sm");
 }
 
 /* PHOTO */
@@ -2515,13 +2532,14 @@ function rBank(){
          reads the same as what's actually visible, not a different sort order. */
       var exportRunBal=0;
       var exportChrono=bankRows.slice().reverse();
-      var exportRows=exportChrono.map(function(r){exportRunBal+=(r.typ==="in"?parseFloat(r.amount||0):-parseFloat(r.amount||0));var la=linkedAcct(r.linkId);return{Date:r.date||"",Account:la.account,"Sub Account":la.subAccount,Particulars:r.particulars||"",Debit:r.typ!=="in"?r.amount:"",Credit:r.typ==="in"?r.amount:"",Balance:exportRunBal};}).reverse();
+      var exportRows=exportChrono.map(function(r){exportRunBal+=(r.typ==="in"?parseFloat(r.amount||0):-parseFloat(r.amount||0));var la=linkedAcct(r.linkId);return{Date:r.date||"",Account:la.account,"Sub Account":la.subAccount,Particulars:r.particulars||"",Debit:r.typ!=="in"?r.amount:"",Credit:r.typ==="in"?r.amount:"",Balance:exportRunBal,"Bill Photo":r.bill_photo||""};}).reverse();
       var exportBtnRow=dv({display:"flex",gap:"8px",flexWrap:"wrap",marginTop:"10px"});
       exportBtnRow.appendChild(xlsxBtn(exportRows,bkInfo.name.replace(/\s+/g,"_")+"_statement.xlsx","Download Excel",bkInfo.name));
       exportBtnRow.appendChild(expBtn(exportRows,bkInfo.name.replace(/\s+/g,"_")+"_statement.csv","Download CSV"));
+      exportBtnRow.appendChild(pdfBtn(bkInfo.name+" Statement",exportRows));
       w.appendChild(exportBtnRow);
       w.appendChild(el("div",{cls:"kgrid",style:{gridTemplateColumns:"repeat(3,1fr)",marginBottom:"14px",marginTop:"10px"}},KPI("Total In",bTotCr,"var(--pos)"),KPI("Total Out",bTotDr,"var(--neg)"),KPI("Balance",Math.abs(bTotCr-bTotDr),bTotCr>=bTotDr?"var(--pos)":"var(--neg)")));
-      var stmtThead=el("thead",{},el("tr",{},el("th",{},"Date"),el("th",{},"Type"),el("th",{},"Account"),el("th",{},"Sub Account"),el("th",{},"Particulars"),amtTh("Debit"),amtTh("Credit"),amtTh("Balance")));
+      var stmtThead=el("thead",{},el("tr",{},el("th",{},"Date"),el("th",{},"Type"),el("th",{},"Account"),el("th",{},"Sub Account"),el("th",{},"Particulars"),amtTh("Debit"),amtTh("Credit"),amtTh("Balance"),el("th",{},"Bill")));
       var stmtTbody=el("tbody",{});
       var runBal=0;
       /* Build running balance oldest-first, then render newest-first to match how the
@@ -2541,6 +2559,7 @@ function rBank(){
         tr.appendChild(el("td",{style:{textAlign:"right",color:"var(--neg)",fontWeight:"600"}},r.typ!=="in"?num(r.amount):""));
         tr.appendChild(el("td",{style:{textAlign:"right",color:"var(--pos)",fontWeight:"600"}},r.typ==="in"?num(r.amount):""));
         tr.appendChild(el("td",{style:{textAlign:"right",fontFamily:"'Cormorant Garamond',serif",fontWeight:"600",color:rb>=0?"var(--pos)":"var(--neg)"}},num(Math.abs(rb))+(rb<0?" Dr":"")));
+        var billc=el("td",{});if(r.bill_photo)billc.appendChild(el("a",{href:r.bill_photo,target:"_blank",style:{fontSize:"11px",color:"var(--g)",fontWeight:"600"}},"View"));else{billc.style.color="var(--ink4)";billc.textContent="—";}tr.appendChild(billc);
         stmtTbody.appendChild(tr);
       }
       w.appendChild(el("div",{cls:"tbl-wrap"},el("table",{},stmtThead,stmtTbody)));
@@ -2749,13 +2768,14 @@ function rCC(){
          shown on screen, not a separately-computed number. */
       var cExportRunBal=0;
       var cExportChrono=cardRows.slice().reverse();
-      var cExportRows=cExportChrono.map(function(r){cExportRunBal+=(r.typ!=="pay"?parseFloat(r.amount||0):-parseFloat(r.amount||0));return{Date:r.date||"",Account:r.account||"","Sub Account":r.subAccount||"",Merchant:r.merchant||"",Particulars:r.particulars||"",Debit:r.typ!=="pay"?r.amount:"",Credit:r.typ==="pay"?r.amount:"",Balance:cExportRunBal};}).reverse();
+      var cExportRows=cExportChrono.map(function(r){cExportRunBal+=(r.typ!=="pay"?parseFloat(r.amount||0):-parseFloat(r.amount||0));return{Date:r.date||"",Account:r.account||"","Sub Account":r.subAccount||"",Merchant:r.merchant||"",Particulars:r.particulars||"",Debit:r.typ!=="pay"?r.amount:"",Credit:r.typ==="pay"?r.amount:"",Balance:cExportRunBal,"Bill Photo":r.bill_photo||""};}).reverse();
       var cExportBtnRow=dv({display:"flex",gap:"8px",flexWrap:"wrap",marginTop:"10px"});
       cExportBtnRow.appendChild(xlsxBtn(cExportRows,cardInfo.name.replace(/\s+/g,"_")+"_statement.xlsx","Download Excel",cardInfo.name));
       cExportBtnRow.appendChild(expBtn(cExportRows,cardInfo.name.replace(/\s+/g,"_")+"_statement.csv","Download CSV"));
+      cExportBtnRow.appendChild(pdfBtn(cardInfo.name+" Statement",cExportRows));
       w.appendChild(cExportBtnRow);
       w.appendChild(el("div",{cls:"kgrid",style:{gridTemplateColumns:"repeat(3,1fr)",marginBottom:"14px",marginTop:"10px"}},KPI("Total Spent",cTotDr,"var(--neg)"),KPI("Total Paid",cTotCr,"var(--pos)"),KPI("Outstanding",Math.abs(cTotDr-cTotCr),"var(--neg)")));
-      var cStmtThead=el("thead",{},el("tr",{},el("th",{},"Date"),el("th",{},"Type"),el("th",{},"Account"),el("th",{},"Sub Account"),el("th",{},"Particulars"),amtTh("Debit"),amtTh("Credit"),amtTh("Balance")));
+      var cStmtThead=el("thead",{},el("tr",{},el("th",{},"Date"),el("th",{},"Type"),el("th",{},"Account"),el("th",{},"Sub Account"),el("th",{},"Particulars"),amtTh("Debit"),amtTh("Credit"),amtTh("Balance"),el("th",{},"Bill")));
       var cStmtTbody=el("tbody",{});
       var cRunBal=0;
       var cChrono=cardRows.slice().reverse();
@@ -2772,6 +2792,7 @@ function rCC(){
         tr.appendChild(el("td",{style:{textAlign:"right",color:"var(--neg)",fontWeight:"600"}},r.typ!=="pay"?num(r.amount):""));
         tr.appendChild(el("td",{style:{textAlign:"right",color:"var(--pos)",fontWeight:"600"}},r.typ==="pay"?num(r.amount):""));
         tr.appendChild(el("td",{style:{textAlign:"right",fontFamily:"'Cormorant Garamond',serif",fontWeight:"600",color:rb<=0?"var(--pos)":"var(--neg)"}},num(Math.abs(rb))+(rb>0?" Owed":"")));
+        var cbillc=el("td",{});if(r.bill_photo)cbillc.appendChild(el("a",{href:r.bill_photo,target:"_blank",style:{fontSize:"11px",color:"var(--g)",fontWeight:"600"}},"View"));else{cbillc.style.color="var(--ink4)";cbillc.textContent="—";}tr.appendChild(cbillc);
         cStmtTbody.appendChild(tr);
       }
       w.appendChild(el("div",{cls:"tbl-wrap"},el("table",{},cStmtThead,cStmtTbody)));
@@ -3274,6 +3295,7 @@ function rVendors(){
       var vExportBtnRow=dv({display:"flex",gap:"8px",flexWrap:"wrap"});
       vExportBtnRow.appendChild(xlsxBtn(vExportRows,v.name.replace(/\s+/g,"_")+"_statement.xlsx","Download Excel",v.name));
       vExportBtnRow.appendChild(expBtn(vExportRows,v.name.replace(/\s+/g,"_")+"_statement.csv","Download CSV"));
+      vExportBtnRow.appendChild(pdfBtn(v.name+" Statement",vExportRows));
       w.appendChild(vExportBtnRow);
     }
 
