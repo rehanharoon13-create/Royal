@@ -8,7 +8,7 @@
 <meta name="apple-mobile-web-app-title" content="Royal Inc."/>
 <meta name="theme-color" content="#B8973A"/>
 <title>Royal Inc.</title>
-<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Inter:wght@300;400;500;600;700&family=Playfair+Display:wght@500;600;700;800&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Inter:wght@300;400;500;600;700&family=Playfair+Display:ital,wght@0,500;0,600;0,700;0,800;1,500;1,600;1,700;1,800&display=swap" rel="stylesheet"/>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 html{overscroll-behavior:none;overscroll-behavior-y:none;height:100%}
@@ -38,7 +38,12 @@ body{font-family:"Inter",sans-serif;background-color:#EDE6D8;background-image:ra
    the app's own text color) instead of gold, per user request. Fallback chain uses
    only valid font-family tokens this time — no "inherit" mid-list, which was the
    actual bug behind every earlier attempt looking unchanged. */
-.rn{font-family:"Playfair Display","Cormorant Garamond",serif;font-variant-numeric:tabular-nums;letter-spacing:.01em;color:var(--ink);font-weight:700}
+/* "Love" by VJ Type (the user's actual reference) is a paid commercial typeface —
+   not something to source from unofficial "free download" mirrors. Closest
+   legitimately-licensed stand-in: Playfair Display Italic, which has the same
+   elegant, flowing, high-contrast quality in its numeral shapes. Swap this for the
+   real "Love" font (via @font-face + a licensed file) if the user provides one. */
+.rn{font-family:"Playfair Display","Cormorant Garamond",serif;font-style:italic;font-variant-numeric:tabular-nums;letter-spacing:.01em;color:var(--ink);font-weight:700}
 :root{
   --bg:#F2EDE4;--s1:#FFFFFF;--s2:#FAF7F2;--s3:#F0EAE0;
   --bd:#D8D0C4;--bd2:#C8BFB0;
