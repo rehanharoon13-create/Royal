@@ -1512,7 +1512,12 @@ function renderNotif(){
 function wrapNumerals(root){
   if(!root)return;
   var SKIP={SCRIPT:1,STYLE:1,TEXTAREA:1,INPUT:1};
-  var re=/\d+(?:[.,:]\d+)*/g;
+  // Includes an optional leading "Rs " so a currency figure like "Rs 250,006" wraps
+  // as one unit instead of splitting "Rs" (ambient font) from the digits (numeral
+  // font) — that split was the actual cause of the mismatched look reported: two
+  // different fonts/weights sitting right next to each other inside what should read
+  // as a single figure.
+  var re=/(?:Rs\s*)?\d+(?:[.,:]\d+)*/g;
   function walk(node){
     var kids=node.childNodes;
     if(!kids)return;
