@@ -412,12 +412,13 @@ var U=[
   {id:"umair",username:"umair",name:"Umair Mirza",role:"Doors Supervisor",pin:"3341",init:"UM",clr:"#7B6E5A",lang:"ur",email:"umair@royalinc.local"},
   {id:"usman",username:"usman",name:"Usman Ghani",role:"Supervisor J-1",pin:"4451",init:"UG",clr:"#5E8C6A",lang:"ur",email:"usman@royalinc.local"},
   {id:"usman_draft",username:"usmandraft",name:"Usman Draftsman",role:"Draftsman",pin:"4452",init:"UD",clr:"#5E7A8C",lang:"ur",email:"usmandraft@royalinc.local"},
+  {id:"abbas",username:"abbas",name:"Abbas",role:"Cleaning Staff",pin:"9991",init:"AB",clr:"#6B6358",lang:"ur",email:"abbas@royalinc.local"},
   {id:"danish",username:"danish",name:"Danish",role:"Accountant",pin:"5561",init:"DN",clr:"#C08B35",lang:"en",email:"danish@royalinc.local"},
   {id:"haroon",username:"haroon",name:"Haroon sb",role:"Director",pin:"6671",init:"HS",clr:"#B85C4A",lang:"en",email:"royalcrownhomes@gmail.com"},
   {id:"ahmad",username:"ahmad",name:"Ahmad sb",role:"Director",pin:"7781",init:"AS",clr:"#B8973A",lang:"en",email:"112ahmadharoon@gmail.com"},
   {id:"rehan",username:"rehan",name:"Rehan sb",role:"Director",pin:"8891",init:"RS",clr:"#6B6358",lang:"en",email:"rehanharoon13@gmail.com"}
 ];
-var ROLE_MAP={muzammil:"staff",junaid:"staff",umair:"staff",usman:"staff",usman_draft:"staff",danish:"danish",haroon:"director",ahmad:"director",rehan:"director"};
+var ROLE_MAP={muzammil:"staff",junaid:"staff",umair:"staff",usman:"staff",usman_draft:"staff",abbas:"staff",danish:"danish",haroon:"director",ahmad:"director",rehan:"director"};
 var MAX_LOGIN_ATTEMPTS=10;
 var CSITES=["B-552","G-396","G-139","J-1","W-93"];
 var SITES=["B-552","G-396","G-139","J-1","Doors","W-93","Office"];
@@ -1368,7 +1369,7 @@ var NAV=[
   {id:"digest",l:"Daily Digest",icon:"\uD83D\uDCCA",roles:["director"]},
   {id:"reviewDay",l:"Daily Review",icon:"\uD83D\uDD0D",roles:["danish"]},
   {id:"dirApp",l:"Director Approval",icon:"⚖",roles:["director"],badge:"cbAw"},
-  {id:"ldg",l:"General Ledger",icon:"≡",roles:["danish","director"]},
+  {id:"ldg",l:"General Ledger",icon:"≡",roles:["danish","director","junaid"]},
   {id:"accountsList",l:"Chart of Accounts",icon:"\uD83D\uDCCB",roles:["staff","danish","director"]},
   {id:"trial",l:"Trial Balance",icon:"⚖",roles:["danish","director"]},
   {id:"pl",l:"Profit & Loss",icon:"↑↓",roles:["director"]},
@@ -1484,7 +1485,7 @@ function renderBnav(){
   var bn=document.getElementById("bnav");if(!S.user){bn.style.display="none";return;}
   bn.innerHTML="";bn.style.display="block";
   var role=ROLE_MAP[S.user]||"staff";
-  var items=S.user==="usman_draft"?[{id:"dash",icon:"⌂",l:"Home"},{id:"att",icon:"✓",l:"Attend"}]:(BNAV[role]||BNAV.staff);
+  var items=S.user==="usman_draft"?[{id:"dash",icon:"⌂",l:"Home"},{id:"att",icon:"✓",l:"Attend"}]:S.user==="junaid"?BNAV.staff.slice(0,2).concat([{id:"ldg",icon:"≡",l:"Ledger"}],BNAV.staff.slice(2)):(BNAV[role]||BNAV.staff);
   var row=el("div",{cls:"bnitems"});
   items.forEach(function(item){
     var cnt=getBadge(item.id);
