@@ -1837,7 +1837,7 @@ function rLogin(){
     var dev=await checkDevice(result.user_id);
     if(dev.state==="error"){
       busy=false;gb.textContent="Enter System";
-      lockNotice.appendChild(el("div",{cls:"al-r"},"Could not verify this device. Check your connection and try again."));
+      lockNotice.appendChild(el("div",{cls:"al-r"},"Could not verify this device. Check your connection and try again."+(dev.why?" ["+dev.why+"]":"")));
       return;
     }
     if(dev.state==="denied"){
@@ -4950,9 +4950,9 @@ async function checkDevice(userId){
   var devId=getDeviceId();
   var resp;
   try{resp=await fetch(SB_URL+"/rest/v1/device_requests?user_id=eq."+encodeURIComponent(userId)+"&select=*&limit=500",{headers:SBH});}
-  catch(e){return{state:"error"};}
+  catch(e){return{state:"error",why:"network: "+(e&&e.message||e)};}
   if(resp.status===404){console.warn("device_requests table missing — device check skipped");return{state:"ok"};}
-  if(!resp.ok)return{state:"error"};
+  if(!resp.ok){var bt="";try{bt=(await resp.text()).slice(0,120);}catch(e){}return{state:"error",why:"lookup "+resp.status+" "+bt};}
   var rows=await resp.json();
   var mine=rows.filter(function(r){return r.device_id===devId;}).sort(function(a,b){return String(b.requested_at||"")>String(a.requested_at||"")?1:-1;});
   if(mine.length){
@@ -4965,8 +4965,8 @@ async function checkDevice(userId){
   var row={id:uid(),user_id:userId,device_id:devId,device_label:deviceLabel(),status:first?"approved":"pending",requested_at:now2(),decided_by:first?"auto":null,decided_at:first?now2():null};
   try{
     var pr=await fetch(SB_URL+"/rest/v1/device_requests?on_conflict=id",{method:"POST",headers:Object.assign({},SBH,{"Prefer":"resolution=merge-duplicates,return=minimal"}),body:JSON.stringify([row])});
-    if(!pr.ok)return{state:"error"};
-  }catch(e){return{state:"error"};}
+    if(!pr.ok){var bt2="";try{bt2=(await pr.text()).slice(0,120);}catch(e){}return{state:"error",why:"save "+pr.status+" "+bt2};}
+  }catch(e){return{state:"error",why:"network: "+(e&&e.message||e)};}
   return first?{state:"ok"}:{state:"pending",reqId:row.id};
 }
 async function waitDeviceApproval(reqId){
