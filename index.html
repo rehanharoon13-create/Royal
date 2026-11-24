@@ -51,6 +51,8 @@ body{font-family:"Inter",sans-serif;background-color:#EDE6D8;background-image:ra
    legitimately-licensed stand-in: Playfair Display Italic, which has the same
    elegant, flowing, high-contrast quality in its numeral shapes. Swap this for the
    real "Love" font (via @font-face + a licensed file) if the user provides one. */
+.hero .rn,.sb .rn,#sb .rn,#toast .rn{color:inherit}
+.plainnum,.plainnum .rn{font-family:"Inter",sans-serif !important;font-style:normal !important;font-weight:700 !important;color:var(--ink) !important;letter-spacing:0 !important;font-variant-numeric:tabular-nums}
 .rn{font-family:"Playfair Display","Cormorant Garamond",serif;font-style:italic;font-variant-numeric:tabular-nums;letter-spacing:.01em;color:var(--ink);font-weight:700}
 :root{
   --bg:#F2EDE4;--s1:#FFFFFF;--s2:#FAF7F2;--s3:#F0EAE0;
@@ -419,6 +421,40 @@ var U=[
   {id:"rehan",username:"rehan",name:"Rehan sb",role:"Director",pin:"8891",init:"RS",clr:"#6B6358",lang:"en",email:"rehanharoon13@gmail.com"}
 ];
 var ROLE_MAP={muzammil:"staff",junaid:"staff",umair:"staff",usman:"staff",usman_draft:"staff",abbas:"staff",danish:"danish",haroon:"director",ahmad:"director",rehan:"director"};
+
+/* ═══ PERMISSIONS / TEAM ═══ */
+var U_INACTIVE=[];
+var DEFAULT_PERMS={junaid:{staffCash:true}};
+var PERMS={};
+function userPerms(id){var p=Object.assign({},DEFAULT_PERMS[id]||{},PERMS[id]||{});return{staffCash:!!p.staffCash,views:Array.isArray(p.views)?p.views:[]};}
+/* Cash book visibility. Nobody can see another director's cash book. A director sees every
+   non-director's book plus their own; Danish and any staff member granted "view all staff
+   cash books" see every non-director's book plus their own; everyone else sees only their own. */
+function canSeePerson(viewer,pid){
+  if(!pid||viewer===pid)return true;
+  if(ROLE_MAP[pid]==="director")return false;
+  var vr=ROLE_MAP[viewer];
+  return vr==="director"||vr==="danish"||userPerms(viewer).staffCash;
+}
+function canOpenLedger(id){var r=ROLE_MAP[id];return r==="director"||r==="danish"||userPerms(id).staffCash;}
+function applyAppUsers(){
+  (S.appUsers||[]).forEach(function(r){
+    if(!r||!r.id)return;
+    PERMS[r.id]=r.perms||{};
+    var inU=U.findIndex(function(u){return u.id===r.id;});
+    var inI=U_INACTIVE.findIndex(function(u){return u.id===r.id;});
+    if(r.custom){
+      if(!ROLE_MAP[r.id])ROLE_MAP[r.id]=r.baseRole||"staff";
+      var nm=String(r.name||r.id);
+      var obj={id:r.id,username:r.username||r.id,name:nm,role:r.jobTitle||"Staff",pin:"",init:r.init||nm.split(/\s+/).map(function(x){return x.charAt(0);}).join("").slice(0,2).toUpperCase(),clr:r.clr||"#6B6358",lang:r.lang||"en",email:r.email||""};
+      if(r.active===false){if(inU>=0)U.splice(inU,1);if(inI<0)U_INACTIVE.push(obj);}
+      else{if(inI>=0)U_INACTIVE.splice(inI,1);if(inU<0)U.push(obj);}
+    }else{
+      if(r.active===false&&ROLE_MAP[r.id]!=="director"){if(inU>=0){U_INACTIVE.push(U[inU]);U.splice(inU,1);}}
+      else if(inI>=0){U.push(U_INACTIVE[inI]);U_INACTIVE.splice(inI,1);}
+    }
+  });
+}
 var MAX_LOGIN_ATTEMPTS=10;
 var CSITES=["B-552","G-396","G-139","J-1","W-93"];
 var SITES=["B-552","G-396","G-139","J-1","Doors","W-93","Office"];
@@ -508,7 +544,7 @@ var S={
   leaveReqs:LD("r7_lv",[]),advReqs:LD("r7_adv",[]),salrec:LD("r7_sal",[]),
   vouchers:LD("r7_vo",[]),petty:LD("r7_pt",[]),
   bills:LD("r7_bl",BILLS_DEF.map(function(b){return{id:b.id,n:b.n,prop:b.prop,cat:b.cat,due:b.due,amt:b.amt,paid:null};})),
-  esc:LD("r7_esc",[]),auditLog:LD("r7_au",[]),
+  esc:LD("r7_esc",[]),auditLog:LD("r7_au",[]),appUsers:LD("r7_usr",[]),deviceReqs:LD("r7_dev",[]),
   /* Chart of Accounts (light version): a director-managed, editable list layered on
      top of the original hardcoded ACCS/SUBS. New accounts added here show up in every
      account picker across the app immediately. This does NOT replace free-text entry
@@ -521,6 +557,7 @@ var S={
   cbf:{lv:"journal",person:"",site:"",search:"",d1:"",d2:""},
   aiResult:null,selSite:"B-552",doorFilter:"All",plTab:"monthly",repTab:"daily",notifOpen:false,crmFilter:"All"
 };
+applyAppUsers();
 
 function sv(k,data){
   LS(k,data);
@@ -596,6 +633,8 @@ var SB_TBLS={
   "r7_lv":{t:"leave_reqs",up:function(r){return{id:r.id,user_id:r.userId||null,name:r.name,reason:r.reason||null,date:r.date||null,status:r.status||"pending",created_at:r.created||null};}},
   "r7_adv":{t:"adv_reqs",up:function(r){return{id:r.id,user_id:r.userId||null,name:r.name,amount:r.amount||0,reason:r.reason||null,date:r.date||null,status:r.status||"pending",created_at:r.created||null};}},
   "r7_sal":{t:"salrec",up:function(r){return{id:r.id,person:r.person,role:r.role||null,amount:r.amount||0,month:r.month,paid_by:r.paidBy||null,paid_at:r.paidAt||null,link_id:r.linkId||null};}},
+  "r7_usr":{t:"app_users",up:function(r){return{id:r.id,name:r.name,username:r.username||null,job_title:r.jobTitle||null,base_role:r.baseRole||"staff",init:r.init||null,clr:r.clr||null,lang:r.lang||"en",email:r.email||null,custom:!!r.custom,active:r.active!==false,perms:r.perms||{},created_by:r.createdBy||null,created_at:r.created||null};}},
+  "r7_dev":{t:"device_requests",up:function(r){return{id:r.id,user_id:r.userId,device_id:r.deviceId,device_label:r.label||null,status:r.status,requested_at:r.requestedAt||null,decided_by:r.decidedBy||null,decided_at:r.decidedAt||null};}},
   "r7_vo":{t:"vouchers",up:function(r){return{id:r.id,v_no:r.vNo||null,type:r.type||null,date:r.date||null,account:r.account||null,sub_account:r.subAccount||null,amount:r.amount||0,particulars:r.particulars||null,ref:r.ref||null,by_user:r.by||null,link_id:r.linkId||null,created_at:r.created||null};}},
   "r7_pt":{t:"petty",up:function(r){return{id:r.id,typ:r.typ,amount:r.amount||0,date:r.date||null,particulars:r.particulars||null,account:r.account||null,by_user:r.by||null,link_id:r.linkId||null,created_at:r.created||null};}},
   "r7_esc":{t:"escalations",up:function(r){return{id:r.id,type:r.type||null,entry_id:r.entryId||null,note:r.note||null,by_user:r.by||null,resolved:r.resolved||false,created_at:r.at||null};}},
@@ -627,6 +666,8 @@ function dnATT(r){return{id:r.id,empId:r.emp_id,empName:r.emp_name||"",date:r.da
 function dnLV(r){return{id:r.id,userId:r.user_id||"",name:r.name,reason:r.reason||"",date:r.date||"",status:r.status||"pending",created:r.created_at||""};}
 function dnAD(r){return{id:r.id,userId:r.user_id||"",name:r.name,amount:parseFloat(r.amount||0),reason:r.reason||"",date:r.date||"",status:r.status||"pending",created:r.created_at||""};}
 function dnSAL(r){return{id:r.id,person:r.person,role:r.role||"",amount:parseFloat(r.amount||0),month:r.month,paidBy:r.paid_by||"",paidAt:r.paid_at||"",linkId:r.link_id||""};}
+function dnUSR(r){var p=r.perms;if(typeof p==="string"){try{p=JSON.parse(p);}catch(e){p={};}}return{id:r.id,name:r.name||r.id,username:r.username||"",jobTitle:r.job_title||"",baseRole:r.base_role||"staff",init:r.init||"",clr:r.clr||"",lang:r.lang||"en",email:r.email||"",custom:!!r.custom,active:r.active!==false,perms:p||{},createdBy:r.created_by||"",created:r.created_at||""};}
+function dnDEV(r){return{id:r.id,userId:r.user_id,deviceId:r.device_id,label:r.device_label||"",status:r.status||"pending",requestedAt:r.requested_at||"",decidedBy:r.decided_by||"",decidedAt:r.decided_at||""};}
 function dnVO(r){return{id:r.id,vNo:r.v_no||"",type:r.type||"",date:r.date||"",account:r.account||"",subAccount:r.sub_account||"",amount:parseFloat(r.amount||0),particulars:r.particulars||"",ref:r.ref||"",by:r.by_user||"",linkId:r.link_id||"",created:r.created_at||""};}
 function dnPT(r){return{id:r.id,typ:r.typ,amount:parseFloat(r.amount||0),date:r.date||"",particulars:r.particulars||"",account:r.account||"",by:r.by_user||"",linkId:r.link_id||"",created:r.created_at||""};}
 function dnESC(r){return{id:r.id,type:r.type||"",entryId:r.entry_id||"",note:r.note||"",by:r.by_user||"",resolved:r.resolved||false,at:r.created_at||""};}
@@ -708,7 +749,8 @@ async function loadFromSupabase(silent){
       {t:"leave_reqs",p:"leaveReqs",f:dnLV,k:"r7_lv"},{t:"adv_reqs",p:"advReqs",f:dnAD,k:"r7_adv"},
       {t:"salrec",p:"salrec",f:dnSAL,k:"r7_sal"},{t:"vouchers",p:"vouchers",f:dnVO,k:"r7_vo"},
       {t:"petty",p:"petty",f:dnPT,k:"r7_pt"},{t:"escalations",p:"esc",f:dnESC,k:"r7_esc"},
-      {t:"audit_log",p:"auditLog",f:dnAUD,k:"r7_au"},{t:"daily_reports",p:"dailyReports",f:dnDR,k:"r7_dr"}
+      {t:"audit_log",p:"auditLog",f:dnAUD,k:"r7_au"},{t:"daily_reports",p:"dailyReports",f:dnDR,k:"r7_dr"},
+      {t:"app_users",p:"appUsers",f:dnUSR,k:"r7_usr"},{t:"device_requests",p:"deviceReqs",f:dnDEV,k:"r7_dev"}
     ];
     /* These 26 tables were previously loaded one at a time in a sequential loop —
        each one waiting for the previous to fully finish before even starting the
@@ -754,6 +796,7 @@ async function loadFromSupabase(silent){
     if(ca){var cloudNames=ca.map(function(r){return r.name;}).filter(Boolean);S.customAccounts=Array.from(new Set((S.customAccounts||[]).concat(cloudNames)));LS("r7_cacc",S.customAccounts);}
     if(cs){var cloudSubNames=cs.map(function(r){return r.name;}).filter(Boolean);S.customSubs=Array.from(new Set((S.customSubs||[]).concat(cloudSubNames)));LS("r7_csub",S.customSubs);}
     if(csi){var cloudSiteNames=csi.map(function(r){return r.name;}).filter(Boolean);S.customSites=Array.from(new Set((S.customSites||[]).concat(cloudSiteNames)));LS("r7_csite",S.customSites);}
+    applyAppUsers();
     if(!silent)toast("Synced",false,1500);
   }catch(e){console.error("sync error",e);if(!silent)toast("Local data only",true,2000);}
   if(!silent)loader(false);
@@ -789,7 +832,7 @@ function num(n){return commaFmt(Number(n||0));}
 function amtTh(label){return el("th",{style:{textAlign:"right"}},label+" (Rs)");}
 function fmt(n){return Rs(n);}
 
-function gU(id){return U.find(function(u){return u.id===id;})||{name:String(id||""),init:"?",clr:"#9A9088",role:"",lang:"en"};}
+function gU(id){return U.find(function(u){return u.id===id;})||U_INACTIVE.find(function(u){return u.id===id;})||{name:String(id||""),init:"?",clr:"#9A9088",role:"",lang:"en"};}
 
 /* Bank transactions and vendor entries don't carry their own Account/Sub Account —
    only Particulars — because that dimension already lives on the cash-book (cb) entry
@@ -1035,6 +1078,8 @@ function getNotifs(){
     CARDS.forEach(function(c){var bal=cBal(c.id);if(bal>0){var diff=c.due-d;if(diff>=0&&diff<=7)n.push({type:"cc",text:c.name+" due "+c.due+"th — "+Rs(bal),icon:"💳"});}});
     var cm=curMonth();var unpaidSal=SAL_LIST.filter(function(s){return !S.salrec.find(function(r){return r.person===s.p&&r.month===cm;});});
     if(unpaidSal.length>0)n.push({type:"sal",text:unpaidSal.length+" salaries unpaid for "+cm,icon:"👷"});
+    var pendDev=(S.deviceReqs||[]).filter(function(r){return r.status==="pending"&&r.userId!==S.user;}).length;
+    if(pendDev>0)n.push({type:"dev",text:pendDev+" new device login request"+(pendDev===1?"":"s"),icon:"📱"});
     S.doorInvStock.forEach(function(item){if(item.qty<=item.reorder)n.push({type:"stock",text:item.n+" low stock: "+item.qty+" "+item.unit,icon:"📦"});});
   }
   return n;
@@ -1369,7 +1414,7 @@ var NAV=[
   {id:"digest",l:"Daily Digest",icon:"\uD83D\uDCCA",roles:["director"]},
   {id:"reviewDay",l:"Daily Review",icon:"\uD83D\uDD0D",roles:["danish"]},
   {id:"dirApp",l:"Director Approval",icon:"⚖",roles:["director"],badge:"cbAw"},
-  {id:"ldg",l:"General Ledger",icon:"≡",roles:["danish","director","junaid"]},
+  {id:"ldg",l:"General Ledger",icon:"≡",roles:["danish","director"]},
   {id:"accountsList",l:"Chart of Accounts",icon:"\uD83D\uDCCB",roles:["staff","danish","director"]},
   {id:"trial",l:"Trial Balance",icon:"⚖",roles:["danish","director"]},
   {id:"pl",l:"Profit & Loss",icon:"↑↓",roles:["director"]},
@@ -1399,10 +1444,11 @@ var NAV=[
   {id:"reports",l:"Reports",icon:"📄",roles:["danish","director"]},
   {id:"ai",l:"AI Analysis",icon:"✦",roles:["director"]},
   {id:"audit",l:"Audit Log",icon:"🔍",roles:["director"]},
+  {id:"team",l:"Team & Permissions",icon:"👥",roles:["director"]},
   {id:"security",l:"Security & Accounts",icon:"🔒",roles:["director"]}
 ];
 
-var PAGE_TITLES={dash:"Dashboard",att:"Attendance",myE:"My Entries",dailyRep:"Daily Report",digest:"Daily Digest",reviewDay:"Daily Review",dq:"Review Queue",dirApp:"Director Approval",ldg:"General Ledger",trial:"Trial Balance",pl:"Profit & Loss",cashflow:"Cash Flow",bank:"Bank",cc:"Credit Cards",vouch:"Vouchers",petty:"Petty Cash",constr:"Sites Statement",mat:"Material",contr:"Contractors",vnd:"Vendors",misc:"Misc Balances",doors:"Door Projects",doorInv:"Doors Inventory",hr:"HR Module",bills:"Bills & Salaries",crm:"CRM",reports:"Reports",ai:"AI Analysis",audit:"Audit Log",addCB:"New Entry",dirEdit:"Edit Entry",security:"Security & Accounts"};
+var PAGE_TITLES={dash:"Dashboard",att:"Attendance",myE:"My Entries",dailyRep:"Daily Report",digest:"Daily Digest",reviewDay:"Daily Review",dq:"Review Queue",dirApp:"Director Approval",ldg:"General Ledger",trial:"Trial Balance",pl:"Profit & Loss",cashflow:"Cash Flow",bank:"Bank",cc:"Credit Cards",vouch:"Vouchers",petty:"Petty Cash",constr:"Sites Statement",mat:"Material",contr:"Contractors",vnd:"Vendors",misc:"Misc Balances",doors:"Door Projects",doorInv:"Doors Inventory",hr:"HR Module",bills:"Bills & Salaries",crm:"CRM",reports:"Reports",ai:"AI Analysis",audit:"Audit Log",addCB:"New Entry",dirEdit:"Edit Entry",security:"Security & Accounts",team:"Team & Permissions"};
 
 var BNAV={
   staff:[{id:"dash",icon:"⌂",l:"Home"},{id:"myE",icon:"📒",l:"Entries"},{id:"mat",icon:"⬡",l:"Material"},{id:"att",icon:"✓",l:"Attend"}],
@@ -1434,7 +1480,7 @@ function renderShell(){
        (cash entries, material, etc.) that every other "staff" role user sees. */
     if(S.user==="usman_draft"&&item.id!=="dash"&&item.id!=="att"&&!item.sep)return;
     if(item.sep){var ok2=item.roles.some(function(r){return r===role||(role==="staff"&&item.roles.includes(S.user));});if(!ok2)return;nav.appendChild(el("div",{cls:"sbl"},item.l));return;}
-    var ok=item.roles.includes(role)||(role==="staff"&&item.roles.includes(S.user));
+    var ok=item.roles.includes(role)||(role==="staff"&&item.roles.includes(S.user))||(item.id==="ldg"&&canOpenLedger(S.user))||(role!=="director"&&userPerms(S.user).views.indexOf(item.id)>=0);
     if(!ok)return;
     var cnt=item.badge?getBadge(item.badge):0;
     var ni=el("button",{cls:"ni"+(S.view===item.id?" act":""),onClick:function(){document.getElementById("sb").classList.remove("mob");var patch={view:item.id};if(item.id==="doorMat")patch.tab=Object.assign({},S.tab,{doorMatEntered:false});set(patch);}});
@@ -1485,7 +1531,7 @@ function renderBnav(){
   var bn=document.getElementById("bnav");if(!S.user){bn.style.display="none";return;}
   bn.innerHTML="";bn.style.display="block";
   var role=ROLE_MAP[S.user]||"staff";
-  var items=S.user==="usman_draft"?[{id:"dash",icon:"⌂",l:"Home"},{id:"att",icon:"✓",l:"Attend"}]:S.user==="junaid"?BNAV.staff.slice(0,2).concat([{id:"ldg",icon:"≡",l:"Ledger"}],BNAV.staff.slice(2)):(BNAV[role]||BNAV.staff);
+  var items=S.user==="usman_draft"?[{id:"dash",icon:"⌂",l:"Home"},{id:"att",icon:"✓",l:"Attend"}]:(role==="staff"&&userPerms(S.user).staffCash)?BNAV.staff.slice(0,2).concat([{id:"ldg",icon:"≡",l:"Ledger"}],BNAV.staff.slice(2)):(BNAV[role]||BNAV.staff);
   var row=el("div",{cls:"bnitems"});
   items.forEach(function(item){
     var cnt=getBadge(item.id);
@@ -1780,6 +1826,36 @@ function rLogin(){
        wait through another full network round-trip before reaching their
        dashboard — this was adding real, needless delay to every single login. */
     clearLoginAttempts(username.trim().toLowerCase());
+    /* Pull the team list first so added/removed members and permissions are current on this device */
+    try{var ur=await sbGet("app_users");if(ur&&ur.length){S.appUsers=mergeById(S.appUsers||[],ur.map(dnUSR));LS("r7_usr",S.appUsers);applyAppUsers();}}catch(eU){}
+    if(!U.find(function(u){return u.id===result.user_id;})){
+      busy=false;gb.textContent="Enter System";
+      lockNotice.appendChild(el("div",{cls:"al-r"},"This account has been removed. Please contact a director."));
+      return;
+    }
+    /* New-device check — a different device than any approved one needs a director's OK */
+    var dev=await checkDevice(result.user_id);
+    if(dev.state==="error"){
+      busy=false;gb.textContent="Enter System";
+      lockNotice.appendChild(el("div",{cls:"al-r"},"Could not verify this device. Check your connection and try again."));
+      return;
+    }
+    if(dev.state==="denied"){
+      busy=false;gb.textContent="Enter System";
+      lockNotice.appendChild(el("div",{cls:"al-r"},dev.msg));
+      return;
+    }
+    if(dev.state==="pending"){
+      gb.textContent="Waiting for approval\u2026";
+      lockNotice.innerHTML="";
+      lockNotice.appendChild(el("div",{cls:"al-b"},"New device detected. A director has been asked to approve this login \u2014 keep this page open."));
+      var waitRes=await waitDeviceApproval(dev.reqId);
+      if(waitRes!=="approved"){
+        busy=false;gb.textContent="Enter System";lockNotice.innerHTML="";
+        lockNotice.appendChild(el("div",{cls:"al-r"},waitRes==="denied"?"A director did not approve this device.":"Approval timed out. Please try again."));
+        return;
+      }
+    }
     S.user=result.user_id;
     addAudit("LOGIN",gU(result.user_id).name);
     document.getElementById("lr").style.display="none";
@@ -1830,12 +1906,23 @@ function rExecDash(){
   var hl=el("div",{});
   hl.appendChild(el("div",{style:{fontSize:"9px",fontWeight:"600",letterSpacing:".2em",textTransform:"uppercase",color:"var(--g3)",marginBottom:"8px"}},"Royal Inc. \u00b7 "+new Date().toLocaleDateString("en-PK",{weekday:"long",year:"numeric",month:"long",day:"numeric"})));
   hl.appendChild(el("div",{style:{fontFamily:"'Cormorant Garamond',serif",fontSize:"30px",fontWeight:"500",color:"#F5EFE0",lineHeight:"1.1"}},"Executive Dashboard"));
-  if(notifs.length){var chips=dv({display:"flex",gap:"6px",flexWrap:"wrap",marginTop:"12px"});notifs.slice(0,3).forEach(function(n){var chip=el("div",{style:{background:"rgba(255,255,255,.08)",border:"1px solid rgba(255,255,255,.12)",borderRadius:"5px",padding:"4px 10px",fontSize:"10px",display:"flex",alignItems:"center",gap:"5px",cursor:"pointer",color:"#F5EFE0"},onClick:function(){if(n.type==="aw"||n.type==="esc")set({view:"dirApp"});else if(n.type==="mat")set({view:"mat"});}});chip.appendChild(el("span",{},n.icon));chip.appendChild(el("span",{},n.text.slice(0,40)));chips.appendChild(chip);});hl.appendChild(chips);}
+  if(notifs.length){var chips=dv({display:"flex",gap:"6px",flexWrap:"wrap",marginTop:"12px"});notifs.slice(0,3).forEach(function(n){var chip=el("div",{style:{background:"rgba(255,255,255,.08)",border:"1px solid rgba(255,255,255,.12)",borderRadius:"5px",padding:"4px 10px",fontSize:"10px",display:"flex",alignItems:"center",gap:"5px",cursor:"pointer",color:"#F5EFE0"},onClick:function(){if(n.type==="aw"||n.type==="esc")set({view:"dirApp"});else if(n.type==="mat")set({view:"mat"});else if(n.type==="dev")set({view:"team"});else if(n.type==="sal")set({view:"hr",tab:Object.assign({},S.tab,{hr:"sal"})});}});chip.appendChild(el("span",{},n.icon));chip.appendChild(el("span",{},n.text.slice(0,40)));chips.appendChild(chip);});hl.appendChild(chips);}
   var hr2=dv({textAlign:"right"});
   hr2.appendChild(el("div",{style:{fontSize:"9px",fontWeight:"600",letterSpacing:".18em",textTransform:"uppercase",color:"rgba(184,151,58,.6)",marginBottom:"6px"}},"Net Liquid Position"));
-  hr2.appendChild(el("div",{style:{fontFamily:"'Cormorant Garamond',serif",fontSize:"38px",fontWeight:"600",color:"var(--g2)",lineHeight:"1"}},Rs(cashTot+bkTot)));
+  hr2.appendChild(el("div",{style:{fontFamily:"'Cormorant Garamond',serif",fontSize:"38px",fontWeight:"600",color:"#FFF4D6",lineHeight:"1"}},Rs(cashTot+bkTot)));
   hr2.appendChild(el("div",{style:{fontSize:"9px",color:"rgba(200,191,176,.5)",marginTop:"4px",letterSpacing:".1em",textTransform:"uppercase"}},"Cash + Bank"));
   hrow.appendChild(hl);hrow.appendChild(hr2);hero.appendChild(hrow);w.appendChild(hero);
+  /* Cash balance — tap to open the ledger (By Person) */
+  var cashCardTop=el("div",{cls:"card",style:{cursor:"pointer",marginBottom:"16px"},onClick:function(){set({cbf:{lv:"byP",person:"",site:"",search:"",d1:"",d2:""},view:"ldg"});}});
+  var cctB=el("div",{cls:"cb",style:{display:"flex",justifyContent:"space-between",alignItems:"center",gap:"10px"}});
+  var cctL=el("div",{});
+  cctL.appendChild(el("div",{style:{fontSize:"10px",fontWeight:"700",letterSpacing:".16em",textTransform:"uppercase",color:"var(--ink3)",marginBottom:"6px"}},"Cash Balance"));
+  cctL.appendChild(el("div",{cls:"plainnum",style:{fontSize:"34px",lineHeight:"1.1",color:"var(--ink)"}},(cashTot<0?"-":"")+Rs(Math.abs(cashTot))));
+  cctL.appendChild(el("div",{style:{fontSize:"11px",color:"var(--ink3)",marginTop:"5px"}},"Total cash in hand · tap to open ledger"));
+  cctB.appendChild(cctL);cctB.appendChild(el("span",{style:{fontSize:"22px",color:"var(--g3)"}},"›"));
+  cashCardTop.appendChild(cctB);w.appendChild(cashCardTop);
+  var devCardTop=rDevRequestsCard();if(devCardTop)w.appendChild(devCardTop);
+  var salCardTop=salaryMonthEndCard();if(salCardTop)w.appendChild(salCardTop);
 
   /* FINANCIAL POSITION — Assets vs Liabilities, each expandable into the accounts
      that make it up. This replaces the old flat KPI grid with something that
@@ -1861,7 +1948,7 @@ function rExecDash(){
   finPosBody.appendChild(finPosRow("Cash",cashTot,"var(--pos)","cash"));
   if(expandedSection==="cash"){
     var cashDetail=dv({padding:"6px 0 10px 12px"});
-    U.forEach(function(u){var b=pBal(u.id);if(!b)return;var r=dv({display:"flex",justifyContent:"space-between",padding:"5px 0",fontSize:"12px",cursor:"pointer"},el("span",{style:{color:"var(--ink3)"}},u.name),el("span",{style:{fontWeight:"600",color:b>=0?"var(--pos)":"var(--neg)"}},Rs(Math.abs(b))+(b<0?" Shortfall":"")));r.addEventListener("click",function(){var uid2=u.id;set({cbf:{lv:"byP",person:uid2,site:"",search:"",d1:"",d2:""},view:"ldg"});});cashDetail.appendChild(r);});
+    U.forEach(function(u){if(!canSeePerson(S.user,u.id))return;var b=pBal(u.id);if(!b)return;var r=dv({display:"flex",justifyContent:"space-between",padding:"5px 0",fontSize:"12px",cursor:"pointer"},el("span",{style:{color:"var(--ink3)"}},u.name),el("span",{style:{fontWeight:"600",color:b>=0?"var(--pos)":"var(--neg)"}},Rs(Math.abs(b))+(b<0?" Shortfall":"")));r.addEventListener("click",function(){var uid2=u.id;set({cbf:{lv:"byP",person:uid2,site:"",search:"",d1:"",d2:""},view:"ldg"});});cashDetail.appendChild(r);});
     finPosBody.appendChild(cashDetail);
   }
   finPosBody.appendChild(finPosRow("Bank",bkTot,"var(--pos)","bank"));
@@ -1996,7 +2083,7 @@ function rStaffDash(){
   hl.appendChild(el("div",{style:{fontSize:"11px",color:"var(--sbm)",marginTop:"3px"}},(displayRole(u)?displayRole(u)+" \u00b7 ":"")+"Royal Inc."));
   var hr2=dv({textAlign:"right"});
   hr2.appendChild(el("div",{style:{fontSize:"9px",fontWeight:"600",letterSpacing:".18em",textTransform:"uppercase",color:"rgba(184,151,58,.6)",marginBottom:"5px"}},isUr?"نقد بقایا":"Cash Balance"));
-  hr2.appendChild(el("div",{style:{fontFamily:"'Cormorant Garamond',serif",fontSize:"32px",fontWeight:"600",color:"var(--g2)"}},(bal<0?"-":"")+Rs(Math.abs(bal))));
+  hr2.appendChild(el("div",{style:{fontFamily:"'Cormorant Garamond',serif",fontSize:"32px",fontWeight:"600",color:"#FFF4D6"}},(bal<0?"-":"")+Rs(Math.abs(bal))));
   var notYetApproved=pBalProvisional(S.user)-pBal(S.user);
   if(Math.abs(notYetApproved)>0.5){
     hr2.appendChild(el("div",{style:{fontSize:"10px",color:"var(--wrn)",marginTop:"4px"}},(isUr?"زیر التواء میں شامل: ":"Includes pending: ")+Rs(Math.abs(notYetApproved))));
@@ -2018,6 +2105,7 @@ function rStaffDash(){
 }
 
 function rDanishDash(){
+  var __salC=salaryMonthEndCard();
   var cbAw=S.cb.filter(function(e){return e.status==="awaiting_approval";}).length;
   var matPend=S.matrcv.filter(function(e){return e.status==="pending";}).length;
   var w=el("div",{});
@@ -2026,6 +2114,7 @@ function rDanishDash(){
   hero.appendChild(el("div",{style:{fontFamily:"'Cormorant Garamond',serif",fontSize:"28px",fontWeight:"500",color:"#F5EFE0"}},"Danish"));
   hero.appendChild(el("div",{style:{fontSize:"11px",color:"var(--sbm)"}},"Accountant \u00b7 Royal Inc."));
   w.appendChild(hero);
+  if(__salC)w.appendChild(__salC);
   w.appendChild(el("div",{cls:"kgrid"},KPIsm("Flagged for Director",(S.esc||[]).length,"var(--wrn)"),KPIsm("Awaiting Director",cbAw,"var(--inf)"),KPIsm("Material Pending",matPend,"var(--inf)"),KPIsm("Posted Today",S.cb.filter(function(e){return e.status==="posted"&&(e.date||"")===today();}).length,"var(--pos)")));
   var dActs=dv({display:"grid",gridTemplateColumns:"1fr 1fr",gap:"10px",marginBottom:"14px"});
   dActs.appendChild(btn("+ New Entry",function(){set({view:"addCB"});},"btn-g"));
@@ -2447,6 +2536,7 @@ function rLedger(){
   var lv=cf.lv||"journal";
   var posted=S.cb.filter(function(e){
     if(e.status!=="posted")return false;
+    if(!canSeePerson(S.user,e.person))return false;
     if(cf.person&&e.person!==cf.person)return false;
     if(lv==="journal"&&cf.site&&e.account!==cf.site&&e.subAccount!==cf.site)return false;
     if(cf.search){var q=cf.search.toLowerCase();if(![e.particulars,e.account,e.cbNo,e.billNo,e.subAccount,e.particularsUr].some(function(x){return String(x||"").toLowerCase().includes(q);}))return false;}
@@ -2461,7 +2551,7 @@ function rLedger(){
   w.appendChild(Tabs([{id:"journal",l:"General Journal"},{id:"byP",l:"By Person"},{id:"byS",l:"By Site"}],cf.lv||"journal",function(id){set({cbf:Object.assign({},cf,{lv:id})});}));
   var fb=dv({display:"flex",gap:"8px",flexWrap:"wrap",marginBottom:"14px",alignItems:"center"});
   fb.appendChild(btn(sortDir==="oldest"?"\u2191 Oldest First":"\u2193 Newest First",function(){set({cbf:Object.assign({},cf,{sort:sortDir==="oldest"?"newest":"oldest"})});},"btn-o btn-sm"));
-  if(lv!=="byS")fb.appendChild(Sel(cf.person||"",function(v){set({cbf:Object.assign({},cf,{person:v})});},[{v:"",l:"All Members"},...U.map(function(u){return{v:u.id,l:u.name};})]));
+  if(lv!=="byS")fb.appendChild(Sel(cf.person||"",function(v){set({cbf:Object.assign({},cf,{person:v})});},[{v:"",l:"All Members"},...U.filter(function(u){return canSeePerson(S.user,u.id);}).map(function(u){return{v:u.id,l:u.name};})]));
   if(lv==="journal")fb.appendChild(Sel(cf.site||"",function(v){set({cbf:Object.assign({},cf,{site:v})});},[{v:"",l:"All Accounts"},...effectiveAccounts().map(function(a){return{v:a,l:a};})]));
   var si=Inp(cf.search||"",function(v){set({cbf:Object.assign({},cf,{search:v})});},"text","Search...");si.style.maxWidth="130px";fb.appendChild(si);
   var d1i=Inp(cf.d1||"",function(v){set({cbf:Object.assign({},cf,{d1:v})});},"date");d1i.style.maxWidth="140px";fb.appendChild(d1i);
@@ -2469,7 +2559,7 @@ function rLedger(){
   if(cf.person||cf.site||cf.search||cf.d1||cf.d2)fb.appendChild(btn("Clear",function(){set({cbf:{lv:cf.lv||"journal",sort:sortDir}});},"btn-o btn-sm"));
   if(isDir)fb.appendChild(btn("+ New Entry",function(){set({view:"addCB"});},"btn-g btn-sm"));
   w.appendChild(fb);
-  if(lv==="byP"){U.forEach(function(u){var mine=posted.filter(function(e){return e.person===u.id;});if(!mine.length)return;var bal=mine.reduce(function(s,e){return s+parseFloat(e.credit||0)-parseFloat(e.debit||0);},0);var bb=el("span",{cls:"badge "+(bal>=0?"bg":"br")},(bal>=0?"In Hand: ":"Shortfall: ")+Rs(Math.abs(bal)));w.appendChild(Card(u.name,bb,LedgerTable(mine,false,canEditRow)));});}
+  if(lv==="byP"){U.forEach(function(u){if(!canSeePerson(S.user,u.id))return;var mine=posted.filter(function(e){return e.person===u.id;});if(!mine.length)return;var bal=mine.reduce(function(s,e){return s+parseFloat(e.credit||0)-parseFloat(e.debit||0);},0);var bb=el("span",{cls:"badge "+(bal>=0?"bg":"br")},(bal>=0?"In Hand: ":"Shortfall: ")+Rs(Math.abs(bal)));w.appendChild(Card(u.name,bb,LedgerTable(mine,false,canEditRow)));});}
   else if(lv==="byS"){SITES.filter(function(s){return s!=="W-93";}).forEach(function(site){var rows=posted.filter(function(e){return e.account===site||e.subAccount===site;});if(!rows.length)return;var tot=rows.reduce(function(s,e){return s+parseFloat(e.debit||0);},0);var bb=el("span",{cls:"badge bgold"},"Spent: "+Rs(tot));w.appendChild(Card(site,bb,LedgerTable(rows,true,canEditRow)));});}
   else w.appendChild(LedgerTable(posted,true,canEditRow));
   return w;
@@ -4817,6 +4907,230 @@ function rAudit(){
   return w;
 }
 
+
+/* ═══ MONTH-END SALARIES ═══ */
+function salaryMonthEndCard(){
+  var d=new Date();
+  var dim=new Date(d.getFullYear(),d.getMonth()+1,0).getDate();
+  if(d.getDate()<dim-6)return null; /* last 7 days of the month */
+  var m=curMonth();
+  var rows=SAL_LIST.map(function(s){return{s:s,paid:!!S.salrec.find(function(r){return r.person===s.p&&r.month===m;})};});
+  var unpaid=rows.filter(function(r){return !r.paid;});
+  var totalUnpaid=unpaid.reduce(function(t,r){return t+r.s.m;},0);
+  var c=Card("Month-End Salaries — "+m,el("span",{cls:"badge "+(unpaid.length?"br":"bg")},unpaid.length?unpaid.length+" unpaid":"All paid"));
+  var b=c.querySelector(".cb");
+  rows.forEach(function(r){
+    b.appendChild(dv({display:"flex",justifyContent:"space-between",alignItems:"center",padding:"8px 0",borderBottom:"1px solid var(--s2)",gap:"8px"},
+      el("div",{},el("div",{style:{fontWeight:"600",fontSize:"13px"}},r.s.p),el("div",{style:{fontSize:"10px",color:"var(--ink4)",textTransform:"uppercase",letterSpacing:".06em"}},r.s.r)),
+      dv({display:"flex",alignItems:"center",gap:"8px"},el("span",{style:{fontWeight:"700",fontSize:"14px"}},Rs(r.s.m)),el("span",{cls:"badge "+(r.paid?"bg":"br")},r.paid?"Paid":"Unpaid"))));
+  });
+  b.appendChild(dv({display:"flex",justifyContent:"space-between",padding:"12px 0 6px",fontWeight:"700"},el("span",{},"Still to pay"),el("span",{},Rs(totalUnpaid))));
+  var open=btn("Open Salaries",function(){set({view:"hr",tab:Object.assign({},S.tab,{hr:"sal"})});},"btn-g btn-full");
+  b.appendChild(open);
+  return c;
+}
+
+/* ═══ DEVICE SECURITY ═══ */
+function fmtDT(iso){return String(iso||"").replace("T"," ").slice(0,16);}
+function getDeviceId(){
+  var id="";try{id=localStorage.getItem("royal_device_id")||"";}catch(e){}
+  if(!id){id="dv_"+uid()+uid();try{localStorage.setItem("royal_device_id",id);}catch(e){}}
+  return id;
+}
+function deviceLabel(){
+  var ua=(typeof navigator!=="undefined"&&navigator.userAgent)||"";
+  var os=/Android/.test(ua)?"Android":/iPhone|iPad/.test(ua)?"iPhone/iPad":/Windows/.test(ua)?"Windows":/Mac/.test(ua)?"Mac":/Linux/.test(ua)?"Linux":"Unknown device";
+  var br=/Edg\//.test(ua)?"Edge":/Chrome\//.test(ua)?"Chrome":/Firefox\//.test(ua)?"Firefox":/Safari\//.test(ua)?"Safari":"Browser";
+  return br+" on "+os;
+}
+/* First-ever login for a user registers that device automatically. Any later, different device
+   becomes a pending request that a director must approve. If the device_requests table does not
+   exist yet (SQL 20 not run) the check is skipped so nobody gets locked out. */
+async function checkDevice(userId){
+  var devId=getDeviceId();
+  var resp;
+  try{resp=await fetch(SB_URL+"/rest/v1/device_requests?user_id=eq."+encodeURIComponent(userId)+"&select=*&limit=500",{headers:SBH});}
+  catch(e){return{state:"error"};}
+  if(resp.status===404){console.warn("device_requests table missing — device check skipped");return{state:"ok"};}
+  if(!resp.ok)return{state:"error"};
+  var rows=await resp.json();
+  var mine=rows.filter(function(r){return r.device_id===devId;}).sort(function(a,b){return String(b.requested_at||"")>String(a.requested_at||"")?1:-1;});
+  if(mine.length){
+    var st=mine[0].status;
+    if(st==="approved")return{state:"ok"};
+    if(st==="pending")return{state:"pending",reqId:mine[0].id};
+    return{state:"denied",msg:st==="revoked"?"Access from this device was removed by a director.":"A director denied this device."};
+  }
+  var first=rows.length===0;
+  var row={id:uid(),user_id:userId,device_id:devId,device_label:deviceLabel(),status:first?"approved":"pending",requested_at:now2(),decided_by:first?"auto":null,decided_at:first?now2():null};
+  try{
+    var pr=await fetch(SB_URL+"/rest/v1/device_requests?on_conflict=id",{method:"POST",headers:Object.assign({},SBH,{"Prefer":"resolution=merge-duplicates,return=minimal"}),body:JSON.stringify([row])});
+    if(!pr.ok)return{state:"error"};
+  }catch(e){return{state:"error"};}
+  return first?{state:"ok"}:{state:"pending",reqId:row.id};
+}
+async function waitDeviceApproval(reqId){
+  for(var i=0;i<150;i++){
+    await new Promise(function(r){setTimeout(r,4000);});
+    try{
+      var resp=await fetch(SB_URL+"/rest/v1/device_requests?id=eq."+encodeURIComponent(reqId)+"&select=status&limit=1",{headers:SBH});
+      if(resp.ok){var rows=await resp.json();var st=rows[0]&&rows[0].status;if(st==="approved")return"approved";if(st==="denied"||st==="revoked")return"denied";}
+    }catch(e){}
+  }
+  return"timeout";
+}
+function decideDevice(r,status){
+  var rec=Object.assign({},r,{status:status,decidedBy:S.user,decidedAt:now2()});
+  S.deviceReqs=(S.deviceReqs||[]).map(function(x){return x.id===r.id?rec:x;});
+  svRow("deviceReqs","r7_dev",rec);
+  addAudit("DEVICE_"+status.toUpperCase(),gU(r.userId).name+" — "+(r.label||""));
+  toast(status==="approved"?"Device approved":status==="revoked"?"Device removed":"Device denied");
+  render();
+}
+function rDevRequestsCard(){
+  if(ROLE_MAP[S.user]!=="director")return null;
+  var pend=(S.deviceReqs||[]).filter(function(r){return r.status==="pending"&&r.userId!==S.user;});
+  if(!pend.length)return null;
+  var c=Card("New Device Login Requests",el("span",{cls:"badge br"},String(pend.length)));
+  var b=c.querySelector(".cb");
+  pend.forEach(function(r){
+    var row=dv({padding:"10px 0",borderBottom:"1px solid var(--s2)"});
+    row.appendChild(dv({display:"flex",alignItems:"center",gap:"8px",marginBottom:"8px"},Avatar(r.userId,28),el("div",{},el("div",{style:{fontWeight:"700",fontSize:"13px"}},gU(r.userId).name),el("div",{style:{fontSize:"11px",color:"var(--ink3)"}},(r.label||"Unknown device")+" · "+fmtDT(r.requestedAt)))));
+    var act=dv({display:"flex",gap:"8px"});
+    act.appendChild(btn("Approve",function(){decideDevice(r,"approved");},"btn-g btn-sm"));
+    act.appendChild(btn("Deny",function(){decideDevice(r,"denied");},"btn-o btn-sm"));
+    row.appendChild(act);b.appendChild(row);
+  });
+  return c;
+}
+
+/* ═══ TEAM & PERMISSIONS ═══ */
+var PERM_VIEWS=[{id:"mat",l:"Material"},{id:"bank",l:"Bank"},{id:"vouch",l:"Vouchers"},{id:"petty",l:"Petty Cash"},{id:"constr",l:"Sites Statement"},{id:"vnd",l:"Vendors"},{id:"contr",l:"Contractors"},{id:"trial",l:"Trial Balance"},{id:"cashflow",l:"Cash Flow"},{id:"reports",l:"Reports"},{id:"bills",l:"Bills & Salaries"},{id:"hr",l:"HR Module"},{id:"doors",l:"Door Projects"},{id:"doorInv",l:"Doors Inventory"},{id:"quotations",l:"Quotations"},{id:"crm",l:"Doors Pipeline"},{id:"complaints",l:"Complaints"}];
+function saveAppUser(rec){
+  var i=(S.appUsers||[]).findIndex(function(r){return r.id===rec.id;});
+  if(i>=0){S.appUsers=S.appUsers.slice();S.appUsers[i]=rec;}else S.appUsers=(S.appUsers||[]).concat([rec]);
+  svRow("appUsers","r7_usr",rec);
+  applyAppUsers();
+}
+function appUserRec(u){
+  var ex=(S.appUsers||[]).find(function(r){return r.id===u.id;});
+  if(ex)return Object.assign({},ex,{perms:Object.assign({},ex.perms||{})});
+  return{id:u.id,name:u.name,username:u.username||u.id,jobTitle:u.role||"",baseRole:ROLE_MAP[u.id]||"staff",init:u.init,clr:u.clr,lang:u.lang||"en",email:u.email||"",custom:false,active:true,perms:{},created:now2(),createdBy:S.user};
+}
+function permCheck(label,checked,fn){
+  var cb=el("input",{type:"checkbox"});cb.checked=!!checked;
+  cb.style.cssText="width:20px;height:20px;padding:0;flex:none;accent-color:#8A6E28";
+  cb.addEventListener("change",function(e){fn(e.target.checked);});
+  return el("label",{style:{display:"flex",alignItems:"center",gap:"10px",padding:"7px 0",fontSize:"13px",cursor:"pointer"}},cb,el("span",{},label));
+}
+function rTeam(){
+  var w=el("div",{});
+  if(ROLE_MAP[S.user]!=="director"){w.appendChild(el("div",{cls:"al-r"},"Only directors can manage the team."));return w;}
+  var open=S.tab.teamOpen||"";
+  var dc=rDevRequestsCard();if(dc)w.appendChild(dc);
+
+  /* Add member */
+  var addOpen=!!S.tab.teamAdd;
+  var fd=S.fd["team_add"]||(S.fd["team_add"]={name:"",username:"",password:"",jobTitle:"",lang:"en",staffCash:false});
+  var ac=Card("Add Team Member");
+  var ab=ac.querySelector(".cb");
+  if(!addOpen){ab.appendChild(btn("＋ Add Staff Member",function(){set({tab:Object.assign({},S.tab,{teamAdd:true})});},"btn-g btn-full"));}
+  else{
+    var g=dv({display:"flex",flexDirection:"column",gap:"10px"});
+    g.appendChild(Fld("Full Name",Inp(fd.name,function(v){fd.name=v;},"text","e.g. Ali Raza")));
+    g.appendChild(Fld("Job Title",Inp(fd.jobTitle,function(v){fd.jobTitle=v;},"text","e.g. Supervisor")));
+    g.appendChild(Fld("Username (for login)",Inp(fd.username,function(v){fd.username=v;},"text","e.g. ali")));
+    g.appendChild(Fld("Password (min 4 characters)",Inp(fd.password,function(v){fd.password=v;},"password","")));
+    g.appendChild(Fld("Language",Sel(fd.lang,function(v){fd.lang=v||"en";},[{v:"en",l:"English"},{v:"ur",l:"Urdu"}])));
+    g.appendChild(permCheck("Can view all staff cash books (never directors')",fd.staffCash,function(v){fd.staffCash=v;}));
+    g.appendChild(el("div",{style:{fontSize:"11px",color:"var(--ink3)"}},"More page access can be added after saving, from the member's permission list."));
+    var br=dv({display:"flex",gap:"8px"});
+    br.appendChild(btn("Save Member",async function(){
+      var name=(fd.name||"").trim(),uname=(fd.username||"").trim().toLowerCase().replace(/[^a-z0-9_]/g,"");
+      if(!name){toast("Enter the name",true);return;}
+      if(!uname){toast("Enter a username (letters and numbers)",true);return;}
+      if(!fd.password||fd.password.length<4){toast("Password must be at least 4 characters",true);return;}
+      var taken=U.concat(U_INACTIVE).some(function(u){return u.id===uname||String(u.username||"").toLowerCase()===uname;});
+      if(taken){toast("That username is already used",true);return;}
+      var res=await callAuth({action:"set_password",username:uname,password:fd.password,user_id:uname});
+      if(!(res&&res.ok)){toast("Could not create login: "+((res&&res.error)||"unknown error"),true);return;}
+      var rec={id:uname,name:name,username:uname,jobTitle:(fd.jobTitle||"Staff").trim(),baseRole:"staff",init:name.split(/\s+/).map(function(x){return x.charAt(0);}).join("").slice(0,2).toUpperCase(),clr:"#6B6358",lang:fd.lang||"en",email:uname+"@royalinc.local",custom:true,active:true,perms:{staffCash:!!fd.staffCash,views:[]},created:now2(),createdBy:S.user};
+      ROLE_MAP[uname]="staff";
+      saveAppUser(rec);
+      addAudit("ADD_STAFF",name+" ("+uname+")");
+      S.fd["team_add"]=null;toast(name+" added");
+      set({tab:Object.assign({},S.tab,{teamAdd:false,teamOpen:uname})});
+    },"btn-g"));
+    br.appendChild(btn("Cancel",function(){S.fd["team_add"]=null;set({tab:Object.assign({},S.tab,{teamAdd:false})});},"btn-o"));
+    g.appendChild(br);ab.appendChild(g);
+  }
+  w.appendChild(ac);
+
+  /* Members */
+  var mc=Card("Team Members & Permissions",el("span",{style:{fontSize:"10px",color:"var(--ink4)"}},U.length+" active"));
+  var mb=mc.querySelector(".cb");
+  U.forEach(function(u){
+    var isDirU=ROLE_MAP[u.id]==="director";
+    var p=userPerms(u.id);
+    var isOpen=open===u.id;
+    var head=dv({display:"flex",alignItems:"center",gap:"10px",padding:"10px 0",borderBottom:"1px solid var(--s2)",cursor:"pointer"},
+      Avatar(u.id,30),
+      el("div",{style:{flex:"1"}},el("div",{style:{fontWeight:"700",fontSize:"13px"}},u.name),el("div",{style:{fontSize:"10px",color:"var(--ink4)",letterSpacing:".06em",textTransform:"uppercase"}},isDirU?"Director":(u.role||"Staff"))),
+      el("span",{cls:"badge "+(isDirU?"bb":(p.staffCash?"bg":"bw"))},isDirU?"Full access":(p.staffCash?"Sees staff cash":"Own cash only")),
+      el("span",{style:{color:"var(--ink4)"}},isOpen?"▾":"▸"));
+    head.addEventListener("click",function(){set({tab:Object.assign({},S.tab,{teamOpen:isOpen?"":u.id})});});
+    mb.appendChild(head);
+    if(!isOpen)return;
+    var body=dv({padding:"8px 0 14px 4px",borderBottom:"1px solid var(--s2)"});
+    if(isDirU){
+      body.appendChild(el("div",{style:{fontSize:"12px",color:"var(--ink3)"}},"Directors see every staff cash book and their own, never another director's. Director accounts cannot be removed here."));
+    }else{
+      body.appendChild(el("div",{style:{fontSize:"10px",fontWeight:"700",letterSpacing:".14em",textTransform:"uppercase",color:"var(--ink3)",margin:"2px 0 4px"}},"Cash Books"));
+      body.appendChild(permCheck("Can view all staff cash books (never directors')",p.staffCash,function(v){var rec=appUserRec(u);rec.perms=Object.assign({},rec.perms,{staffCash:v,views:p.views});saveAppUser(rec);addAudit("PERMISSION",u.name+": staff cash books "+(v?"on":"off"));render();}));
+      body.appendChild(el("div",{style:{fontSize:"10px",fontWeight:"700",letterSpacing:".14em",textTransform:"uppercase",color:"var(--ink3)",margin:"10px 0 4px"}},"Extra Pages"));
+      PERM_VIEWS.forEach(function(pv){
+        var already=NAV.some(function(n){return n.id===pv.id&&(n.roles.indexOf(ROLE_MAP[u.id])>=0||n.roles.indexOf(u.id)>=0);});
+        if(already)return;
+        body.appendChild(permCheck(pv.l,p.views.indexOf(pv.id)>=0,function(v){
+          var rec=appUserRec(u);var vs=(rec.perms.views||p.views).filter(function(x){return x!==pv.id;});if(v)vs.push(pv.id);
+          rec.perms=Object.assign({},rec.perms,{staffCash:p.staffCash,views:vs});saveAppUser(rec);addAudit("PERMISSION",u.name+": "+pv.l+" "+(v?"on":"off"));render();}));
+      });
+    }
+    /* Devices */
+    var devs=(S.deviceReqs||[]).filter(function(r){return r.userId===u.id&&(r.status==="approved"||r.status==="pending");});
+    body.appendChild(el("div",{style:{fontSize:"10px",fontWeight:"700",letterSpacing:".14em",textTransform:"uppercase",color:"var(--ink3)",margin:"12px 0 4px"}},"Devices"));
+    if(!devs.length)body.appendChild(el("div",{style:{fontSize:"12px",color:"var(--ink4)"}},"No devices registered yet."));
+    devs.forEach(function(r){
+      body.appendChild(dv({display:"flex",justifyContent:"space-between",alignItems:"center",gap:"8px",padding:"5px 0"},
+        el("div",{style:{fontSize:"12px"}},(r.label||"Device")+" · "+fmtDT(r.requestedAt)+" ",el("span",{cls:"badge "+(r.status==="approved"?"bg":"bw")},r.status)),
+        btn("Remove",function(){if(confirm("Remove this device? "+u.name+" will need approval to log in from it again.")){decideDevice(r,"revoked");}},"btn-o btn-sm")));
+    });
+    if(!isDirU){
+      var rm=btn("Remove "+u.name+" from the app",function(){
+        if(!confirm("Remove "+u.name+"? They will no longer be able to log in. Their past entries stay in the books.")){return;}
+        var rec=appUserRec(u);rec.active=false;saveAppUser(rec);addAudit("REMOVE_STAFF",u.name);toast(u.name+" removed");
+        set({tab:Object.assign({},S.tab,{teamOpen:""})});
+      },"btn-o btn-sm");
+      rm.style.cssText+=";margin-top:12px;color:var(--neg);border-color:var(--neg)";
+      body.appendChild(rm);
+    }
+    mb.appendChild(body);
+  });
+  w.appendChild(mc);
+
+  /* Removed */
+  if(U_INACTIVE.length){
+    var rc=Card("Removed Members");var rb=rc.querySelector(".cb");
+    U_INACTIVE.forEach(function(u){
+      rb.appendChild(dv({display:"flex",justifyContent:"space-between",alignItems:"center",padding:"8px 0",borderBottom:"1px solid var(--s2)"},
+        el("span",{style:{fontWeight:"600",fontSize:"13px"}},u.name),
+        btn("Restore",function(){var rec=appUserRec(u);rec.active=true;saveAppUser(rec);addAudit("RESTORE_STAFF",u.name);toast(u.name+" restored");render();},"btn-g btn-sm")));
+    });
+    w.appendChild(rc);
+  }
+  return w;
+}
+
 /* ROUTER */
 function rPage(view){
   var vm={
@@ -4828,7 +5142,7 @@ function rPage(view){
     constr:rConstr,mat:rMat,contr:rContr,vnd:rVendors,misc:rMisc,
     doors:rDoors,doorInv:rDoorInv,
     hr:rHR,bills:rBills,crm:rLeads,leadDocs:rLeadDocs,crmContacts:rCRM,drawings:rDrawingsQueue,complaints:rComplaints,quotations:rQuotations,accountsList:rAccountsList,doorMat:rDoorMat,
-    reports:rReports,ai:rAI,audit:rAudit,security:rSecurity,editTxn:rEditTxn
+    reports:rReports,ai:rAI,audit:rAudit,security:rSecurity,editTxn:rEditTxn,team:rTeam
   };
   return (vm[view]||rDash)();
 }
