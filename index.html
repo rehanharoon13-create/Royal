@@ -348,12 +348,14 @@ function sbUp(tbl,rows){
          even overwrite it. Silent failure here is worse than for deletes, since nothing
          ever re-corrects it automatically. Now queued for real retry, not just a message. */
       rows.forEach(function(row){queuePendingSync(tbl,row);});
-      toast("Saved on this device only — check your connection, then tap Sync Now",true,4500);
+      r.text().then(function(bt){
+        toast("NOT SAVED TO CLOUD ["+tbl+" "+r.status+"] "+String(bt||"").slice(0,140)+" — kept on this phone only. Do NOT clear site data.",true,12000);
+      }).catch(function(){toast("NOT SAVED TO CLOUD ["+tbl+" "+r.status+"] — kept on this phone only. Do NOT clear site data.",true,12000);});
     }
   }).catch(function(e){
     console.warn("sbUp",tbl,e);
     rows.forEach(function(row){queuePendingSync(tbl,row);});
-    toast("Saved on this device only — check your connection, then tap Sync Now",true,4500);
+    toast("NOT SAVED TO CLOUD [network: "+(e&&e.message||e)+"] — kept on this phone only. Do NOT clear site data.",true,12000);
   });
 }
 /* Deletes the row from Supabase itself — sbUp alone can never remove a row, only add/update */
