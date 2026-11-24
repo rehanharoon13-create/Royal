@@ -53,7 +53,7 @@ body{font-family:"Inter",sans-serif;background-color:#EDE6D8;background-image:ra
    real "Love" font (via @font-face + a licensed file) if the user provides one. */
 .hero .rn,.sb .rn,#sb .rn,#toast .rn{color:inherit}
 .plainnum,.plainnum .rn{font-family:"Inter",sans-serif !important;font-style:normal !important;font-weight:700 !important;color:var(--ink) !important;letter-spacing:0 !important;font-variant-numeric:tabular-nums}
-.rn{font-family:"Playfair Display","Cormorant Garamond",serif;font-style:normal;font-variant-numeric:lining-nums tabular-nums;letter-spacing:.01em;color:var(--ink);font-weight:700}
+.rn{font-family:"Inter",sans-serif;font-style:normal;font-variant-numeric:lining-nums tabular-nums;letter-spacing:.01em;color:var(--ink);font-weight:700}
 body,body *{font-style:normal !important}
 .plainnum.neg,.plainnum.neg .rn{color:var(--neg) !important}
 :root{
@@ -205,6 +205,16 @@ body{background:linear-gradient(160deg,#F0EEE6 0%,#E3E3D8 55%,#D6D9CC 100%);back
 .bni{color:var(--ink4)}
 .bni.act{color:var(--g3)}
 button.btn,.btn{border-radius:999px}
+/* one font everywhere */
+html,body,body *:not(pre):not(code){font-family:"Inter",system-ui,-apple-system,"Segoe UI",sans-serif!important;font-style:normal!important}
+/* glass */
+body{background-color:#E4E5DA;background-image:radial-gradient(ellipse 60% 40% at 15% 10%,rgba(255,255,255,.95),transparent 70%),radial-gradient(ellipse 50% 45% at 90% 35%,rgba(163,181,152,.45),transparent 70%),radial-gradient(ellipse 55% 40% at 20% 85%,rgba(196,186,160,.40),transparent 70%),linear-gradient(160deg,#F2F0E8,#DADDCF);background-attachment:fixed}
+.card{background:linear-gradient(145deg,rgba(255,255,255,.55),rgba(255,255,255,.22));-webkit-backdrop-filter:blur(22px) saturate(1.3);backdrop-filter:blur(22px) saturate(1.3);border:1px solid rgba(255,255,255,.75);box-shadow:0 10px 30px rgba(60,75,55,.13),inset 0 1px 0 rgba(255,255,255,.95),inset 0 -1px 0 rgba(255,255,255,.3)}
+.hero{background:linear-gradient(135deg,rgba(255,255,255,.55),rgba(163,181,152,.40));-webkit-backdrop-filter:blur(22px) saturate(1.3);backdrop-filter:blur(22px) saturate(1.3);box-shadow:0 12px 32px rgba(60,75,55,.16),inset 0 1px 0 rgba(255,255,255,.95)}
+#bnav,#tb{-webkit-backdrop-filter:blur(22px) saturate(1.3);backdrop-filter:blur(22px) saturate(1.3);background:rgba(246,245,238,.55)}
+.btn-g{background:linear-gradient(135deg,#B5A484,#9C8D6D);color:#fff;border-radius:999px;box-shadow:0 4px 12px rgba(120,105,70,.3)}
+input,select,textarea{background:rgba(255,255,255,.55)!important;border-radius:12px}
+
 
 .hero::after{content:"";position:absolute;bottom:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,var(--g3),var(--g),var(--g3),transparent)}
 .sep{height:1px;background:var(--bd);border:none;margin:14px 0}
@@ -275,7 +285,7 @@ button.btn,.btn{border-radius:999px}
 <div id="toast"></div>
 <div id="loader">
   <div style="width:54px;height:54px;border-radius:50%;border:1px solid var(--g3);display:flex;align-items:center;justify-content:center;background:var(--s1)">
-    <span style="font-family:'Cormorant Garamond',serif;font-size:28px;color:var(--g);font-weight:600">R</span>
+    <span style="font-family:Inter,sans-serif;font-size:28px;color:var(--g);font-weight:600">R</span>
   </div>
   <div id="lmsg" style="font-size:9px;letter-spacing:.22em;text-transform:uppercase;color:var(--g3);font-weight:600;margin-top:4px">Loading</div>
   <div class="ldots"><div class="d1"></div><div class="d2"></div><div class="d3"></div></div>
@@ -1220,7 +1230,7 @@ function LangToggle(){
 
 function printStatement(title,html){
   var w=window.open("","_blank");if(!w)return;
-  var parts2=["<!DOCTYPE html><html><head><meta charset=\"UTF-8\"><title>",title,"<\/title><style>body{font-family:Georgia,serif;font-size:12px;padding:20px;color:#1C1A16}h1{font-size:18px;margin-bottom:4px}table{width:100%;border-collapse:collapse;margin-top:10px}th{padding:8px 10px;text-align:left;font-weight:700;font-size:10px;text-transform:uppercase;background:#F0EAE0;border-bottom:2px solid #D8D0C4}td{padding:7px 10px;border-bottom:1px solid #F0EAE0;font-size:12px}.pos{color:#5E8C6A}.neg{color:#B85C4A}tfoot td{font-weight:700;background:#F0EAE0;border-top:2px solid #D8D0C4}@media print{button{display:none}}<\/style><\/head><body>","<h1>Royal Inc.<\/h1><p style=\"font-size:11px;color:#6B6358;margin-bottom:14px\">",title," \u00b7 Printed ",new Date().toLocaleDateString("en-PK"),"<\/p>",html,"<br><button onclick=\"window.print()\" style=\"padding:8px 18px;background:#8F8576;color:#fff;border:none;border-radius:5px;cursor:pointer;font-weight:700\">Print / Save as PDF<\/button>","<\/body><\/html>"];
+  var parts2=["<!DOCTYPE html><html><head><meta charset=\"UTF-8\"><title>",title,"<\/title><style>body{font-family:Inter,sans-serif;font-size:12px;padding:20px;color:#1C1A16}h1{font-size:18px;margin-bottom:4px}table{width:100%;border-collapse:collapse;margin-top:10px}th{padding:8px 10px;text-align:left;font-weight:700;font-size:10px;text-transform:uppercase;background:#F0EAE0;border-bottom:2px solid #D8D0C4}td{padding:7px 10px;border-bottom:1px solid #F0EAE0;font-size:12px}.pos{color:#5E8C6A}.neg{color:#B85C4A}tfoot td{font-weight:700;background:#F0EAE0;border-top:2px solid #D8D0C4}@media print{button{display:none}}<\/style><\/head><body>","<h1>Royal Inc.<\/h1><p style=\"font-size:11px;color:#6B6358;margin-bottom:14px\">",title," \u00b7 Printed ",new Date().toLocaleDateString("en-PK"),"<\/p>",html,"<br><button onclick=\"window.print()\" style=\"padding:8px 18px;background:#8F8576;color:#fff;border:none;border-radius:5px;cursor:pointer;font-weight:700\">Print / Save as PDF<\/button>","<\/body><\/html>"];
   w.document.write(parts2.join(""));w.document.close();
 }
 
@@ -1611,7 +1621,7 @@ function renderNotif(){
   var notes=getNotifs();
   if(!S.notifOpen||!notes.length){panel.classList.remove("open");return;}
   panel.innerHTML="";panel.classList.add("open");
-  var h=dv({display:"flex",justifyContent:"space-between",alignItems:"center",padding:"12px 15px",borderBottom:"1px solid var(--bd)"},el("span",{style:{fontWeight:"700",fontSize:"13px",fontFamily:"'Cormorant Garamond',serif"}},"Notifications"),el("span",{style:{fontSize:"10px",color:"var(--ink4)",letterSpacing:".08em"}},notes.length+" alerts"));
+  var h=dv({display:"flex",justifyContent:"space-between",alignItems:"center",padding:"12px 15px",borderBottom:"1px solid var(--bd)"},el("span",{style:{fontWeight:"700",fontSize:"13px",fontFamily:"Inter,sans-serif"}},"Notifications"),el("span",{style:{fontSize:"10px",color:"var(--ink4)",letterSpacing:".08em"}},notes.length+" alerts"));
   panel.appendChild(h);
   notes.forEach(function(n){var item=el("div",{cls:"nitem"});item.appendChild(dv({display:"flex",gap:"10px",alignItems:"flex-start"},el("span",{style:{fontSize:"15px",flexShrink:"0"}},n.icon),el("div",{style:{fontSize:"12px",color:"var(--ink2)"}},n.text)));panel.appendChild(item);});
   try{wrapNumerals(panel);}catch(e){console.warn("wrapNumerals failed",e);}
@@ -1792,7 +1802,7 @@ function LedgerTable(rows,showPerson,canEditFn){
     tr.appendChild(partCell);
     tr.appendChild(td(r.debit?num(r.debit):"",{textAlign:"right",color:"var(--neg)",fontWeight:"600",whiteSpace:"nowrap",fontSize:"16px"}));
     tr.appendChild(td(r.credit?num(r.credit):"",{textAlign:"right",color:"var(--pos)",fontWeight:"600",whiteSpace:"nowrap",fontSize:"16px"}));
-    var bc=el("td",{style:{textAlign:"right",fontFamily:"'Cormorant Garamond',serif",fontSize:"16px",fontWeight:"600",color:bal>=0?"var(--pos)":"var(--neg)",whiteSpace:"nowrap"}});bc.textContent=num(bal)+(bal<0?" Dr":"");tr.appendChild(bc);
+    var bc=el("td",{style:{textAlign:"right",fontFamily:"Inter,sans-serif",fontSize:"16px",fontWeight:"600",color:bal>=0?"var(--pos)":"var(--neg)",whiteSpace:"nowrap"}});bc.textContent=num(bal)+(bal<0?" Dr":"");tr.appendChild(bc);
     var stc=el("td",{});stc.appendChild(Badge(r.status||"posted"));tr.appendChild(stc);
     var billc=el("td",{});if(r.bill_photo)billc.appendChild(el("a",{href:r.bill_photo,target:"_blank",style:{fontSize:"11px",color:"var(--g)",fontWeight:"600"}},"View"));else{billc.style.color="var(--ink4)";billc.textContent="—";}tr.appendChild(billc);
     if(anyEditable){
@@ -1818,9 +1828,9 @@ function rLogin(){
   var box=dv({maxWidth:"400px",width:"100%"});
   var logo=dv({textAlign:"center",marginBottom:"30px"});
   var lc=dv({width:"68px",height:"68px",borderRadius:"16px",background:"linear-gradient(135deg,var(--g3),var(--g))",display:"flex",alignItems:"center",justifyContent:"center",margin:"0 auto 14px",boxShadow:"0 8px 30px rgba(143,133,118,.25)"});
-  lc.appendChild(el("span",{style:{fontFamily:"'Cormorant Garamond',serif",fontSize:"32px",color:"#fff",fontWeight:"700"}},"R"));
+  lc.appendChild(el("span",{style:{fontFamily:"Inter,sans-serif",fontSize:"32px",color:"#fff",fontWeight:"700"}},"R"));
   logo.appendChild(lc);
-  logo.appendChild(el("div",{style:{fontFamily:"'Cormorant Garamond',serif",fontSize:"28px",fontWeight:"600",color:"var(--ink)",letterSpacing:".04em"}},"Royal Inc."));
+  logo.appendChild(el("div",{style:{fontFamily:"Inter,sans-serif",fontSize:"28px",fontWeight:"600",color:"var(--ink)",letterSpacing:".04em"}},"Royal Inc."));
   logo.appendChild(el("div",{style:{fontSize:"10px",letterSpacing:".22em",textTransform:"uppercase",color:"var(--ink4)",marginTop:"5px"}},"Construction & Luxury Doors"));
   box.appendChild(logo);
   var card=dv({background:"var(--s1)",borderRadius:"10px",border:"1px solid var(--bd)",padding:"28px",boxShadow:"0 4px 20px rgba(28,26,22,.08)"});
@@ -1968,7 +1978,7 @@ function rExecDash(){
   var hrow=dv({display:"flex",justifyContent:"space-between",alignItems:"flex-start",flexWrap:"wrap",gap:"14px"});
   var hl=el("div",{});
   hl.appendChild(el("div",{style:{fontSize:"9px",fontWeight:"600",letterSpacing:".2em",textTransform:"uppercase",color:"var(--sbt)",marginBottom:"8px"}},"Royal Inc. \u00b7 "+new Date().toLocaleDateString("en-PK",{weekday:"long",year:"numeric",month:"long",day:"numeric"})));
-  hl.appendChild(el("div",{style:{fontFamily:"'Cormorant Garamond',serif",fontSize:"30px",fontWeight:"500",color:"#F5EFE0",lineHeight:"1.1"}},"Executive Dashboard"));
+  hl.appendChild(el("div",{style:{fontFamily:"Inter,sans-serif",fontSize:"30px",fontWeight:"500",color:"#F5EFE0",lineHeight:"1.1"}},"Executive Dashboard"));
   if(notifs.length){var chips=dv({display:"flex",gap:"6px",flexWrap:"wrap",marginTop:"12px"});notifs.slice(0,3).forEach(function(n){var chip=el("div",{style:{background:"rgba(255,255,255,.08)",border:"1px solid rgba(255,255,255,.12)",borderRadius:"5px",padding:"4px 10px",fontSize:"10px",display:"flex",alignItems:"center",gap:"5px",cursor:"pointer",color:"#F5EFE0"},onClick:function(){if(n.type==="aw"||n.type==="esc")set({view:"dirApp"});else if(n.type==="mat")set({view:"mat"});else if(n.type==="dev")set({view:"team"});else if(n.type==="sal")set({view:"hr",tab:Object.assign({},S.tab,{hr:"sal"})});}});chip.appendChild(el("span",{},n.icon));chip.appendChild(el("span",{},n.text.slice(0,40)));chips.appendChild(chip);});hl.appendChild(chips);}
   hrow.appendChild(hl);hero.appendChild(hrow);w.appendChild(hero);
   /* Three total tabs: cash (or deficit), banks, cumulative */
@@ -1989,7 +1999,7 @@ function rExecDash(){
   var devCardTop=rDevRequestsCard();if(devCardTop)w.appendChild(devCardTop);
 
   /* QUICK ACCESS — moved to TOP */
-  w.appendChild(el("div",{style:{fontFamily:"'Cormorant Garamond',serif",fontSize:"16px",fontWeight:"500",color:"var(--ink)",letterSpacing:".03em",margin:"0 0 10px"}},"Quick Access"));
+  w.appendChild(el("div",{style:{fontFamily:"Inter,sans-serif",fontSize:"16px",fontWeight:"500",color:"var(--ink)",letterSpacing:".03em",margin:"0 0 10px"}},"Quick Access"));
   var qg=el("div",{cls:"mc-grid",style:{marginBottom:"20px"}});
   [{id:"addCB",l:"New Entry",e:"\u2795"},{id:"accountsList",l:"Accounts",e:"\uD83D\uDCCB"},{id:"myLedger",l:"My Ledger",e:"\uD83D\uDCD2"},{id:"dirApp",l:"Approve",e:"✅"},{id:"ldg",l:"Ledger",e:"\u2261"},{id:"bank",l:"Bank",e:"\u2B1C"},{id:"cc",l:"Cards",e:"\u25A3"},{id:"ccExp",l:"Add CC Expense",e:"\uD83D\uDCB3"},{id:"constr",l:"Sites",e:"\u25EB"},{id:"mat",l:"Material",e:"\u2B21"},{id:"contr",l:"Contractors",e:"\u25C8"},{id:"vnd",l:"Vendors",e:"\u25CF"},{id:"doors",l:"Doors",e:"\u25AD"},{id:"hr",l:"HR",e:"\uD83D\uDC77"},{id:"bills",l:"Bills",e:"\uD83D\uDD14"},{id:"ai",l:"AI",e:"\u2746"}].forEach(function(m2){var mc=el("div",{cls:"mc",onClick:function(){if(m2.id==="myLedger"){set({cbf:{lv:"byP",person:S.user,site:"",search:"",d1:"",d2:""},view:"ldg"});}else if(m2.id==="ccExp"){S.fd.cc_exp_autocam=true;set({view:"cc",tab:Object.assign({},S.tab,{cc:"exp"})});}else{set({view:m2.id});}}});mc.appendChild(el("div",{cls:"mc-icon"},m2.e));mc.appendChild(el("div",{cls:"mc-label"},m2.l));qg.appendChild(mc);});
   w.appendChild(qg);
@@ -2015,7 +2025,7 @@ function rStaffDash(){
   var hrow=dv({display:"flex",justifyContent:"space-between",alignItems:"flex-start",flexWrap:"wrap",gap:"12px"});
   var hl=el("div",{});
   hl.appendChild(el("div",{style:{fontSize:"9px",fontWeight:"600",letterSpacing:".2em",textTransform:"uppercase",color:"var(--sbt)",marginBottom:"7px"}},isUr?"خوش آمدید":"Welcome Back"));
-  hl.appendChild(el("div",{style:{fontFamily:"'Cormorant Garamond',serif",fontSize:"28px",fontWeight:"500",color:"#F5EFE0"}},u.name));
+  hl.appendChild(el("div",{style:{fontFamily:"Inter,sans-serif",fontSize:"28px",fontWeight:"500",color:"#F5EFE0"}},u.name));
   hl.appendChild(el("div",{style:{fontSize:"11px",color:"var(--sbm)",marginTop:"3px"}},(displayRole(u)?displayRole(u)+" \u00b7 ":"")+"Royal Inc."));
   var hr2=dv({textAlign:"right"});
   hr2.appendChild(el("div",{style:{fontSize:"9px",fontWeight:"600",letterSpacing:".18em",textTransform:"uppercase",color:"var(--sbt)",marginBottom:"5px"}},isUr?"نقد بقایا":"Cash Balance"));
@@ -2046,7 +2056,7 @@ function rDanishDash(){
   var w=el("div",{});
   var hero=el("div",{cls:"hero"});
   hero.appendChild(el("div",{style:{fontSize:"9px",fontWeight:"600",letterSpacing:".2em",textTransform:"uppercase",color:"var(--sbt)",marginBottom:"7px"}},"Verification Desk"));
-  hero.appendChild(el("div",{style:{fontFamily:"'Cormorant Garamond',serif",fontSize:"28px",fontWeight:"500",color:"#F5EFE0"}},"Danish"));
+  hero.appendChild(el("div",{style:{fontFamily:"Inter,sans-serif",fontSize:"28px",fontWeight:"500",color:"#F5EFE0"}},"Danish"));
   hero.appendChild(el("div",{style:{fontSize:"11px",color:"var(--sbm)"}},"Accountant \u00b7 Royal Inc."));
   w.appendChild(hero);
   w.appendChild(el("div",{cls:"kgrid"},KPIsm("Flagged for Director",(S.esc||[]).length,"var(--wrn)"),KPIsm("Awaiting Director",cbAw,"var(--inf)"),KPIsm("Material Pending",matPend,"var(--inf)"),KPIsm("Posted Today",S.cb.filter(function(e){return e.status==="posted"&&(e.date||"")===today();}).length,"var(--pos)")));
@@ -2093,8 +2103,8 @@ function rAttendance(){
       /* Days-present summary for the current month — the number a director actually
          wants at a glance, distinct from the raw last-30-records count above. */
       pc.querySelector(".cb").appendChild(dv({display:"flex",gap:"14px",marginBottom:"12px",padding:"10px 12px",background:"var(--g5)",borderRadius:"6px",border:"1px solid rgba(143,133,118,.15)"},
-        dv({},el("div",{style:{fontSize:"9px",letterSpacing:".1em",textTransform:"uppercase",color:"var(--g3)"}},cm+" — Present"),el("div",{style:{fontFamily:"'Cormorant Garamond',serif",fontSize:"22px",fontWeight:"600",color:"var(--pos)"}},String(presentThisMonth))),
-        dv({},el("div",{style:{fontSize:"9px",letterSpacing:".1em",textTransform:"uppercase",color:"var(--g3)"}},cm+" — Absent"),el("div",{style:{fontFamily:"'Cormorant Garamond',serif",fontSize:"22px",fontWeight:"600",color:"var(--neg)"}},String(absentThisMonth)))
+        dv({},el("div",{style:{fontSize:"9px",letterSpacing:".1em",textTransform:"uppercase",color:"var(--g3)"}},cm+" — Present"),el("div",{style:{fontFamily:"Inter,sans-serif",fontSize:"22px",fontWeight:"600",color:"var(--pos)"}},String(presentThisMonth))),
+        dv({},el("div",{style:{fontSize:"9px",letterSpacing:".1em",textTransform:"uppercase",color:"var(--g3)"}},cm+" — Absent"),el("div",{style:{fontFamily:"Inter,sans-serif",fontSize:"22px",fontWeight:"600",color:"var(--neg)"}},String(absentThisMonth)))
       ));
       var tbody9=el("tbody",{});
       recs.forEach(function(r){var tr=el("tr",{});tr.appendChild(el("td",{style:{fontSize:"12px"}},r.date));tr.appendChild(el("td",{},el("span",{cls:"badge "+(r.status==="present"?"bg":r.status==="absent"?"br":"bw")},r.status)));tr.appendChild(el("td",{style:{fontSize:"12px",color:"var(--ink4)"}},gU(r.by||"").name));tbody9.appendChild(tr);});
@@ -2120,7 +2130,7 @@ function rMyEntries(){
   var inBook=allMine.filter(function(e){return e.status!=="rejected";}).sort(function(a,b){var av=a.created||a.date||"";var bv=b.created||b.date||"";return av>bv?1:-1;});
   var rejected=allMine.filter(function(e){return e.status==="rejected";}).sort(function(a,b){return b.created>a.created?1:-1;});
   var w=el("div",{});
-  w.appendChild(el("div",{style:{fontFamily:"'Cormorant Garamond',serif",fontSize:"22px",fontWeight:"500",color:"var(--ink)",letterSpacing:".03em",marginBottom:"14px"}},"My Cash Book"));
+  w.appendChild(el("div",{style:{fontFamily:"Inter,sans-serif",fontSize:"22px",fontWeight:"500",color:"var(--ink)",letterSpacing:".03em",marginBottom:"14px"}},"My Cash Book"));
 
   if(inBook.length){
     w.appendChild(LedgerTable(inBook,false,canEditRow));
@@ -2139,7 +2149,7 @@ function rMyEntries(){
       if(r.particulars)item.appendChild(el("div",{style:{fontSize:"12px",color:"var(--ink2)",marginBottom:"4px"}},String(r.particulars).slice(0,80)));
       if(r.particularsUr)item.appendChild(el("div",{cls:"ur",style:{fontSize:"12px",color:"var(--ink4)",marginBottom:"7px"}},r.particularsUr));
       var bot=dv({display:"flex",justifyContent:"space-between",alignItems:"center",gap:"8px"});
-      bot.appendChild(el("div",{style:{fontFamily:"'Cormorant Garamond',serif",fontSize:"16px",fontWeight:"600",color:isCr?"var(--pos)":"var(--neg)"}},(isCr?"+":"-")+Rs(isCr?r.credit:r.debit)));
+      bot.appendChild(el("div",{style:{fontFamily:"Inter,sans-serif",fontSize:"16px",fontWeight:"600",color:isCr?"var(--pos)":"var(--neg)"}},(isCr?"+":"-")+Rs(isCr?r.credit:r.debit)));
       item.appendChild(bot);
       if(r.rejection)item.appendChild(el("div",{style:{marginTop:"8px",padding:"8px 10px",background:"var(--neg2)",border:"1px solid rgba(184,92,74,.2)",borderRadius:"6px",fontSize:"12px",color:"var(--neg)"}},"Rejected: "+r.rejection));
       if(r.account!=="Cash Given"){
@@ -2170,7 +2180,7 @@ function rMyEntries(){
     var tCard=Card("Cash Given — Reversible",el("span",{cls:"badge bgold"},myTransfers.length));
     myTransfers.forEach(function(r){
       var item=el("div",{cls:"ei"});
-      item.appendChild(dv({display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:"7px",gap:"8px"},dv({flex:"1",minWidth:"0"},el("div",{style:{fontWeight:"600",fontSize:"13px"}},r.particulars||""),el("div",{style:{fontSize:"11px",color:"var(--ink4)",marginTop:"3px"}},r.date||"")),el("div",{style:{fontFamily:"'Cormorant Garamond',serif",fontSize:"16px",fontWeight:"600",color:"var(--neg)"}},"-"+Rs(r.debit))));
+      item.appendChild(dv({display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:"7px",gap:"8px"},dv({flex:"1",minWidth:"0"},el("div",{style:{fontWeight:"600",fontSize:"13px"}},r.particulars||""),el("div",{style:{fontSize:"11px",color:"var(--ink4)",marginTop:"3px"}},r.date||"")),el("div",{style:{fontFamily:"Inter,sans-serif",fontSize:"16px",fontWeight:"600",color:"var(--neg)"}},"-"+Rs(r.debit))));
       var undoId=r.id;
       item.appendChild(btn("Undo — Reverse This Transfer",function(){if(!confirm("Reverse this cash transfer? This removes it from both your and the recipient's balance."))return;addAudit("UNDO_GIVE_CASH","CB#"+r.cbNo);removeRow("cb","r7_cb",undoId);toast("Transfer reversed");render();},"btn-neg btn-sm"));
       tCard.querySelector(".cb").appendChild(item);
@@ -2404,11 +2414,11 @@ function rDirApp(){
   if(awaiting.length){
     var totDr=awaiting.reduce(function(s,e){return s+parseFloat(e.debit||0);},0);var totCr=awaiting.reduce(function(s,e){return s+parseFloat(e.credit||0);},0);
     var sb3=dv({background:"var(--g4)",border:"1px solid rgba(143,133,118,.2)",borderRadius:"8px",padding:"14px",marginBottom:"14px"});
-    sb3.appendChild(el("div",{style:{fontWeight:"700",color:"var(--g)",marginBottom:"10px",fontFamily:"'Cormorant Garamond',serif",fontSize:"16px"}},awaiting.length+" entries reviewed by Danish"));
+    sb3.appendChild(el("div",{style:{fontWeight:"700",color:"var(--g)",marginBottom:"10px",fontFamily:"Inter,sans-serif",fontSize:"16px"}},awaiting.length+" entries reviewed by Danish"));
     sb3.appendChild(el("div",{cls:"kgrid",style:{gridTemplateColumns:"1fr 1fr",marginBottom:"10px"}},KPIsm("Total Debit",totDr,"var(--neg)"),KPIsm("Total Credit",totCr,"var(--pos)")));
     sb3.appendChild(btn("Approve All & Post",function(){S.cb=S.cb.map(function(e){return e.status==="awaiting_approval"?Object.assign({},e,{status:"posted",approvedBy:S.user,approvedAt:now2()}):e;});svCB();addAudit("APPROVE_ALL",awaiting.length);toast("All posted");render();},"btn-g btn-full"));
     w.appendChild(sb3);
-    awaiting.forEach(function(r){var u2=gU(r.person);var isCr=parseFloat(r.credit||0)>0&&!parseFloat(r.debit||0);var note3="";var vc2=el("div",{cls:"vc"});vc2.appendChild(dv({display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:"10px",paddingBottom:"9px",borderBottom:"1px solid var(--bd)",gap:"8px",flexWrap:"wrap"},dv({display:"flex",gap:"9px",alignItems:"center"},Avatar(r.person,30),el("div",{},el("div",{style:{fontWeight:"700",fontSize:"13px"}},(r.account||"")+(r.subAccount?" / "+r.subAccount:"")),dv({display:"flex",gap:"7px",marginTop:"3px",alignItems:"center",flexWrap:"wrap"},r.cbNo?el("span",{style:{fontSize:"10px",fontWeight:"700",color:"var(--g)",background:"var(--g4)",borderRadius:"3px",padding:"1px 6px"}},r.cbNo):null,el("span",{style:{fontSize:"11px",color:"var(--ink4)"}},u2.name+" \u00b7 "+(r.date||""))))),el("div",{style:{fontFamily:"'Cormorant Garamond',serif",fontSize:"22px",fontWeight:"600",color:isCr?"var(--pos)":"var(--neg)"}},(isCr?"+":"-")+Rs(isCr?r.credit:r.debit))));vc2.appendChild(el("div",{style:{fontSize:"12px",color:"var(--ink2)",padding:"8px 10px",background:"var(--s2)",borderRadius:"6px",marginBottom:"6px"}},r.particulars||""));if(r.particularsUr)vc2.appendChild(el("div",{cls:"ur",style:{padding:"8px",background:"rgba(74,127,165,.08)",borderRadius:"5px",marginBottom:"10px",border:"1px solid rgba(74,127,165,.15)",fontSize:"13px"}},r.particularsUr));if(r.bill_photo){var iw2=dv({marginBottom:"10px",borderRadius:"7px",overflow:"hidden",border:"1px solid var(--bd)",cursor:"pointer"});iw2.appendChild(el("img",{src:r.bill_photo,style:{width:"100%",maxHeight:"150px",objectFit:"cover",display:"block"}}));iw2.addEventListener("click",function(){window.open(r.bill_photo,"_blank");});vc2.appendChild(iw2);}vc2.appendChild(el("div",{style:{fontSize:"12px",fontWeight:"500",marginBottom:"9px",color:r.filed?"var(--pos)":"var(--neg)"}},r.filed?"Bill filed by Danish":"Bill NOT filed yet"));var nta2=TA("",function(v){note3=v;},1,"Note...");nta2.style.marginBottom="8px";vc2.appendChild(nta2);var btns6=dv({display:"flex",gap:"7px",flexWrap:"wrap"});var rid2=r.id;
+    awaiting.forEach(function(r){var u2=gU(r.person);var isCr=parseFloat(r.credit||0)>0&&!parseFloat(r.debit||0);var note3="";var vc2=el("div",{cls:"vc"});vc2.appendChild(dv({display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:"10px",paddingBottom:"9px",borderBottom:"1px solid var(--bd)",gap:"8px",flexWrap:"wrap"},dv({display:"flex",gap:"9px",alignItems:"center"},Avatar(r.person,30),el("div",{},el("div",{style:{fontWeight:"700",fontSize:"13px"}},(r.account||"")+(r.subAccount?" / "+r.subAccount:"")),dv({display:"flex",gap:"7px",marginTop:"3px",alignItems:"center",flexWrap:"wrap"},r.cbNo?el("span",{style:{fontSize:"10px",fontWeight:"700",color:"var(--g)",background:"var(--g4)",borderRadius:"3px",padding:"1px 6px"}},r.cbNo):null,el("span",{style:{fontSize:"11px",color:"var(--ink4)"}},u2.name+" \u00b7 "+(r.date||""))))),el("div",{style:{fontFamily:"Inter,sans-serif",fontSize:"22px",fontWeight:"600",color:isCr?"var(--pos)":"var(--neg)"}},(isCr?"+":"-")+Rs(isCr?r.credit:r.debit))));vc2.appendChild(el("div",{style:{fontSize:"12px",color:"var(--ink2)",padding:"8px 10px",background:"var(--s2)",borderRadius:"6px",marginBottom:"6px"}},r.particulars||""));if(r.particularsUr)vc2.appendChild(el("div",{cls:"ur",style:{padding:"8px",background:"rgba(74,127,165,.08)",borderRadius:"5px",marginBottom:"10px",border:"1px solid rgba(74,127,165,.15)",fontSize:"13px"}},r.particularsUr));if(r.bill_photo){var iw2=dv({marginBottom:"10px",borderRadius:"7px",overflow:"hidden",border:"1px solid var(--bd)",cursor:"pointer"});iw2.appendChild(el("img",{src:r.bill_photo,style:{width:"100%",maxHeight:"150px",objectFit:"cover",display:"block"}}));iw2.addEventListener("click",function(){window.open(r.bill_photo,"_blank");});vc2.appendChild(iw2);}vc2.appendChild(el("div",{style:{fontSize:"12px",fontWeight:"500",marginBottom:"9px",color:r.filed?"var(--pos)":"var(--neg)"}},r.filed?"Bill filed by Danish":"Bill NOT filed yet"));var nta2=TA("",function(v){note3=v;},1,"Note...");nta2.style.marginBottom="8px";vc2.appendChild(nta2);var btns6=dv({display:"flex",gap:"7px",flexWrap:"wrap"});var rid2=r.id;
 btns6.appendChild(btn("Edit & Post",function(){
   S.fd["dir_edit"]={_id:rid2,date:r.date||"",account:r.account||"",sub:r.subAccount||"",area:r.area||"",qty:r.qty||"",billNo:r.billNo||"",vendorName:r.vendorName||"",part:r.particulars||"",partUr:r.particularsUr||"",debit:r.debit||"",credit:r.credit||"",_postOnSave:true};
   set({view:"dirEdit"});
@@ -2623,7 +2633,7 @@ function rTrial(){
   w.appendChild(el("div",{cls:balanced?"al-g":"al-r"},balanced?"Trial Balance — Balanced":"Unbalanced — Diff: "+Rs(Math.abs(totDr-totCr))));
   w.appendChild(el("div",{cls:"kgrid",style:{gridTemplateColumns:"repeat(3,1fr)"}},KPIsm("Total Debit",totDr,"var(--neg)"),KPIsm("Total Credit",totCr,"var(--pos)"),KPIsm("Difference",Math.abs(totDr-totCr),balanced?"var(--pos)":"var(--neg)")));
   w.appendChild(dv({display:"flex",gap:"8px",marginBottom:"10px"},expBtn(rows,"trial.csv")));
-  var tblWrap=el("div",{cls:"tbl-wrap"},el("table",{},el("thead",{},el("tr",{},el("th",{},"Account"),amtTh("Debit"),amtTh("Credit"),amtTh("Net"))),el("tbody",{},...rows.map(function(r){var net=r.credit-r.debit;var tr=el("tr",{});tr.appendChild(el("td",{style:{fontWeight:"500"}},r.account));tr.appendChild(el("td",{style:{textAlign:"right",color:"var(--neg)",fontWeight:r.debit?"600":"400",fontSize:"16px"}},r.debit?num(r.debit):"—"));tr.appendChild(el("td",{style:{textAlign:"right",color:"var(--pos)",fontWeight:r.credit?"600":"400",fontSize:"16px"}},r.credit?num(r.credit):"—"));tr.appendChild(el("td",{style:{textAlign:"right",fontFamily:"'Cormorant Garamond',serif",fontSize:"16px",fontWeight:"600",color:net>=0?"var(--pos)":"var(--neg)"}},num(Math.abs(net))+(net<0?" Dr":"")));return tr;}),el("tr",{style:{background:"var(--s2)",fontWeight:"700"}},el("td",{},"TOTAL"),el("td",{style:{textAlign:"right",color:"var(--neg)"}},num(totDr)),el("td",{style:{textAlign:"right",color:"var(--pos)"}},num(totCr)),el("td",{style:{textAlign:"right",color:balanced?"var(--pos)":"var(--neg)"}},balanced?"Balanced":"Diff "+num(Math.abs(totDr-totCr)))))));
+  var tblWrap=el("div",{cls:"tbl-wrap"},el("table",{},el("thead",{},el("tr",{},el("th",{},"Account"),amtTh("Debit"),amtTh("Credit"),amtTh("Net"))),el("tbody",{},...rows.map(function(r){var net=r.credit-r.debit;var tr=el("tr",{});tr.appendChild(el("td",{style:{fontWeight:"500"}},r.account));tr.appendChild(el("td",{style:{textAlign:"right",color:"var(--neg)",fontWeight:r.debit?"600":"400",fontSize:"16px"}},r.debit?num(r.debit):"—"));tr.appendChild(el("td",{style:{textAlign:"right",color:"var(--pos)",fontWeight:r.credit?"600":"400",fontSize:"16px"}},r.credit?num(r.credit):"—"));tr.appendChild(el("td",{style:{textAlign:"right",fontFamily:"Inter,sans-serif",fontSize:"16px",fontWeight:"600",color:net>=0?"var(--pos)":"var(--neg)"}},num(Math.abs(net))+(net<0?" Dr":"")));return tr;}),el("tr",{style:{background:"var(--s2)",fontWeight:"700"}},el("td",{},"TOTAL"),el("td",{style:{textAlign:"right",color:"var(--neg)"}},num(totDr)),el("td",{style:{textAlign:"right",color:"var(--pos)"}},num(totCr)),el("td",{style:{textAlign:"right",color:balanced?"var(--pos)":"var(--neg)"}},balanced?"Balanced":"Diff "+num(Math.abs(totDr-totCr)))))));
   w.appendChild(tblWrap);return w;
 }
 
@@ -2635,7 +2645,7 @@ function rPL(){
   var months=[];for(var i=5;i>=0;i--){var d=new Date();d.setMonth(d.getMonth()-i);months.push(d.toISOString().slice(0,7));}
   if(tab==="monthly"){
     var rows2=months.map(function(mo){var mE=posted.filter(function(e){return(e.date||"").startsWith(mo);});return{month:mo,income:mE.reduce(function(s,e){return s+parseFloat(e.credit||0);},0),expenses:mE.reduce(function(s,e){return s+parseFloat(e.debit||0);},0)};});
-    var tbl2=el("div",{cls:"tbl-wrap"},el("table",{},el("thead",{},el("tr",{},el("th",{},"Month"),el("th",{style:{textAlign:"right"}},"Income"),el("th",{style:{textAlign:"right"}},"Expenses"),el("th",{style:{textAlign:"right"}},"Net"))),el("tbody",{},...rows2.map(function(r){var net=r.income-r.expenses;var tr=el("tr",{style:{background:r.month===cur?"var(--g4)":""}});tr.appendChild(el("td",{style:{fontWeight:r.month===cur?"700":"400"}},r.month+(r.month===cur?" *":"")));tr.appendChild(el("td",{style:{textAlign:"right",color:"var(--pos)",fontWeight:"600",fontSize:"16px"}},Rs(r.income)));tr.appendChild(el("td",{style:{textAlign:"right",color:"var(--neg)",fontWeight:"600",fontSize:"16px"}},Rs(r.expenses)));tr.appendChild(el("td",{style:{textAlign:"right",fontFamily:"'Cormorant Garamond',serif",fontSize:"16px",fontWeight:"600",color:net>=0?"var(--pos)":"var(--neg)"}},Rs(Math.abs(net))+(net<0?" Loss":" Profit")));return tr;}))));
+    var tbl2=el("div",{cls:"tbl-wrap"},el("table",{},el("thead",{},el("tr",{},el("th",{},"Month"),el("th",{style:{textAlign:"right"}},"Income"),el("th",{style:{textAlign:"right"}},"Expenses"),el("th",{style:{textAlign:"right"}},"Net"))),el("tbody",{},...rows2.map(function(r){var net=r.income-r.expenses;var tr=el("tr",{style:{background:r.month===cur?"var(--g4)":""}});tr.appendChild(el("td",{style:{fontWeight:r.month===cur?"700":"400"}},r.month+(r.month===cur?" *":"")));tr.appendChild(el("td",{style:{textAlign:"right",color:"var(--pos)",fontWeight:"600",fontSize:"16px"}},Rs(r.income)));tr.appendChild(el("td",{style:{textAlign:"right",color:"var(--neg)",fontWeight:"600",fontSize:"16px"}},Rs(r.expenses)));tr.appendChild(el("td",{style:{textAlign:"right",fontFamily:"Inter,sans-serif",fontSize:"16px",fontWeight:"600",color:net>=0?"var(--pos)":"var(--neg)"}},Rs(Math.abs(net))+(net<0?" Loss":" Profit")));return tr;}))));
     w.appendChild(dv({display:"flex",gap:"8px",marginBottom:"10px"},expBtn(rows2,"pl_monthly.csv")));
     w.appendChild(tbl2);
   }
@@ -2666,7 +2676,7 @@ function rCashFlow(){
   membCard.querySelector(".cb").appendChild(mcTot);
   U.forEach(function(u){var bal=pBal(u.id);var bc=dv({background:"var(--s2)",border:"1px solid var(--bd)",borderRadius:"8px",padding:"12px 14px",minWidth:"130px"});
     var canOpen=canSeePerson(S.user,u.id)&&(S.user===u.id||canOpenLedger(S.user)||ROLE_MAP[S.user]==="director");
-    if(canOpen){bc.style.cursor="pointer";bc.addEventListener("click",function(){set({cbf:{lv:"byP",person:u.id,site:"",search:"",d1:"",d2:""},view:"ldg"});});}bc.appendChild(dv({display:"flex",alignItems:"center",gap:"7px",marginBottom:"7px"},Avatar(u.id,26),el("div",{},el("div",{style:{fontWeight:"600",fontSize:"12px"}},u.name),el("div",{style:{fontSize:"10px",color:"var(--ink4)",textTransform:"uppercase",letterSpacing:".08em"}},displayRole(u)))));bc.appendChild(el("div",{style:{fontFamily:"'Cormorant Garamond',serif",fontSize:"16px",fontWeight:"600",color:bal>=0?"var(--pos)":"var(--neg)"}},Rs(Math.abs(bal))));bc.appendChild(el("div",{style:{fontSize:"9px",color:"var(--ink4)",textTransform:"uppercase",letterSpacing:".08em",marginTop:"2px"}},bal>=0?"In Hand":"Shortfall"));mg.appendChild(bc);});
+    if(canOpen){bc.style.cursor="pointer";bc.addEventListener("click",function(){set({cbf:{lv:"byP",person:u.id,site:"",search:"",d1:"",d2:""},view:"ldg"});});}bc.appendChild(dv({display:"flex",alignItems:"center",gap:"7px",marginBottom:"7px"},Avatar(u.id,26),el("div",{},el("div",{style:{fontWeight:"600",fontSize:"12px"}},u.name),el("div",{style:{fontSize:"10px",color:"var(--ink4)",textTransform:"uppercase",letterSpacing:".08em"}},displayRole(u)))));bc.appendChild(el("div",{style:{fontFamily:"Inter,sans-serif",fontSize:"16px",fontWeight:"600",color:bal>=0?"var(--pos)":"var(--neg)"}},Rs(Math.abs(bal))));bc.appendChild(el("div",{style:{fontSize:"9px",color:"var(--ink4)",textTransform:"uppercase",letterSpacing:".08em",marginTop:"2px"}},bal>=0?"In Hand":"Shortfall"));mg.appendChild(bc);});
   membCard.querySelector(".cb").appendChild(mg);w.appendChild(membCard);
   return w;
 }
@@ -2683,7 +2693,7 @@ function rBank(){
       backRowBk.appendChild(el("span",{style:{fontSize:"13px",fontWeight:"600"}},"All Banks"));
       backRowBk.addEventListener("click",function(){set({tab:Object.assign({},S.tab,{bankOvSel:""})});});
       w.appendChild(backRowBk);
-      w.appendChild(el("div",{style:{fontFamily:"'Cormorant Garamond',serif",fontSize:"22px",fontWeight:"600",marginBottom:"14px"}},bkInfo.name+" — Statement"));
+      w.appendChild(el("div",{style:{fontFamily:"Inter,sans-serif",fontSize:"22px",fontWeight:"600",marginBottom:"14px"}},bkInfo.name+" — Statement"));
       var bankRows=S.bank.filter(function(r){return r.bid===selectedBank;}).sort(function(a,b){var av=a.created||a.date||"";var bv=b.created||b.date||"";return av>bv?1:-1;});
       if(!bankRows.length){w.appendChild(el("div",{style:{textAlign:"center",padding:"24px",color:"var(--ink4)"}},"No transactions for this bank yet"));return w;}
       var bTotDr=bankRows.reduce(function(s,r){return s+(r.typ!=="in"?parseFloat(r.amount||0):0);},0);
@@ -2720,7 +2730,7 @@ function rBank(){
         tr.appendChild(detTd);
         tr.appendChild(el("td",{style:{textAlign:"right",color:"var(--neg)",fontWeight:"600"}},r.typ!=="in"?num(r.amount):""));
         tr.appendChild(el("td",{style:{textAlign:"right",color:"var(--pos)",fontWeight:"600"}},r.typ==="in"?num(r.amount):""));
-        tr.appendChild(el("td",{style:{textAlign:"right",fontFamily:"'Cormorant Garamond',serif",fontWeight:"600",color:rb>=0?"var(--pos)":"var(--neg)"}},num(Math.abs(rb))+(rb<0?" Dr":"")));
+        tr.appendChild(el("td",{style:{textAlign:"right",fontFamily:"Inter,sans-serif",fontWeight:"600",color:rb>=0?"var(--pos)":"var(--neg)"}},num(Math.abs(rb))+(rb<0?" Dr":"")));
         var billc=el("td",{});if(r.bill_photo)billc.appendChild(el("a",{href:r.bill_photo,target:"_blank",style:{fontSize:"11px",color:"var(--g)",fontWeight:"600"}},"View"));else{billc.style.color="var(--ink4)";billc.textContent="—";}tr.appendChild(billc);
         var editTd=el("td",{});
         if(isDirEt&&!r.linkId){
@@ -2737,13 +2747,13 @@ function rBank(){
     var grandTotal=BANKS.reduce(function(s,b){return s+bBal(b.id);},0);
     var totalBanner=dv({background:"linear-gradient(135deg,var(--g3),var(--g))",borderRadius:"10px",padding:"20px",marginBottom:"16px",textAlign:"center"});
     totalBanner.appendChild(el("div",{style:{fontSize:"10px",fontWeight:"700",letterSpacing:".16em",textTransform:"uppercase",color:"rgba(255,255,255,.75)",marginBottom:"6px"}},"Total Across All Banks"));
-    totalBanner.appendChild(el("div",{style:{fontFamily:"'Cormorant Garamond',serif",fontSize:"36px",fontWeight:"600",color:"#fff"}},Rs(Math.abs(grandTotal))+(grandTotal<0?" Dr":"")));
+    totalBanner.appendChild(el("div",{style:{fontFamily:"Inter,sans-serif",fontSize:"36px",fontWeight:"600",color:"#fff"}},Rs(Math.abs(grandTotal))+(grandTotal<0?" Dr":"")));
     w.appendChild(totalBanner);
     BANKS.forEach(function(bk){
       var bal=bBal(bk.id);
       var bkRow=dv({display:"flex",justifyContent:"space-between",alignItems:"center",padding:"14px",marginBottom:"8px",background:"var(--s1)",border:"1px solid var(--bd)",borderRadius:"8px",cursor:"pointer"},
         dv({},el("div",{style:{fontWeight:"700",fontSize:"14px"}},bk.name),el("div",{style:{fontSize:"10px",color:"var(--ink4)",marginTop:"2px"}},bk.modes||"")),
-        el("div",{style:{fontFamily:"'Cormorant Garamond',serif",fontSize:"16px",fontWeight:"600",color:bal>=0?"var(--pos)":"var(--neg)"}},Rs(Math.abs(bal))+(bal<0?" Dr":""))
+        el("div",{style:{fontFamily:"Inter,sans-serif",fontSize:"16px",fontWeight:"600",color:bal>=0?"var(--pos)":"var(--neg)"}},Rs(Math.abs(bal))+(bal<0?" Dr":""))
       );
       bkRow.addEventListener("click",function(){var bid=bk.id;set({tab:Object.assign({},S.tab,{bankOvSel:bid})});});
       w.appendChild(bkRow);
@@ -2883,7 +2893,7 @@ function rBank(){
       w.appendChild(el("div",{cls:"kgrid",style:{gridTemplateColumns:"1fr 1fr"}},KPIsm("Matched",matchedCnt,"var(--pos)"),KPIsm("Needs Review",unmatchedCnt,unmatchedCnt>0?"var(--wrn)":"var(--pos)")));
       fd3.extracted.forEach(function(l,idx){
         var row=el("div",{cls:"ei",style:{borderColor:l.matched?"rgba(94,140,106,.3)":"rgba(192,139,53,.3)"}});
-        row.appendChild(dv({display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:"8px"},dv({flex:"1"},el("div",{style:{fontWeight:"600",fontSize:"13px"}},l.description||"—"),el("div",{style:{fontSize:"11px",color:"var(--ink4)",marginTop:"2px"}},(l.date||"no date")+(l.ref?" \u00b7 Ref "+l.ref:""))),dv({style:{textAlign:"right"}},el("div",{style:{fontFamily:"'Cormorant Garamond',serif",fontSize:"16px",fontWeight:"600"}},Rs(l.amount||0)),el("span",{cls:"badge "+(l.matched?"bg":"bw")},l.matched?"Matched":"No match"))));
+        row.appendChild(dv({display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:"8px"},dv({flex:"1"},el("div",{style:{fontWeight:"600",fontSize:"13px"}},l.description||"—"),el("div",{style:{fontSize:"11px",color:"var(--ink4)",marginTop:"2px"}},(l.date||"no date")+(l.ref?" \u00b7 Ref "+l.ref:""))),dv({style:{textAlign:"right"}},el("div",{style:{fontFamily:"Inter,sans-serif",fontSize:"16px",fontWeight:"600"}},Rs(l.amount||0)),el("span",{cls:"badge "+(l.matched?"bg":"bw")},l.matched?"Matched":"No match"))));
         row.appendChild(dv({marginTop:"8px"},btn(l.matched?"Confirm Match":"Save as New Bank Entry",function(){
           if(!l.matched){
             var newBankLine={id:uid(),bid:fd3.bid,typ:l.type==="credit"?"in":"out",amount:parseFloat(l.amount||0),particulars:l.description||"From statement import",chqNo:l.ref||"",date:l.date||today(),reconciled:true,created:now2()};
@@ -2926,7 +2936,7 @@ function rCC(){
       backRowCC.appendChild(el("span",{style:{fontSize:"13px",fontWeight:"600"}},"All Cards"));
       backRowCC.addEventListener("click",function(){set({tab:Object.assign({},S.tab,{ccOvSel:""})});});
       w.appendChild(backRowCC);
-      w.appendChild(el("div",{style:{fontFamily:"'Cormorant Garamond',serif",fontSize:"22px",fontWeight:"600",marginBottom:"14px"}},cardInfo.name+" — Statement"));
+      w.appendChild(el("div",{style:{fontFamily:"Inter,sans-serif",fontSize:"22px",fontWeight:"600",marginBottom:"14px"}},cardInfo.name+" — Statement"));
       var cardRows=S.cc.filter(function(r){return r.cid===selectedCard;}).sort(function(a,b){var av=a.created||a.date||"";var bv=b.created||b.date||"";return av>bv?1:-1;});
       if(!cardRows.length){w.appendChild(el("div",{style:{textAlign:"center",padding:"24px",color:"var(--ink4)"}},"No transactions for this card yet"));return w;}
       var cTotDr=cardRows.reduce(function(s,r){return s+(r.typ!=="pay"?parseFloat(r.amount||0):0);},0);
@@ -2959,7 +2969,7 @@ function rCC(){
         tr.appendChild(el("td",{style:{fontSize:"12px"}},(r.merchant?r.merchant+" — ":"")+(r.particulars||"")));
         tr.appendChild(el("td",{style:{textAlign:"right",color:"var(--neg)",fontWeight:"600"}},r.typ!=="pay"?num(r.amount):""));
         tr.appendChild(el("td",{style:{textAlign:"right",color:"var(--pos)",fontWeight:"600"}},r.typ==="pay"?num(r.amount):""));
-        tr.appendChild(el("td",{style:{textAlign:"right",fontFamily:"'Cormorant Garamond',serif",fontWeight:"600",color:rb<=0?"var(--pos)":"var(--neg)"}},num(Math.abs(rb))+(rb>0?" Owed":"")));
+        tr.appendChild(el("td",{style:{textAlign:"right",fontFamily:"Inter,sans-serif",fontWeight:"600",color:rb<=0?"var(--pos)":"var(--neg)"}},num(Math.abs(rb))+(rb>0?" Owed":"")));
         var cbillc=el("td",{});if(r.bill_photo)cbillc.appendChild(el("a",{href:r.bill_photo,target:"_blank",style:{fontSize:"11px",color:"var(--g)",fontWeight:"600"}},"View"));else{cbillc.style.color="var(--ink4)";cbillc.textContent="—";}tr.appendChild(cbillc);
         var ceditTd=el("td",{});
         if(isDirEtC&&!r.linkId){
@@ -2974,13 +2984,13 @@ function rCC(){
     var grandTotalCC=CARDS.reduce(function(s,c){return s+cBal(c.id);},0);
     var totalBannerCC=dv({background:"linear-gradient(135deg,var(--neg),#8B2020)",borderRadius:"10px",padding:"20px",marginBottom:"16px",textAlign:"center"});
     totalBannerCC.appendChild(el("div",{style:{fontSize:"10px",fontWeight:"700",letterSpacing:".16em",textTransform:"uppercase",color:"rgba(255,255,255,.75)",marginBottom:"6px"}},"Total Outstanding — Both Cards"));
-    totalBannerCC.appendChild(el("div",{style:{fontFamily:"'Cormorant Garamond',serif",fontSize:"36px",fontWeight:"600",color:"#fff"}},Rs(Math.abs(grandTotalCC))));
+    totalBannerCC.appendChild(el("div",{style:{fontFamily:"Inter,sans-serif",fontSize:"36px",fontWeight:"600",color:"#fff"}},Rs(Math.abs(grandTotalCC))));
     w.appendChild(totalBannerCC);
     CARDS.forEach(function(c){
       var bal=cBal(c.id);
       var cRow=dv({display:"flex",justifyContent:"space-between",alignItems:"center",padding:"14px",marginBottom:"8px",background:"var(--s1)",border:"1px solid var(--bd)",borderRadius:"8px",cursor:"pointer"},
         dv({},el("div",{style:{fontWeight:"700",fontSize:"14px"}},c.name),el("div",{style:{fontSize:"10px",color:"var(--ink4)",marginTop:"2px"}},"Due day "+c.due)),
-        el("div",{style:{fontFamily:"'Cormorant Garamond',serif",fontSize:"16px",fontWeight:"600",color:"var(--neg)"}},Rs(Math.abs(bal)))
+        el("div",{style:{fontFamily:"Inter,sans-serif",fontSize:"16px",fontWeight:"600",color:"var(--neg)"}},Rs(Math.abs(bal)))
       );
       cRow.addEventListener("click",function(){var cid=c.id;set({tab:Object.assign({},S.tab,{ccOvSel:cid})});});
       w.appendChild(cRow);
@@ -3100,7 +3110,7 @@ function rCC(){
       w.appendChild(el("div",{cls:"kgrid",style:{gridTemplateColumns:"1fr 1fr"}},KPIsm("Matched",matchedCnt2,"var(--pos)"),KPIsm("Needs Review",unmatchedCnt2,unmatchedCnt2>0?"var(--wrn)":"var(--pos)")));
       fd5.extracted.forEach(function(l,idx){
         var row=el("div",{cls:"ei",style:{borderColor:l.matched?"rgba(94,140,106,.3)":"rgba(192,139,53,.3)"}});
-        row.appendChild(dv({display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:"8px"},dv({flex:"1"},el("div",{style:{fontWeight:"600",fontSize:"13px"}},l.description||"—"),el("div",{style:{fontSize:"11px",color:"var(--ink4)",marginTop:"2px"}},l.date||"no date")),dv({style:{textAlign:"right"}},el("div",{style:{fontFamily:"'Cormorant Garamond',serif",fontSize:"16px",fontWeight:"600"}},Rs(l.amount||0)),el("span",{cls:"badge "+(l.matched?"bg":"bw")},l.matched?"Matched":"No match"))));
+        row.appendChild(dv({display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:"8px"},dv({flex:"1"},el("div",{style:{fontWeight:"600",fontSize:"13px"}},l.description||"—"),el("div",{style:{fontSize:"11px",color:"var(--ink4)",marginTop:"2px"}},l.date||"no date")),dv({style:{textAlign:"right"}},el("div",{style:{fontFamily:"Inter,sans-serif",fontSize:"16px",fontWeight:"600"}},Rs(l.amount||0)),el("span",{cls:"badge "+(l.matched?"bg":"bw")},l.matched?"Matched":"No match"))));
         row.appendChild(dv({marginTop:"8px"},btn(l.matched?"Confirm & Reconcile":"Add as New CC Expense",function(){
           if(l.matched){
             S.cc=S.cc.map(function(e){return e.id===l.matchedId?Object.assign({},e,{reconciled:true}):e;});
@@ -3393,7 +3403,7 @@ function rMat(){
     if(pending.length){
       pending.forEach(function(r){
         var vc=el("div",{cls:"vc"});
-        vc.appendChild(dv({display:"flex",justifyContent:"space-between",flexWrap:"wrap",gap:"8px",marginBottom:"10px",paddingBottom:"9px",borderBottom:"1px solid var(--bd)"},dv({},el("div",{style:{fontWeight:"700",fontSize:"14px"}},r.item+" — "+r.site),el("div",{style:{fontSize:"12px",color:"var(--ink4)",marginTop:"3px"}},gU(r.submittedBy).name+" \u00b7 "+r.date),r.notesUr?el("div",{cls:"ur",style:{fontSize:"13px",marginTop:"5px"}},r.notesUr):null,r.notes?el("div",{style:{fontSize:"12px",color:"var(--ink3)",marginTop:"3px"}},r.notes):null),el("div",{style:{textAlign:"right"}},el("div",{style:{fontFamily:"'Cormorant Garamond',serif",fontSize:"20px",fontWeight:"600",color:"var(--neg)"}},Rs(r.total)),el("div",{style:{fontSize:"11px",color:"var(--ink4)",marginTop:"2px"}},r.qty+" "+r.unit+(r.rate?" @ "+Rs(r.rate):"")))));
+        vc.appendChild(dv({display:"flex",justifyContent:"space-between",flexWrap:"wrap",gap:"8px",marginBottom:"10px",paddingBottom:"9px",borderBottom:"1px solid var(--bd)"},dv({},el("div",{style:{fontWeight:"700",fontSize:"14px"}},r.item+" — "+r.site),el("div",{style:{fontSize:"12px",color:"var(--ink4)",marginTop:"3px"}},gU(r.submittedBy).name+" \u00b7 "+r.date),r.notesUr?el("div",{cls:"ur",style:{fontSize:"13px",marginTop:"5px"}},r.notesUr):null,r.notes?el("div",{style:{fontSize:"12px",color:"var(--ink3)",marginTop:"3px"}},r.notes):null),el("div",{style:{textAlign:"right"}},el("div",{style:{fontFamily:"Inter,sans-serif",fontSize:"20px",fontWeight:"600",color:"var(--neg)"}},Rs(r.total)),el("div",{style:{fontSize:"11px",color:"var(--ink4)",marginTop:"2px"}},r.qty+" "+r.unit+(r.rate?" @ "+Rs(r.rate):"")))));
         var photoRow=dv({display:"flex",gap:"8px",marginBottom:"10px"});
         if(r.bill_photo){var iw=dv({flex:"1",borderRadius:"7px",overflow:"hidden",border:"1px solid var(--bd)",cursor:"pointer"});iw.appendChild(el("div",{style:{fontSize:"9px",textAlign:"center",padding:"3px",background:"var(--s2)",color:"var(--ink4)"}},"BILL"));iw.appendChild(el("img",{src:r.bill_photo,style:{width:"100%",maxHeight:"140px",objectFit:"cover",display:"block"}}));iw.addEventListener("click",function(){window.open(r.bill_photo,"_blank");});photoRow.appendChild(iw);}
         if(r.material_photo){var iw2=dv({flex:"1",borderRadius:"7px",overflow:"hidden",border:"1px solid var(--bd)",cursor:"pointer"});iw2.appendChild(el("div",{style:{fontSize:"9px",textAlign:"center",padding:"3px",background:"var(--s2)",color:"var(--ink4)"}},"MATERIAL"));iw2.appendChild(el("img",{src:r.material_photo,style:{width:"100%",maxHeight:"140px",objectFit:"cover",display:"block"}}));iw2.addEventListener("click",function(){window.open(r.material_photo,"_blank");});photoRow.appendChild(iw2);}
@@ -3425,10 +3435,10 @@ function rMat(){
     if(ROLE_MAP[S.user]==="director"){
       var approved=S.matrcv.filter(function(r){return r.status==="approved";}).sort(function(a,b){return b.created>a.created?1:-1;}).slice(0,20);
       if(approved.length){
-        w.appendChild(el("div",{style:{fontFamily:"'Cormorant Garamond',serif",fontSize:"16px",fontWeight:"500",color:"var(--ink)",margin:"18px 0 8px"}},"Recently Approved (editable)"));
+        w.appendChild(el("div",{style:{fontFamily:"Inter,sans-serif",fontSize:"16px",fontWeight:"500",color:"var(--ink)",margin:"18px 0 8px"}},"Recently Approved (editable)"));
         approved.forEach(function(r){
           var vc2=el("div",{cls:"vc"});
-          vc2.appendChild(dv({display:"flex",justifyContent:"space-between",flexWrap:"wrap",gap:"8px"},dv({},el("div",{style:{fontWeight:"700",fontSize:"13px"}},r.item+" — "+r.site),el("div",{style:{fontSize:"11px",color:"var(--ink4)",marginTop:"3px"}},r.qty+" "+r.unit+(r.rate?" @ "+Rs(r.rate):"")+" \u00b7 "+r.date)),el("div",{style:{fontFamily:"'Cormorant Garamond',serif",fontSize:"16px",fontWeight:"600"}},Rs(r.total))));
+          vc2.appendChild(dv({display:"flex",justifyContent:"space-between",flexWrap:"wrap",gap:"8px"},dv({},el("div",{style:{fontWeight:"700",fontSize:"13px"}},r.item+" — "+r.site),el("div",{style:{fontSize:"11px",color:"var(--ink4)",marginTop:"3px"}},r.qty+" "+r.unit+(r.rate?" @ "+Rs(r.rate):"")+" \u00b7 "+r.date)),el("div",{style:{fontFamily:"Inter,sans-serif",fontSize:"16px",fontWeight:"600"}},Rs(r.total))));
           var rid2=r.id;
           vc2.appendChild(btn("Delete — Remove from Inventory",function(){
             if(!confirm("Delete this approved receipt? This will reduce "+r.item+"'s inventory balance by "+r.qty+" "+r.unit+"."))return;
@@ -3464,7 +3474,7 @@ function rVendors(){
     backRowV.addEventListener("click",function(){set({tab:Object.assign({},S.tab,{vndSel:""})});});
     w.appendChild(backRowV);
     var bal=vBal(v.id);
-    w.appendChild(el("div",{style:{fontFamily:"'Cormorant Garamond',serif",fontSize:"22px",fontWeight:"600",marginBottom:"4px"}},v.name));
+    w.appendChild(el("div",{style:{fontFamily:"Inter,sans-serif",fontSize:"22px",fontWeight:"600",marginBottom:"4px"}},v.name));
     w.appendChild(el("div",{style:{fontSize:"11px",color:"var(--ink4)",marginBottom:"14px",letterSpacing:".06em",textTransform:"uppercase"}},(v.type||"")+(v.contact?" \u00b7 "+v.contact:"")+(v.ntn?" \u00b7 NTN: "+v.ntn:"")));
 
     var vEntries=S.ventry.filter(function(e){return e.vid===v.id;}).sort(function(a,b){var av=a.created||a.date||"";var bv=b.created||b.date||"";return av>bv?1:-1;});
@@ -3525,7 +3535,7 @@ function rVendors(){
       tr.appendChild(el("td",{style:{fontSize:"12px"}},e.description||""));
       tr.appendChild(el("td",{style:{textAlign:"right",color:"var(--neg)",fontWeight:"600"}},e.type!=="bill"?num(e.amount):""));
       tr.appendChild(el("td",{style:{textAlign:"right",color:"var(--pos)",fontWeight:"600"}},e.type==="bill"?num(e.amount):""));
-      tr.appendChild(el("td",{style:{textAlign:"right",fontFamily:"'Cormorant Garamond',serif",fontWeight:"600",color:eb>0?"var(--neg)":"var(--pos)"}},num(Math.abs(eb))));
+      tr.appendChild(el("td",{style:{textAlign:"right",fontFamily:"Inter,sans-serif",fontWeight:"600",color:eb>0?"var(--neg)":"var(--pos)"}},num(Math.abs(eb))));
       var veditTd=el("td",{});
       if(isDirEtV){
         veditTd.appendChild(el("button",{style:{background:"var(--g4)",border:"1px solid rgba(143,133,118,.25)",color:"var(--g)",borderRadius:"4px",padding:"3px 7px",cursor:"pointer",fontSize:"11px"},onClick:function(row){return function(){S.fd["edit_txn"]={_kind:"vendor",id:row.id,date:row.date||"",amount:row.amount||"",description:row.description||""};set({view:"editTxn"});};}(e)},"\u270F"));
@@ -3563,7 +3573,7 @@ function rVendors(){
     vendorsWithPayable.forEach(function(v){
       var row=dv({display:"flex",justifyContent:"space-between",alignItems:"center",padding:"9px 0",borderBottom:"1px solid var(--s2)"},
         el("span",{style:{fontSize:"13px",fontWeight:"600"}},v.name),
-        el("span",{style:{fontFamily:"'Cormorant Garamond',serif",fontSize:"16px",fontWeight:"600",color:"var(--neg)"}},Rs(vBal(v.id)))
+        el("span",{style:{fontFamily:"Inter,sans-serif",fontSize:"16px",fontWeight:"600",color:"var(--neg)"}},Rs(vBal(v.id)))
       );
       payBody.appendChild(row);
     });
@@ -3576,7 +3586,7 @@ function rVendors(){
     var bal=vBal(v.id);
     var row=dv({display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 0",borderBottom:"1px solid var(--s2)",cursor:"pointer"},
       dv({},el("div",{style:{fontWeight:"600",fontSize:"13px"}},v.name),el("div",{style:{fontSize:"10px",color:"var(--ink4)",marginTop:"2px",textTransform:"uppercase",letterSpacing:".06em"}},v.type||"")),
-      el("span",{style:{fontFamily:"'Cormorant Garamond',serif",fontSize:"16px",fontWeight:"600",color:bal>0?"var(--neg)":bal<0?"var(--pos)":"var(--ink4)"}},Rs(Math.abs(bal)))
+      el("span",{style:{fontFamily:"Inter,sans-serif",fontSize:"16px",fontWeight:"600",color:bal>0?"var(--neg)":bal<0?"var(--pos)":"var(--ink4)"}},Rs(Math.abs(bal)))
     );
     row.addEventListener("click",function(){var vid2=v.id;set({tab:Object.assign({},S.tab,{vndSel:vid2})});});
     allVendBody.appendChild(row);
@@ -3614,7 +3624,7 @@ function rContr(){
       var remaining=parseFloat(c.value||0)-totalPaid;
       var pct=c.value>0?Math.round((totalPaid/c.value)*100):0;
       var vc=el("div",{cls:"vc"});
-      vc.appendChild(dv({display:"flex",justifyContent:"space-between",flexWrap:"wrap",gap:"8px",marginBottom:"10px",paddingBottom:"9px",borderBottom:"1px solid var(--bd)"},dv({},el("div",{style:{fontWeight:"700",fontSize:"14px"}},c.name),el("div",{style:{fontSize:"11px",color:"var(--ink4)",marginTop:"3px"}},c.site)),el("div",{style:{textAlign:"right"}},el("div",{style:{fontFamily:"'Cormorant Garamond',serif",fontSize:"16px",fontWeight:"600",color:"var(--neg)"}},Rs(remaining)+" remaining"),el("div",{style:{fontSize:"10px",color:"var(--ink4)"}},Rs(totalPaid)+" paid of "+Rs(c.value)))));
+      vc.appendChild(dv({display:"flex",justifyContent:"space-between",flexWrap:"wrap",gap:"8px",marginBottom:"10px",paddingBottom:"9px",borderBottom:"1px solid var(--bd)"},dv({},el("div",{style:{fontWeight:"700",fontSize:"14px"}},c.name),el("div",{style:{fontSize:"11px",color:"var(--ink4)",marginTop:"3px"}},c.site)),el("div",{style:{textAlign:"right"}},el("div",{style:{fontFamily:"Inter,sans-serif",fontSize:"16px",fontWeight:"600",color:"var(--neg)"}},Rs(remaining)+" remaining"),el("div",{style:{fontSize:"10px",color:"var(--ink4)"}},Rs(totalPaid)+" paid of "+Rs(c.value)))));
       vc.appendChild(ProgBar(pct,pct>=100?"linear-gradient(90deg,var(--pos),#3A6B4A)":undefined));
       if(ROLE_MAP[S.user]==="director"){
         var cidDel=c.id;
@@ -3682,7 +3692,7 @@ function rConstr(){
       var acct=accountLedger("site",siteId);
       var row=dv({display:"flex",justifyContent:"space-between",alignItems:"center",padding:"12px 0",borderBottom:"1px solid var(--s2)",cursor:"pointer"},
         el("span",{style:{fontWeight:"600",fontSize:"14px"}},siteId),
-        el("span",{style:{fontFamily:"'Cormorant Garamond',serif",fontSize:"16px",fontWeight:"600",color:"var(--neg)"}},Rs(acct.debit))
+        el("span",{style:{fontFamily:"Inter,sans-serif",fontSize:"16px",fontWeight:"600",color:"var(--neg)"}},Rs(acct.debit))
       );
       row.addEventListener("click",function(){set({tab:Object.assign({},S.tab,{constrSite:siteId})});});
       w.appendChild(row);
@@ -3694,7 +3704,7 @@ function rConstr(){
   backRow.appendChild(el("span",{style:{fontSize:"13px",fontWeight:"600"}},"All Sites"));
   backRow.addEventListener("click",function(){set({tab:Object.assign({},S.tab,{constrSite:""})});});
   w.appendChild(backRow);
-  w.appendChild(el("div",{style:{fontFamily:"'Cormorant Garamond',serif",fontSize:"22px",fontWeight:"600",marginBottom:"14px"}},selectedSite+" — Statement"));
+  w.appendChild(el("div",{style:{fontFamily:"Inter,sans-serif",fontSize:"22px",fontWeight:"600",marginBottom:"14px"}},selectedSite+" — Statement"));
   var siteAcct=accountLedger("site",selectedSite);
   var isDirConstr=ROLE_MAP[S.user]==="director";
   w.appendChild(LedgerTable(siteAcct.rows,true,isDirConstr));
@@ -3712,7 +3722,7 @@ function rDoors(){
       var acct=accountLedger("door",p.client);
       var row=dv({display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 0",cursor:"pointer"},
         dv({},el("div",{style:{fontWeight:"600",fontSize:"13px"}},p.client),el("div",{style:{fontSize:"10px",color:"var(--ink4)",textTransform:"uppercase",letterSpacing:".06em"}},p.stage)),
-        el("div",{style:{fontFamily:"'Cormorant Garamond',serif",fontSize:"16px",fontWeight:"600",color:acct.balance>=0?"var(--pos)":"var(--neg)"}},Rs(Math.abs(acct.balance))+(acct.balance<0?" Spent":""))
+        el("div",{style:{fontFamily:"Inter,sans-serif",fontSize:"16px",fontWeight:"600",color:acct.balance>=0?"var(--pos)":"var(--neg)"}},Rs(Math.abs(acct.balance))+(acct.balance<0?" Spent":""))
       );
       var clientName=p.client;
       row.addEventListener("click",function(){set({cbf:{lv:"journal",person:"",site:clientName,search:"",d1:"",d2:""},view:"ldg"});});
@@ -3745,7 +3755,7 @@ function rDoors(){
     if(!projs.length){w.appendChild(el("div",{style:{textAlign:"center",padding:"24px",color:"var(--ink4)"}},"No projects"));return w;}
     projs.forEach(function(p){
       var vc=el("div",{cls:"vc"});
-      vc.appendChild(dv({display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:"10px",paddingBottom:"9px",borderBottom:"1px solid var(--bd)",flexWrap:"wrap",gap:"8px"},dv({},el("div",{style:{fontWeight:"700",fontSize:"14px"}},p.client),el("div",{style:{fontSize:"12px",color:"var(--ink4)",marginTop:"3px"}},(p.contact||"")+(p.address?" · "+p.address.slice(0,30):""))),el("div",{style:{textAlign:"right"}},el("span",{cls:"badge bgold"},p.stage),el("div",{style:{fontFamily:"'Cormorant Garamond',serif",fontSize:"16px",fontWeight:"600",color:"var(--pos)",marginTop:"5px"}},Rs(p.quotation)))));
+      vc.appendChild(dv({display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:"10px",paddingBottom:"9px",borderBottom:"1px solid var(--bd)",flexWrap:"wrap",gap:"8px"},dv({},el("div",{style:{fontWeight:"700",fontSize:"14px"}},p.client),el("div",{style:{fontSize:"12px",color:"var(--ink4)",marginTop:"3px"}},(p.contact||"")+(p.address?" · "+p.address.slice(0,30):""))),el("div",{style:{textAlign:"right"}},el("span",{cls:"badge bgold"},p.stage),el("div",{style:{fontFamily:"Inter,sans-serif",fontSize:"16px",fontWeight:"600",color:"var(--pos)",marginTop:"5px"}},Rs(p.quotation)))));
       var stages2=el("div",{cls:"stages"});
       DOOR_STAGES.forEach(function(st,si){
         var done=DOOR_STAGES.indexOf(p.stage)>si;var act=p.stage===st;
@@ -3945,7 +3955,7 @@ function rHR(){
       w.appendChild(Fld("Reason",TA(fd.reason,function(v){fd.reason=v;},2,"")));
       w.appendChild(btn("Request Leave",function(){if(!fd.reason.trim()){toast("Enter reason",true);return;}var newLv={id:uid(),userId:S.user,name:gU(S.user).name,reason:fd.reason,date:fd.date||today(),status:"pending",created:now2()};S.leaveReqs=[...S.leaveReqs,newLv];svRow("leaveReqs","r7_lv",newLv);S.fd[FID]={reason:"",date:today()};toast("Submitted");render();},"btn-g btn-full"));
     }
-    if(isDirHR)w.appendChild(el("div",{style:{fontFamily:"'Cormorant Garamond',serif",fontSize:"16px",fontWeight:"500",color:"var(--ink)",margin:"14px 0 8px"}},"All Leave Requests"));
+    if(isDirHR)w.appendChild(el("div",{style:{fontFamily:"Inter,sans-serif",fontSize:"16px",fontWeight:"500",color:"var(--ink)",margin:"14px 0 8px"}},"All Leave Requests"));
     myLeave.forEach(function(r){
       var li=el("div",{cls:"ei"});
       var lr=dv({display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:"8px",flexWrap:"wrap"});
@@ -3971,7 +3981,7 @@ function rHR(){
       w.appendChild(btn("Request Advance",function(){if(!fd2.amount||!fd2.reason.trim()){toast("Fill all fields",true);return;}var newAdv={id:uid(),userId:S.user,name:gU(S.user).name,amount:parseFloat(fd2.amount),reason:fd2.reason,date:fd2.date||today(),status:"pending",created:now2()};S.advReqs=[...S.advReqs,newAdv];svRow("advReqs","r7_adv",newAdv);S.fd[FID2]={amount:"",reason:"",date:today()};toast("Submitted");render();},"btn-g btn-full"));
     }
     var myAdv=isDirAdv?S.advReqs.slice().sort(function(a,b){return b.created>a.created?1:-1;}):S.advReqs.filter(function(r){return r.userId?r.userId===S.user:r.name===(gU(S.user).name);});
-    if(isDirAdv)w.appendChild(el("div",{style:{fontFamily:"'Cormorant Garamond',serif",fontSize:"16px",fontWeight:"500",color:"var(--ink)",margin:"14px 0 8px"}},"All Advance Requests"));
+    if(isDirAdv)w.appendChild(el("div",{style:{fontFamily:"Inter,sans-serif",fontSize:"16px",fontWeight:"500",color:"var(--ink)",margin:"14px 0 8px"}},"All Advance Requests"));
     myAdv.forEach(function(r){
       var ai=el("div",{cls:"ei"});
       var ar=dv({display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:"8px",flexWrap:"wrap"});
@@ -4080,7 +4090,7 @@ function rMisc(){
     var acct=accountLedger("misc",name);
     var row=dv({display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 0",borderBottom:"1px solid var(--s2)",cursor:"pointer"},
       el("span",{style:{fontWeight:"600",fontSize:"13px"}},name),
-      el("span",{style:{fontFamily:"'Cormorant Garamond',serif",fontSize:"16px",fontWeight:"600",color:acct.balance>=0?"var(--pos)":"var(--neg)"}},Rs(Math.abs(acct.balance))+(acct.balance<0?" Dr":""))
+      el("span",{style:{fontFamily:"Inter,sans-serif",fontSize:"16px",fontWeight:"600",color:acct.balance>=0?"var(--pos)":"var(--neg)"}},Rs(Math.abs(acct.balance))+(acct.balance<0?" Dr":""))
     );
     row.addEventListener("click",function(){set({cbf:{lv:"journal",person:"",site:name,search:"",d1:"",d2:""},view:"ldg"});});
     w.appendChild(row);
@@ -4102,7 +4112,7 @@ function rDigest(){
   var matPendCount=S.matrcv.filter(function(m){return m.status==="pending";}).length;
   var lockedAccounts=(S.lockouts||[]).filter(function(l){return l.locked;}).length;
 
-  w.appendChild(el("div",{style:{fontFamily:"'Cormorant Garamond',serif",fontSize:"22px",fontWeight:"600",marginBottom:"4px"}},"Today's Digest"));
+  w.appendChild(el("div",{style:{fontFamily:"Inter,sans-serif",fontSize:"22px",fontWeight:"600",marginBottom:"4px"}},"Today's Digest"));
   w.appendChild(el("div",{style:{fontSize:"11px",color:"var(--ink4)",marginBottom:"16px"}},today2));
 
   w.appendChild(el("div",{cls:"kgrid",style:{gridTemplateColumns:"repeat(2,1fr)",marginBottom:"16px"}},
@@ -4175,7 +4185,7 @@ function rReviewDay(){
 
   rangeEntries.forEach(function(e){
     var item=el("div",{cls:"ei"});
-    item.appendChild(dv({display:"flex",justifyContent:"space-between",marginBottom:"5px",flexWrap:"wrap",gap:"6px"},dv({},el("span",{style:{fontWeight:"600",fontSize:"13px"}},e.account+(e.subAccount?" / "+e.subAccount:"")),el("div",{style:{fontSize:"10px",color:"var(--ink4)"}},e.date+" \u00b7 "+gU(e.person).name)),el("span",{style:{fontFamily:"'Cormorant Garamond',serif",fontSize:"16px",fontWeight:"600",color:e.debit>0?"var(--neg)":"var(--pos)"}},Rs(e.debit>0?e.debit:e.credit))));
+    item.appendChild(dv({display:"flex",justifyContent:"space-between",marginBottom:"5px",flexWrap:"wrap",gap:"6px"},dv({},el("span",{style:{fontWeight:"600",fontSize:"13px"}},e.account+(e.subAccount?" / "+e.subAccount:"")),el("div",{style:{fontSize:"10px",color:"var(--ink4)"}},e.date+" \u00b7 "+gU(e.person).name)),el("span",{style:{fontFamily:"Inter,sans-serif",fontSize:"16px",fontWeight:"600",color:e.debit>0?"var(--neg)":"var(--pos)"}},Rs(e.debit>0?e.debit:e.credit))));
     if(e.particulars)item.appendChild(el("div",{style:{fontSize:"12px",color:"var(--ink3)",marginBottom:"6px"}},e.particulars));
     var alreadyFlagged=(S.esc||[]).some(function(x){return x.entryId===e.id&&x.type==="cb";});
     if(alreadyFlagged){
@@ -4243,7 +4253,7 @@ function rLeads(){
       var ownerLabel=lead.assignedTo&&lead.assignedTo!=="junaid"?gU(lead.assignedTo).name+"'s client":null;
       lc.appendChild(dv({display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:"8px",marginBottom:"6px"},
         dv({},el("div",{style:{fontWeight:"700",fontSize:"14px"}},lead.clientName),el("div",{style:{fontSize:"11px",color:"var(--ink4)",marginTop:"2px"}},(lead.phone||"")+(lead.address?" \u00b7 "+lead.address:"")),ownerLabel?el("div",{style:{fontSize:"10px",color:"var(--g)",fontWeight:"700",marginTop:"3px",textTransform:"uppercase",letterSpacing:".06em"}},ownerLabel):null),
-        lead.quotationAmount?el("div",{style:{fontFamily:"'Cormorant Garamond',serif",fontSize:"16px",fontWeight:"600",color:"var(--g)"}},Rs(lead.quotationAmount)):null
+        lead.quotationAmount?el("div",{style:{fontFamily:"Inter,sans-serif",fontSize:"16px",fontWeight:"600",color:"var(--g)"}},Rs(lead.quotationAmount)):null
       ));
       if(lead.notes)lc.appendChild(el("div",{style:{fontSize:"12px",color:"var(--ink3)",marginBottom:"6px"}},lead.notes));
       var leadIdC=lead.id;
@@ -4342,7 +4352,7 @@ function rLeadDocs(){
   backRowLD.appendChild(el("span",{style:{fontSize:"13px",fontWeight:"600"}},"Back to Pipeline"));
   backRowLD.addEventListener("click",function(){set({view:"crm",tab:Object.assign({},S.tab,{leads:"pipeline"})});});
   w.appendChild(backRowLD);
-  w.appendChild(el("div",{style:{fontFamily:"'Cormorant Garamond',serif",fontSize:"22px",fontWeight:"600",marginBottom:"14px"}},lead.clientName+" — Documents"));
+  w.appendChild(el("div",{style:{fontFamily:"Inter,sans-serif",fontSize:"22px",fontWeight:"600",marginBottom:"14px"}},lead.clientName+" — Documents"));
 
   var docTypes=[
     {id:"layout",l:"House Layout Plan",note:"Upload the layout, then mark door positions before sending with the quote."},
@@ -4537,7 +4547,7 @@ function rQuotations(){
         itemRow.appendChild(itemLabel);itemRow.appendChild(priceInp);
         secCard.appendChild(itemRow);
       });
-      secCard.appendChild(el("div",{style:{textAlign:"right",fontFamily:"'Cormorant Garamond',serif",fontSize:"16px",fontWeight:"600",color:"var(--g)",marginTop:"6px",paddingTop:"6px",borderTop:"1px solid var(--bd)"}},"Section Total: "+Rs(secTotal)));
+      secCard.appendChild(el("div",{style:{textAlign:"right",fontFamily:"Inter,sans-serif",fontSize:"16px",fontWeight:"600",color:"var(--g)",marginTop:"6px",paddingTop:"6px",borderTop:"1px solid var(--bd)"}},"Section Total: "+Rs(secTotal)));
       w.appendChild(secCard);
     });
 
@@ -4550,7 +4560,7 @@ function rQuotations(){
     var grandTotal=fdq.sections.reduce(function(s,sec){return s+sec.items.reduce(function(ss,it){return ss+parseFloat(it.price||0);},0);},0);
     w.appendChild(el("div",{style:{textAlign:"center",padding:"14px",marginTop:"10px",background:"linear-gradient(135deg,var(--g3),var(--g))",borderRadius:"8px"}},
       el("div",{style:{fontSize:"10px",fontWeight:"700",letterSpacing:".14em",textTransform:"uppercase",color:"rgba(255,255,255,.75)",marginBottom:"4px"}},"Grand Total"),
-      el("div",{style:{fontFamily:"'Cormorant Garamond',serif",fontSize:"28px",fontWeight:"600",color:"#fff"}},Rs(grandTotal))
+      el("div",{style:{fontFamily:"Inter,sans-serif",fontSize:"28px",fontWeight:"600",color:"#fff"}},Rs(grandTotal))
     ));
 
     w.appendChild(btn("Save Quotation",function(){
@@ -4588,7 +4598,7 @@ function rQuotations(){
     var qc=el("div",{cls:"vc"});
     qc.appendChild(dv({display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:"8px"},
       dv({},el("div",{style:{fontWeight:"700",fontSize:"14px"}},q.clientName),el("div",{style:{fontSize:"11px",color:"var(--ink4)",marginTop:"2px"}},q.refNo+" \u00b7 "+q.category+" \u00b7 "+q.date)),
-      el("div",{style:{fontFamily:"'Cormorant Garamond',serif",fontSize:"16px",fontWeight:"600",color:"var(--g)"}},Rs(q.grandTotal))
+      el("div",{style:{fontFamily:"Inter,sans-serif",fontSize:"16px",fontWeight:"600",color:"var(--g)"}},Rs(q.grandTotal))
     ));
     q.sections.forEach(function(sec){
       var secTot=sec.items.reduce(function(s,it){return s+parseFloat(it.price||0);},0);
@@ -4630,14 +4640,14 @@ function rReports(){
   var membCard=Card("Member Balances",null,expBtn(headTrs,"member_balances.csv"));
   var mTbl=el("div",{cls:"tbl-wrap"});var mt=el("table",{});var mth=el("thead",{});var mtr=el("tr",{});["Member","Role","Balance","Status"].forEach(function(h){mtr.appendChild(el("th",{},h));});mth.appendChild(mtr);mt.appendChild(mth);
   var mtb=el("tbody",{});
-  U.forEach(function(u){var bal=pBal(u.id);var tr=el("tr",{});tr.appendChild(el("td",{},dv({display:"flex",alignItems:"center",gap:"7px"},Avatar(u.id,24),el("span",{},u.name))));tr.appendChild(el("td",{style:{color:"var(--ink4)"}},displayRole(u)));tr.appendChild(el("td",{style:{fontFamily:"'Cormorant Garamond',serif",fontSize:"16px",fontWeight:"600",color:bal>=0?"var(--pos)":"var(--neg)"}},Rs(Math.abs(bal))));tr.appendChild(el("td",{},el("span",{cls:"badge "+(bal>=0?"bg":"br")},bal>=0?"In Hand":"Shortfall")));mtb.appendChild(tr);});
+  U.forEach(function(u){var bal=pBal(u.id);var tr=el("tr",{});tr.appendChild(el("td",{},dv({display:"flex",alignItems:"center",gap:"7px"},Avatar(u.id,24),el("span",{},u.name))));tr.appendChild(el("td",{style:{color:"var(--ink4)"}},displayRole(u)));tr.appendChild(el("td",{style:{fontFamily:"Inter,sans-serif",fontSize:"16px",fontWeight:"600",color:bal>=0?"var(--pos)":"var(--neg)"}},Rs(Math.abs(bal))));tr.appendChild(el("td",{},el("span",{cls:"badge "+(bal>=0?"bg":"br")},bal>=0?"In Hand":"Shortfall")));mtb.appendChild(tr);});
   mt.appendChild(mtb);mTbl.appendChild(mt);membCard.querySelector(".cb").appendChild(mTbl);w.appendChild(membCard);
   return w;
 }
 
 function rAI(){
   var w=el("div",{});
-  var hero2=el("div",{cls:"hero"});hero2.appendChild(el("div",{style:{fontSize:"9px",fontWeight:"600",letterSpacing:".2em",textTransform:"uppercase",color:"var(--g3)",marginBottom:"7px"}},"AI Intelligence"));hero2.appendChild(el("div",{style:{fontFamily:"'Cormorant Garamond',serif",fontSize:"28px",fontWeight:"500",color:"#F5EFE0"}},"Financial Analysis"));hero2.appendChild(el("div",{style:{fontSize:"11px",color:"var(--sbm)",marginTop:"3px"}},"Ask anything about Royal Inc. finances"));w.appendChild(hero2);
+  var hero2=el("div",{cls:"hero"});hero2.appendChild(el("div",{style:{fontSize:"9px",fontWeight:"600",letterSpacing:".2em",textTransform:"uppercase",color:"var(--g3)",marginBottom:"7px"}},"AI Intelligence"));hero2.appendChild(el("div",{style:{fontFamily:"Inter,sans-serif",fontSize:"28px",fontWeight:"500",color:"#F5EFE0"}},"Financial Analysis"));hero2.appendChild(el("div",{style:{fontSize:"11px",color:"var(--sbm)",marginTop:"3px"}},"Ask anything about Royal Inc. finances"));w.appendChild(hero2);
   var prompt=S.aiResult?"":(()=>{var cashTot=U.reduce(function(s,u){return s+pBal(u.id);},0);var bkTot=BANKS.reduce(function(s,b){return s+bBal(b.id);},0);var totPay=totalPayables();var m=curMonth();var posted=S.cb.filter(function(e){return e.status==="posted";});var mE=posted.filter(function(e){return(e.date||"").startsWith(m);});var mDr=mE.reduce(function(s,e){return s+parseFloat(e.debit||0);},0);var mCr=mE.reduce(function(s,e){return s+parseFloat(e.credit||0);},0);return "Cash: "+Rs(cashTot)+" | Bank: "+Rs(bkTot)+" | Payables: "+Rs(totPay)+" | Month Spent: "+Rs(mDr)+" | Month Received: "+Rs(mCr);})();
   var FID="ai_prompt";if(!S.fd[FID])S.fd[FID]={q:"Analyze my financial position and give key insights."};
   w.appendChild(Fld("Ask AI",TA(S.fd[FID].q,function(v){S.fd[FID].q=v;},3,"Ask anything about Royal Inc. finances...")));
