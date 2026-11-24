@@ -57,15 +57,15 @@ body{font-family:"Inter",sans-serif;background-color:#EDE6D8;background-image:ra
 body,body *{font-style:normal !important}
 .plainnum.neg,.plainnum.neg .rn{color:var(--neg) !important}
 :root{
-  --bg:#F2EDE4;--s1:#FFFFFF;--s2:#FAF7F2;--s3:#F0EAE0;
-  --bd:#D8D0C4;--bd2:#C8BFB0;
-  --g:#8F8576;--g2:#B3AA9B;--g3:#6E665A;--g4:rgba(143,133,118,.1);--g5:rgba(143,133,118,.06);
-  --ink:#1C1A16;--ink2:#3D3830;--ink3:#6B6358;--ink4:#9A9088;
-  --pos:#5E8C6A;--pos2:rgba(94,140,106,.12);
-  --neg:#B85C4A;--neg2:rgba(184,92,74,.1);
-  --wrn:#C08B35;--wrn2:rgba(192,139,53,.1);
-  --inf:#4A7FA5;--inf2:rgba(74,127,165,.1);
-  --sb:#4A453E;--sb2:#57514A;--sb3:#645D54;--sbt:#E6DFD2;--sbm:#ADA595;
+  --bg:#F6EEE0;--s1:#FFFFFF;--s2:#FCF7EE;--s3:#F3E8D6;
+  --bd:#E2D5BF;--bd2:#D2C2A6;
+  --g:#B7793E;--g2:#D9A566;--g3:#8F5A2A;--g4:rgba(183,121,62,.14);--g5:rgba(183,121,62,.08);
+  --ink:#231D14;--ink2:#46392A;--ink3:#7A6A55;--ink4:#A39481;
+  --pos:#3F8F5F;--pos2:rgba(63,143,95,.14);
+  --neg:#C8503C;--neg2:rgba(200,80,60,.12);
+  --wrn:#D9942A;--wrn2:rgba(217,148,42,.14);
+  --inf:#3C7FB0;--inf2:rgba(60,127,176,.13);
+  --sb:#3E3830;--sb2:#4E463B;--sb3:#5E5446;--sbt:#F0E4CC;--sbm:#C2B391;
   --sw:242px;
   /* Type scale — a small, fixed set of sizes to use everywhere instead of picking
      arbitrary pixel values per line. Every size in the app should map to one of
@@ -163,7 +163,7 @@ tr:hover td{background:var(--s2)}
 .btn{font-family:"Inter",sans-serif;cursor:pointer;border-radius:6px;font-weight:600;font-size:12px;border:none;padding:9px 18px;transition:all .15s;-webkit-tap-highlight-color:transparent;touch-action:manipulation;display:inline-flex;align-items:center;justify-content:center;gap:6px;white-space:nowrap;letter-spacing:.04em;text-transform:uppercase}
 .btn-g{background:linear-gradient(135deg,var(--g3),var(--g));color:#fff}
 .btn-g:hover{background:linear-gradient(135deg,var(--g),var(--g2))}
-.btn-pos{background:var(--pos2);color:var(--pos);border:1px solid rgba(94,140,106,.25)}
+.btn-pos{background:var(--pos2);color:var(--pos);border:1px solid rgba(63,143,95,.3)}
 .btn-neg{background:var(--neg2);color:var(--neg);border:1px solid rgba(184,92,74,.25)}
 .btn-wrn{background:var(--wrn2);color:var(--wrn);border:1px solid rgba(192,139,53,.25)}
 .btn-o{background:var(--s2);color:var(--ink2);border:1px solid var(--bd)}
@@ -182,7 +182,13 @@ tr:hover td{background:var(--s2)}
 .btn-ai{background:linear-gradient(135deg,var(--g3),var(--g));color:#fff;border:none;border-radius:6px;padding:10px 16px;font-weight:700;font-size:11px;cursor:pointer;width:100%;margin-bottom:12px;font-family:"Inter",sans-serif;letter-spacing:.06em;text-transform:uppercase;touch-action:manipulation}
 .ai-box{background:var(--s2);border:1px solid var(--bd);border-radius:7px;padding:12px;margin-bottom:12px;font-size:12px}
 .ai-row{display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid var(--bd);gap:8px}
-.hero{background:var(--sb);border-radius:10px;padding:26px 22px;margin-bottom:20px;position:relative;overflow:hidden}
+.hero{background:linear-gradient(135deg,#3E3830 0%,#5A4A36 55%,#8F5A2A 130%);box-shadow:0 8px 22px rgba(90,60,30,.22);border-radius:10px;padding:26px 22px;margin-bottom:20px;position:relative;overflow:hidden}
+body{background:linear-gradient(180deg,#F8F0E2 0%,#F2E8D6 100%);background-attachment:fixed}
+.card{box-shadow:0 2px 10px rgba(120,85,40,.09);border-color:var(--bd);transition:transform .15s,box-shadow .15s}
+.card:active{transform:scale(.99)}
+.card[style*="cursor: pointer"],.card[style*="cursor:pointer"]{border-left:4px solid var(--g)}
+@media (hover:hover){.card[style*="cursor: pointer"]:hover{box-shadow:0 6px 18px rgba(120,85,40,.18)}}
+
 .hero::after{content:"";position:absolute;bottom:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,var(--g3),var(--g),var(--g3),transparent)}
 .sep{height:1px;background:var(--bd);border:none;margin:14px 0}
 .al-w{background:var(--wrn2);border:1px solid rgba(192,139,53,.3);border-radius:7px;padding:10px 14px;margin-bottom:12px;font-size:12px;color:var(--wrn)}
@@ -1959,7 +1965,8 @@ function rExecDash(){
     body.appendChild(left);body.appendChild(el("span",{style:{fontSize:"22px",color:"var(--g3)"}},"\u203A"));
     card.appendChild(body);return card;
   }
-  w.appendChild(totalTab(cashTot<0?"Cash Deficit":"Total Cash",cashTot,"All staff cash in hand \u00b7 tap to open your ledger",function(){set({cbf:{lv:"byP",person:S.user,site:"",search:"",d1:"",d2:""},view:"ldg"});}));
+  var myCash=pBal(S.user);
+  w.appendChild(totalTab(myCash<0?"My Cash Deficit":"My Cash",myCash,"Your cash in hand \u00b7 tap to open your ledger",function(){set({cbf:{lv:"byP",person:S.user,site:"",search:"",d1:"",d2:""},view:"ldg"});}));
   w.appendChild(totalTab("Banks Total",bkTot,"All bank accounts \u00b7 tap to open Bank",function(){set({view:"bank",tab:Object.assign({},S.tab,{bank:"ov"})});}));
   w.appendChild(totalTab("Cash + Banks",cashTot+bkTot,"Cumulative total \u00b7 tap to open Cash Flow",function(){set({view:"cashflow"});}));
   var devCardTop=rDevRequestsCard();if(devCardTop)w.appendChild(devCardTop);
@@ -2636,7 +2643,13 @@ function rCashFlow(){
   w.appendChild(oblCard);
   var membCard=Card("Member Cash Positions");
   var mg=dv({display:"flex",gap:"10px",flexWrap:"wrap"});
-  U.forEach(function(u){var bal=pBal(u.id);var bc=dv({background:"var(--s2)",border:"1px solid var(--bd)",borderRadius:"8px",padding:"12px 14px",minWidth:"130px"});bc.appendChild(dv({display:"flex",alignItems:"center",gap:"7px",marginBottom:"7px"},Avatar(u.id,26),el("div",{},el("div",{style:{fontWeight:"600",fontSize:"12px"}},u.name),el("div",{style:{fontSize:"10px",color:"var(--ink4)",textTransform:"uppercase",letterSpacing:".08em"}},displayRole(u)))));bc.appendChild(el("div",{style:{fontFamily:"'Cormorant Garamond',serif",fontSize:"16px",fontWeight:"600",color:bal>=0?"var(--pos)":"var(--neg)"}},Rs(Math.abs(bal))));bc.appendChild(el("div",{style:{fontSize:"9px",color:"var(--ink4)",textTransform:"uppercase",letterSpacing:".08em",marginTop:"2px"}},bal>=0?"In Hand":"Shortfall"));mg.appendChild(bc);});
+  var mcTot=dv({background:"var(--s2)",border:"1px solid var(--bd)",borderRadius:"8px",padding:"14px 16px",marginBottom:"12px",width:"100%"});
+  mcTot.appendChild(el("div",{style:{fontSize:"10px",fontWeight:"700",letterSpacing:".16em",textTransform:"uppercase",color:"var(--ink3)",marginBottom:"6px"}},cashTot<0?"Total Cash Deficit":"Total Cash Balance"));
+  mcTot.appendChild(el("div",{cls:"plainnum"+(cashTot<0?" neg":""),style:{fontSize:"28px",lineHeight:"1.1"}},(cashTot<0?"-":"")+Rs(Math.abs(cashTot))));
+  membCard.querySelector(".cb").appendChild(mcTot);
+  U.forEach(function(u){var bal=pBal(u.id);var bc=dv({background:"var(--s2)",border:"1px solid var(--bd)",borderRadius:"8px",padding:"12px 14px",minWidth:"130px"});
+    var canOpen=canSeePerson(S.user,u.id)&&(S.user===u.id||canOpenLedger(S.user)||ROLE_MAP[S.user]==="director");
+    if(canOpen){bc.style.cursor="pointer";bc.addEventListener("click",function(){set({cbf:{lv:"byP",person:u.id,site:"",search:"",d1:"",d2:""},view:"ldg"});});}bc.appendChild(dv({display:"flex",alignItems:"center",gap:"7px",marginBottom:"7px"},Avatar(u.id,26),el("div",{},el("div",{style:{fontWeight:"600",fontSize:"12px"}},u.name),el("div",{style:{fontSize:"10px",color:"var(--ink4)",textTransform:"uppercase",letterSpacing:".08em"}},displayRole(u)))));bc.appendChild(el("div",{style:{fontFamily:"'Cormorant Garamond',serif",fontSize:"16px",fontWeight:"600",color:bal>=0?"var(--pos)":"var(--neg)"}},Rs(Math.abs(bal))));bc.appendChild(el("div",{style:{fontSize:"9px",color:"var(--ink4)",textTransform:"uppercase",letterSpacing:".08em",marginTop:"2px"}},bal>=0?"In Hand":"Shortfall"));mg.appendChild(bc);});
   membCard.querySelector(".cb").appendChild(mg);w.appendChild(membCard);
   return w;
 }
